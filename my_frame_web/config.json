@@ -1,7 +1,7 @@
 {
     "api_key_kma": "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHuKg==",
     "api_key_air": "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHuKg==",
-    "api_key_ai": "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",
+    "api_key_ai": "",
     "ai_provider": "huggingface",
     "layout": {
         "widget_size": "1",
