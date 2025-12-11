@@ -234,21 +234,30 @@
 
             <!-- Position Controls: Sliders -->
             <!-- Widget Position -->
-            <div class="control-group" style="margin-top:20px; background:#fafafa; padding:10px; border-radius:8px;">
-                <label style="font-weight:bold; color:blue;">위젯 위치</label>
-                <label>가로 (X): <span id="valWx">0</span> px</label>
-                <input type="range" id="sliderWx" min="0" max="700" step="5" value="10">
-                <label>세로 (Y): <span id="valWy">0</span> px</label>
-                <input type="range" id="sliderWy" min="0" max="400" step="5" value="10">
-            </div>
+            <!-- Toggle Button -->
+            <button class="btn btn-secondary" onclick="togglePositionControls()" style="margin-top:10px;">📐 위치/크기 상세
+                조절</button>
 
-            <!-- Photo Position -->
-            <div class="control-group" style="margin-top:10px; background:#fafafa; padding:10px; border-radius:8px;">
-                <label style="font-weight:bold; color:blue;">사진 위치 (Crop)</label>
-                <label>가로 (X): <span id="valPx">0.5</span></label>
-                <input type="range" id="sliderPx" min="0.0" max="1.0" step="0.05" value="0.5">
-                <label>세로 (Y): <span id="valPy">0.5</span></label>
-                <input type="range" id="sliderPy" min="0.0" max="1.0" step="0.05" value="0.5">
+            <!-- Position Controls Container (Hidden by default) -->
+            <div id="positionControls" style="display:none; margin-top:10px;">
+                <!-- Widget Position -->
+                <div class="control-group" style="background:#fafafa; padding:10px; border-radius:8px;">
+                    <label style="font-weight:bold; color:blue;">위젯 위치</label>
+                    <label>가로 (X): <span id="valWx">0</span> px</label>
+                    <input type="range" id="sliderWx" min="0" max="700" step="5" value="10">
+                    <label>세로 (Y): <span id="valWy">0</span> px</label>
+                    <input type="range" id="sliderWy" min="0" max="400" step="5" value="10">
+                </div>
+
+                <!-- Photo Position -->
+                <div class="control-group"
+                    style="margin-top:10px; background:#fafafa; padding:10px; border-radius:8px;">
+                    <label style="font-weight:bold; color:blue;">사진 위치 (Crop)</label>
+                    <label>가로 (X): <span id="valPx">0.5</span></label>
+                    <input type="range" id="sliderPx" min="0.0" max="1.0" step="0.05" value="0.5">
+                    <label>세로 (Y): <span id="valPy">0.5</span></label>
+                    <input type="range" id="sliderPy" min="0.0" max="1.0" step="0.05" value="0.5">
+                </div>
             </div>
 
             <button class="btn" style="margin-top:10px;" onclick="saveLayout()">현재 레이아웃 저장 & 액자로 전송</button>
@@ -297,25 +306,35 @@
         let timeout;
         let currentPhoto = "";
 
-        // Drag state
-        let isDragging = false;
-        let controlMode = "none"; // "widget" or "photo"
-
-        // Widget Coords (0-800, 0-480)
-        let widgetX = null;
-        let widgetY = null;
-
-        // Photo Coords (0.0 - 1.0)
+        // Coords
+        let widgetX = 10;
+        let widgetY = 10;
         let photoX = 0.5;
         let photoY = 0.5;
 
-        let dragStartX, dragStartY;
-        let initialPhotoX, initialPhotoY;
-        let initialWidgetX, initialWidgetY;
+        function togglePositionControls() {
+            const el = document.getElementById('positionControls');
+            el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+        }
+
+        const updateStateFromUI = () => {
+            widgetX = parseInt(document.getElementById('sliderWx').value);
+            widgetY = parseInt(document.getElementById('sliderWy').value);
+            photoX = parseFloat(document.getElementById('sliderPx').value);
+            photoY = parseFloat(document.getElementById('sliderPy').value);
+
+            // Update Label Text
+            document.getElementById('valWx').innerText = widgetX;
+            document.getElementById('valWy').innerText = widgetY;
+            document.getElementById('valPx').innerText = photoX.toFixed(2);
+            document.getElementById('valPy').innerText = photoY.toFixed(2);
+        }
 
         const updatePreview = () => {
             clearTimeout(timeout);
             timeout = setTimeout(async () => {
+                updateStateFromUI(); // Sync vars
+
                 const size = document.getElementById('widgetSize').value;
                 const font = document.getElementById('fontSize').value;
                 const opacity = document.getElementById('widgetOpacity').value;
@@ -347,128 +366,7 @@
             }, 300);
         };
 
-        function syncWidgetOverlay(x, y, w, h) {
-            const previewBox = document.querySelector('.preview-box');
-            const rect = previewBox.getBoundingClientRect();
-            const scaleX = rect.width / 800;
-            const scaleY = rect.height / 480;
-
-            const box = document.getElementById('widgetOverlay');
-            box.style.width = (w * scaleX) + "px";
-            box.style.height = (h * scaleY) + "px";
-
-            // If not dragging widget, update position
-            if (controlMode !== 'widget' || !isDragging) {
-                box.style.left = (x * scaleX) + "px";
-                box.style.top = (y * scaleY) + "px";
-            }
-        }
-
-        // Mode Toggles
-        function setMode(mode) {
-            controlMode = mode;
-            const widgetBox = document.getElementById('widgetOverlay');
-            const photoOverlay = document.getElementById('photoOverlay');
-
-            // Reset Styles
-            document.getElementById('btnMoveWidget').className = "btn btn-secondary";
-            document.getElementById('btnMovePhoto').className = "btn btn-secondary";
-            widgetBox.style.display = "none";
-            photoOverlay.style.display = "none";
-
-            if (mode === 'widget') {
-                document.getElementById('btnMoveWidget').className = "btn"; // Active Blue
-                widgetBox.style.display = "flex";
-                widgetBox.innerText = "위젯 드래그";
-            } else if (mode === 'photo') {
-                document.getElementById('btnMovePhoto').className = "btn"; // Active Blue
-                photoOverlay.style.display = "block"; // Full cover
-            }
-        }
-
-        // Init Overlays
-        const previewBox = document.querySelector('.preview-box');
-        previewBox.style.position = 'relative';
-
-        // 1. Widget Overlay
-        const widgetOverlay = document.createElement('div');
-        widgetOverlay.id = "widgetOverlay";
-        widgetOverlay.style.cssText = `position:absolute; border:2px dashed blue; background:rgba(0,0,255,0.2); cursor:move; display:none; align-items:center; justify-content:center; color:blue; font-weight:bold; font-size:12px; z-index:20;`;
-        previewBox.appendChild(widgetOverlay);
-
-        // 2. Photo Overlay (Invisible full cover for dragging photo)
-        const photoOverlay = document.createElement('div');
-        photoOverlay.id = "photoOverlay";
-        photoOverlay.style.cssText = `position:absolute; top:0; left:0; width:100%; height:100%; cursor:grab; display:none; z-index:10;`;
-        previewBox.appendChild(photoOverlay);
-
-        // Event Listeners
-        const handleDown = (e) => {
-            if (controlMode === 'none') return;
-            isDragging = true;
-            dragStartX = e.clientX;
-            dragStartY = e.clientY;
-
-            if (controlMode === 'photo') {
-                document.body.style.cursor = 'grabbing';
-                initialPhotoX = photoX;
-                initialPhotoY = photoY;
-            } else if (controlMode === 'widget') {
-                initialWidgetX = widgetOverlay.offsetLeft;
-                initialWidgetY = widgetOverlay.offsetTop;
-            }
-            e.preventDefault();
-        };
-
-        const handleMove = (e) => {
-            if (!isDragging) return;
-            const dx = e.clientX - dragStartX;
-            const dy = e.clientY - dragStartY;
-            const rect = previewBox.getBoundingClientRect();
-
-            if (controlMode === 'photo') {
-                // Photo Drag Logic (Inverted: dragging mouse RIGHT moves crop LEFT (decreasing crop_x), effectively panning image right)
-                // Sensitivity: 1 full width drag = 1.0 change
-                const deltaX = dx / rect.width;
-                const deltaY = dy / rect.height;
-
-                // If I drag mouse right, I want to see left part of image -> crop center moves left -> subtract
-                photoX = Math.max(0, Math.min(1, initialPhotoX - deltaX));
-                photoY = Math.max(0, Math.min(1, initialPhotoY - deltaY));
-
-                // Aggressive update might lag, maybe optimize?
-                // limit updates? For now rely on debounce in updatePreview? 
-                // updatePreview has debounce 300ms, too slow for drag.
-                // We shouldn't call updatePreview on every move.
-                // Just let user drag and update on UP? or throttle.
-            } else if (controlMode === 'widget') {
-                widgetOverlay.style.left = (initialWidgetX + dx) + "px";
-                widgetOverlay.style.top = (initialWidgetY + dy) + "px";
-            }
-        };
-
-        const handleUp = (e) => {
-            if (!isDragging) return;
-            isDragging = false;
-            document.body.style.cursor = 'default';
-
-            if (controlMode === 'widget') {
-                const rect = previewBox.getBoundingClientRect();
-                const scaleX = 800 / rect.width;
-                const scaleY = 480 / rect.height;
-                widgetX = Math.round(widgetOverlay.offsetLeft * scaleX);
-                widgetY = Math.round(widgetOverlay.offsetTop * scaleY);
-                updatePreview();
-            } else if (controlMode === 'photo') {
-                updatePreview(); // Update final rendering
-            }
-        };
-
-        // Attach events to overlays
-        widgetOverlay.addEventListener('mousedown', handleDown);
-        photoOverlay.addEventListener('mousedown', handleDown);
-        document.addEventListener('mousemove', handleMove);
-        document.addEventListener('mouseup', handleUp);
+        // Drag logic removed in favor of direct slider control
 
 
         // Attach Slider Events
