@@ -77,8 +77,7 @@ def upload_file():
             
         return jsonify({'success': True, 'filename': filename}), 200
 
-app = Flask(__name__, template_folder='my_frame_web/templates', static_folder='my_frame_web/static')
-hw = hardware.HardwareController()
+# --- [Routes] ---
 
 # --- [Routes] ---
 
