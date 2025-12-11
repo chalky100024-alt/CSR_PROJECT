@@ -17,12 +17,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Waveshare Check
-try:
-    from waveshare_epd import epd7in3f
-    HAS_EPD = True
-except ImportError:
-    HAS_EPD = False
+# Waveshare import removed - use hardware.py instead
+
 
 class EInkPhotoFrame:
     def __init__(self):
@@ -110,7 +106,9 @@ class EInkPhotoFrame:
         final_img, _, _, _, _ = renderer.create_composed_image(selected_photo, w_data, d_data, layout, location_name)
         
         # 4. Dithering & Display
-        if HAS_EPD and self.hw.epd:
+        # 4. Dithering & Display
+        # Use hardware controller's EPD instance
+        if self.hw.epd:
             logger.info("Initializing EPD and displaying...")
             try:
                 self.hw.epd.init()
