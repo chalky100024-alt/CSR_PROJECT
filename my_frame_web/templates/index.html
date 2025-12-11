@@ -297,7 +297,7 @@
                 <option value="noir film">느와르 영화 (Noir)</option>
             </select>
             <!-- AI Controls -->
-            <div style="display:flex; align-items:center; margin-top:10px; gap:10px;">
+            <div id="img2imgControl" style="display:flex; align-items:center; margin-top:10px; gap:10px;">
                 <input type="checkbox" id="useBaseImage">
                 <label for="useBaseImage" style="display:inline; margin:0; color:#333;">선택된 사진을 변환하기 (Img2Img)</label>
             </div>
@@ -585,18 +585,26 @@
                 const config = await res.json();
 
                 const badge = document.getElementById('aiProviderBadge');
+                const img2imgBox = document.getElementById('img2imgControl');
+                const checkbox = document.getElementById('useBaseImage');
+
                 if (config.ai_provider === 'google') {
-                    badge.innerText = "Google Vertex AI 🤖";
+                    badge.innerText = "Google Vertex AI 🤖 (화질 좋음 / 변환 불가)";
                     badge.style.color = "#ea4335";
                     badge.style.background = "#fce8e6";
+                    if (img2imgBox) img2imgBox.style.display = 'none';
+                    checkbox.checked = false;
                 } else if (config.ai_provider === 'openai') {
-                    badge.innerText = "OpenAI DALL-E 3 🤖";
+                    badge.innerText = "OpenAI DALL-E 3 🤖 (변환 불가)";
                     badge.style.color = "#10a37f";
                     badge.style.background = "#e5f6f1";
+                    if (img2imgBox) img2imgBox.style.display = 'none';
+                    checkbox.checked = false;
                 } else {
-                    badge.innerText = "Hugging Face (Free) 🤗";
+                    badge.innerText = "Hugging Face (Free) 🤗 (변환 가능)";
                     badge.style.color = "#ff9d00";
                     badge.style.background = "#fff8e6";
+                    if (img2imgBox) img2imgBox.style.display = 'flex';
                 }
 
                 // If user has specific layout settings, we could load them here too
