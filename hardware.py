@@ -22,8 +22,10 @@ class HardwareController:
                 logger.info("E-Ink Driver Loaded.")
                 
             except ImportError:
-                 self.init_error = "Missing 'waveshare-epaper'. Run: pip install -r requirements.txt"
-                 logger.warning(self.init_error)
+                 # Critical fix: Don't crash, just disable hardware
+                 self.init_error = "Missing 'waveshare_epd'. Run: git clone https://github.com/waveshare/e-Paper.git and copy lib/waveshare_epd to here."
+                 logger.error(f"[Hardware Warning] {self.init_error}")
+                 self.epd = None
             except Exception as e:
                 self.init_error = str(e)
                 logger.warning(f"E-Ink Driver Init Failed: {e}")
