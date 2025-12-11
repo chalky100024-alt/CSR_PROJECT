@@ -220,7 +220,6 @@
                 <select id="aiProvider"
                     style="width:100%; padding:10px; margin-top:5px; border-radius:8px; border:1px solid #e5e5ea;">
                     <option value="huggingface">Hugging Face (무료/빠름)</option>
-                    <option value="openai">OpenAI DALL-E 3 (유료/고품질)</option>
                     <option value="google">Google Vertex AI (Imagen 3)</option>
                 </select>
             </div>
@@ -229,11 +228,6 @@
             <div id="hfFields" style="margin-top:10px;">
                 <label>Hugging Face Token (무료/Img2Img용):</label>
                 <input type="password" id="hfKey" placeholder="hf_...">
-            </div>
-
-            <div id="openaiFields" class="hidden" style="margin-top:10px;">
-                <label>OpenAI API Key (sk-...):</label>
-                <input type="password" id="openaiKey" placeholder="sk-...">
             </div>
 
             <div id="googleFields" class="hidden"
@@ -299,18 +293,14 @@
         function toggleAiFields() {
             const provider = document.getElementById('aiProvider').value;
             const hFields = document.getElementById('hfFields');
-            const oFields = document.getElementById('openaiFields');
             const gFields = document.getElementById('googleFields');
 
             // Hide all first
             hFields.classList.add('hidden');
-            oFields.classList.add('hidden');
             gFields.classList.add('hidden');
 
             if (provider === 'google') {
                 gFields.classList.remove('hidden');
-            } else if (provider === 'openai') {
-                oFields.classList.remove('hidden');
             } else {
                 hFields.classList.remove('hidden');
             }
@@ -318,7 +308,6 @@
 
         async function saveAiSettings() {
             const hfKey = document.getElementById('hfKey').value;
-            const openKey = document.getElementById('openaiKey').value;
             const gKey = document.getElementById('googleKey').value;
 
             const provider = document.getElementById('aiProvider').value;
@@ -328,7 +317,6 @@
             const newConfig = {
                 ai_provider: provider,
                 api_key_hf: hfKey,
-                api_key_ai: openKey, // Legacy mapping for OpenAI
                 api_key_google: gKey,
                 google_project_id: gProject,
                 google_location: gLocation
