@@ -33,9 +33,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 pip install huggingface_hub
 
-# 5. 서비스 재시작 (화면이 깜빡이며 갱신됩니다)
-sudo systemctl restart photoframe.service
-
-# (선택) 잘 실행되는지 로그 확인하기 (나갈 땐 Ctrl+C)
-sudo journalctl -u photoframe.service -f
+# 5. 서버 수동 실행 (개발용)
+# (이미 실행 중인 게 있다면 Ctrl+C로 끄고 다시 실행)
+python app.py
 ```
