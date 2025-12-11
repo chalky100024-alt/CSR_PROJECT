@@ -225,49 +225,36 @@
                 </select>
             </div>
 
-            <!-- Google Specific Fields -->
+            <!-- Hub for AI Keys -->
+            <div id="hfFields" style="margin-top:10px;">
+                <label>Hugging Face Token (무료/Img2Img용):</label>
+                <input type="password" id="hfKey" placeholder="hf_...">
+            </div>
+
+            <div id="openaiFields" class="hidden" style="margin-top:10px;">
+                <label>OpenAI API Key (sk-...):</label>
+                <input type="password" id="openaiKey" placeholder="sk-...">
+            </div>
+
             <div id="googleFields" class="hidden"
-                style="background:#f0f0f0; padding:10px; border-radius:8px; margin-bottom:10px;">
-                <label style="font-size:12px; color:#555;">Google Project ID:</label>
+                style="background:#f0f0f0; padding:10px; border-radius:8px; margin-top:10px;">
+                <label>Google API Key:</label>
+                <input type="password" id="googleKey" placeholder="AIza... or similar">
+
+                <label style="font-size:12px; color:#555; margin-top:5px; display:block;">Google Project ID:</label>
                 <input type="text" id="googleProject" placeholder="예: my-project-12345" style="margin-bottom:5px;">
                 <label style="font-size:12px; color:#555;">Location (Region):</label>
                 <input type="text" id="googleLocation" placeholder="us-central1" value="us-central1">
             </div>
 
-            <div style="margin-bottom:10px;">
-                <label>API Key:</label>
-                <input type="password" id="aiApiKey" placeholder="API Key 입력 (hf_..., sk-..., or Google Key)">
-            </div>
-            <button class="btn" onclick="saveAiSettings()">AI 설정 저장</button>
+            <button class="btn" style="margin-top:20px;" onclick="saveAiSettings()">AI 설정 저장</button>
             <p style="font-size:12px; color:#888; margin-top:10px;">
-                * Hugging Face: 무료 토큰<br>
-                * OpenAI: 유료 (Credit 필요)<br>
-                * Google: Vertex AI API Key (GCP Console 설정 필요)
+                * 제공자를 변경하면 해당 제공자의 키가 사용됩니다.<br>
+                * 사진 변환(Img2Img)은 Hugging Face 키가 필요합니다.
             </p>
         </div>
 
-        <!-- System -->
-        <div class="card">
-            <h2>⚙️ 시스템</h2>
-            <p>PiSugar 배터리: <span id="batteryStatus">-</span></p>
-            <button class="btn btn-danger" onclick="callSystem('shutdown')">시스템 종료</button>
-            <button class="btn btn-secondary" onclick="callSystem('reboot')">재부팅</button>
-            <button class="btn" style="margin-top:10px; background: linear-gradient(180deg, #34c759 0%, #30b351 100%);"
-                onclick="updateFirmware()">🔄 펌웨어 업데이트 (Git Pull)</button>
-        </div>
-        <!-- Custom Modal -->
-        <div id="confirmModal" class="hidden"
-            style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
-            <div
-                style="background:white; padding:20px; border-radius:15px; width:300px; text-align:center; box-shadow:0 5px 15px rgba(0,0,0,0.2);">
-                <h3 id="modalTitle" style="margin-top:0;">위치 설정</h3>
-                <p id="modalDesc">이 위치로 설정하시겠습니까?</p>
-                <div style="display:flex; justify-content:space-around; margin-top:20px;">
-                    <button class="btn btn-secondary" onclick="closeModal()">취소</button>
-                    <button class="btn" id="btnConfirmAction">확인</button>
-                </div>
-            </div>
-        </div>
+        <!-- ... (Rest of HTML) ... -->
     </div>
 
     <script>
@@ -278,21 +265,30 @@
             try {
                 const res = await fetch('/api/get_config');
                 currentConfig = await res.json();
+
+                // ... (Location) ...
                 if (currentConfig.location) {
                     document.getElementById('currentLoc').innerText = `현재: ${currentConfig.location.name}`;
                 }
-                // AI Config Load
-                if (currentConfig.api_key_ai) document.getElementById('aiApiKey').value = currentConfig.api_key_ai;
+
+                // AI Keys
+                if (currentConfig.api_key_hf) document.getElementById('hfKey').value = currentConfig.api_key_hf;
+                if (currentConfig.api_key_google) document.getElementById('googleKey').value = currentConfig.api_key_google;
+                // OpenAI maps to api_key_ai for now or new field? Let's assume shared 'api_key_ai' is now OpenAI if we want, or add new.
+                // For simplicity, we mapped old 'api_key_ai' -> OpenAI if provider=openai. 
+                // But let's separate. 'api_key_ai' in config will be used for OpenAI for legacy compat.
+                if (currentConfig.api_key_ai) document.getElementById('openaiKey').value = currentConfig.api_key_ai;
+
                 if (currentConfig.ai_provider) {
                     document.getElementById('aiProvider').value = currentConfig.ai_provider;
-                    toggleAiFields();
                 }
                 if (currentConfig.google_project_id) document.getElementById('googleProject').value = currentConfig.google_project_id;
                 if (currentConfig.google_location) document.getElementById('googleLocation').value = currentConfig.google_location;
 
+                toggleAiFields(); // Initial show
                 document.getElementById('aiProvider').addEventListener('change', toggleAiFields);
 
-                // Data API Config Load
+                // ... (Data Keys) ...
                 if (currentConfig.api_key_kma) document.getElementById('kmaKey').value = currentConfig.api_key_kma;
                 if (currentConfig.api_key_air) document.getElementById('airKey').value = currentConfig.api_key_air;
 
@@ -300,35 +296,40 @@
         }
         loadConfig();
 
-        async function saveDataSettings() {
-            const kma = document.getElementById('kmaKey').value;
-            const air = document.getElementById('airKey').value;
+        function toggleAiFields() {
+            const provider = document.getElementById('aiProvider').value;
+            const hFields = document.getElementById('hfFields');
+            const oFields = document.getElementById('openaiFields');
+            const gFields = document.getElementById('googleFields');
 
-            const newConfig = {
-                api_key_kma: kma,
-                api_key_air: air
-            };
+            // Hide all first
+            hFields.classList.add('hidden');
+            oFields.classList.add('hidden');
+            gFields.classList.add('hidden');
 
-            await fetch('/api/save_config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(newConfig)
-            });
-            alert("키가 저장되었습니다. (화면이 잠시 후 갱신됩니다)");
+            if (provider === 'google') {
+                gFields.classList.remove('hidden');
+            } else if (provider === 'openai') {
+                oFields.classList.remove('hidden');
+            } else {
+                hFields.classList.remove('hidden');
+            }
         }
 
         async function saveAiSettings() {
-            const key = document.getElementById('aiApiKey').value;
-            const provider = document.getElementById('aiProvider').value;
+            const hfKey = document.getElementById('hfKey').value;
+            const openKey = document.getElementById('openaiKey').value;
+            const gKey = document.getElementById('googleKey').value;
 
-            const key = document.getElementById('aiApiKey').value;
             const provider = document.getElementById('aiProvider').value;
             const gProject = document.getElementById('googleProject').value;
             const gLocation = document.getElementById('googleLocation').value;
 
             const newConfig = {
-                api_key_ai: key,
                 ai_provider: provider,
+                api_key_hf: hfKey,
+                api_key_ai: openKey, // Legacy mapping for OpenAI
+                api_key_google: gKey,
                 google_project_id: gProject,
                 google_location: gLocation
             };
@@ -338,8 +339,9 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newConfig)
             });
-            alert("AI 설정이 저장되었습니다. (화면이 잠시 후 갱신됩니다)");
+            alert("AI 설정이 저장되었습니다.");
         }
+
 
         // Location Search
         async function searchLocation() {

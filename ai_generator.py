@@ -13,10 +13,19 @@ HF_API_URL = "https://router.huggingface.co/hf-inference/models/black-forest-lab
 
 def generate_image(prompt, style_preset, provider="huggingface"):
     config = settings.load_config()
-    api_key = config.get('api_key_ai')
+    
+    # Key selection based on provider
+    if provider == "google":
+        api_key = config.get('api_key_google', config.get('api_key_ai')) # Fallback
+    elif provider == "huggingface":
+        # Prefer specific HF key, fallback to AI key (legacy), fallback to HARDCODED default if empty
+        api_key = config.get('api_key_hf')
+        if not api_key: api_key = config.get('api_key_ai')
+    else:
+        api_key = config.get('api_key_ai')
     
     if not api_key:
-        logger.error("AI API Key가 없습니다.")
+        logger.error(f"API Key for {provider} missing")
         return None
 
     # Auto-Translate to English if needed
@@ -184,7 +193,9 @@ IMG2IMG_URL = "https://router.huggingface.co/hf-inference/models/timbrooks/instr
 
 def generate_image_from_image(prompt, style_preset, source_path, provider="huggingface"):
     config = settings.load_config()
-    api_key = config.get('api_key_ai')
+    # Img2Img is mostly HF, so prioritize HF key
+    api_key = config.get('api_key_hf')
+    if not api_key: api_key = config.get('api_key_ai')
     
     if not api_key: return None
     

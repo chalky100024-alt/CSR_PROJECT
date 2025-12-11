@@ -14,7 +14,10 @@ DB_PATH = os.path.join(BASE_DIR, 'korea_zone.db')
 DEFAULT_CONFIG = {
     "api_key_kma": "",      # 기상청 키
     "api_key_air": "",      # 에어코리아 키
-    "api_key_ai": "",       # HuggingFace/OpenAI 키
+    "api_key_ai": "",       # Deprecated (Shared)
+    "api_key_google": "",   # Google Vertex AI Key
+    "api_key_hf": "hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", # User's HF Key (Hardcoded request)
+    "ai_provider": "huggingface", # or 'openai'
     "ai_provider": "huggingface", # or 'openai'
     "layout": {
         "type": "type_A",
