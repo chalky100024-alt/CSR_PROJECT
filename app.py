@@ -8,6 +8,9 @@ import data_api
 import sqlite3
 import random
 
+import photo_frame
+import threading
+
 app = Flask(__name__, template_folder='my_frame_web/templates', static_folder='my_frame_web/static')
 hw = hardware.HardwareController()
 
@@ -28,12 +31,6 @@ def settings_page():
 @app.route('/api/get_config')
 def get_config():
     return jsonify(settings.load_config())
-
-@app.route('/api/save_config', methods=['POST'])
-import photo_frame
-import threading
-
-# ... 
 
 @app.route('/api/save_config', methods=['POST'])
 def api_save_config():
