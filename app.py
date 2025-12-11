@@ -237,4 +237,5 @@ def upload_file():
     return jsonify({'error': 'Error'}), 400
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    # use_reloader=False prevents double initialization of hardware drivers
+    app.run(host='0.0.0.0', port=8080, debug=True, use_reloader=False)
