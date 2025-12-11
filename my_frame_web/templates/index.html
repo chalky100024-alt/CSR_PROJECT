@@ -50,14 +50,21 @@
 
         .preview-box {
             width: 100%;
+            aspect-ratio: 800 / 480;
+            /* Enforce fixed aspect ratio */
             border-radius: 8px;
             overflow: hidden;
             border: 1px solid #ddd;
             position: relative;
+            background: #333;
+            /* Dark background to see boundaries */
         }
 
         .preview-box img {
             width: 100%;
+            height: 100%;
+            object-fit: contain;
+            /* Ensure image fits perfectly */
             display: block;
         }
 
@@ -248,16 +255,6 @@
                     <label>세로 (Y): <span id="valWy">0</span> px</label>
                     <input type="range" id="sliderWy" min="0" max="400" step="5" value="10">
                 </div>
-
-                <!-- Photo Position -->
-                <div class="control-group"
-                    style="margin-top:10px; background:#fafafa; padding:10px; border-radius:8px;">
-                    <label style="font-weight:bold; color:blue;">사진 위치 (Crop)</label>
-                    <label>가로 (X): <span id="valPx">0.5</span></label>
-                    <input type="range" id="sliderPx" min="0.0" max="1.0" step="0.05" value="0.5">
-                    <label>세로 (Y): <span id="valPy">0.5</span></label>
-                    <input type="range" id="sliderPy" min="0.0" max="1.0" step="0.05" value="0.5">
-                </div>
             </div>
 
             <button class="btn" style="margin-top:10px;" onclick="saveLayout()">현재 레이아웃 저장 & 액자로 전송</button>
@@ -309,8 +306,6 @@
         // Coords
         let widgetX = 10;
         let widgetY = 10;
-        let photoX = 0.5;
-        let photoY = 0.5;
 
         function togglePositionControls() {
             const el = document.getElementById('positionControls');
@@ -320,14 +315,10 @@
         const updateStateFromUI = () => {
             widgetX = parseInt(document.getElementById('sliderWx').value);
             widgetY = parseInt(document.getElementById('sliderWy').value);
-            photoX = parseFloat(document.getElementById('sliderPx').value);
-            photoY = parseFloat(document.getElementById('sliderPy').value);
 
             // Update Label Text
             document.getElementById('valWx').innerText = widgetX;
             document.getElementById('valWy').innerText = widgetY;
-            document.getElementById('valPx').innerText = photoX.toFixed(2);
-            document.getElementById('valPy').innerText = photoY.toFixed(2);
         }
 
         const updatePreview = () => {
@@ -344,7 +335,6 @@
                 if (currentPhoto) url += `&min_filename=${encodeURIComponent(currentPhoto)}`;
 
                 if (widgetX !== null && widgetY !== null) url += `&x=${widgetX}&y=${widgetY}`;
-                url += `&photo_x=${photoX}&photo_y=${photoY}`;
 
                 try {
                     const res = await fetch(url);
@@ -370,7 +360,7 @@
 
 
         // Attach Slider Events
-        const sliders = ['widgetSize', 'fontSize', 'widgetOpacity', 'sliderWx', 'sliderWy', 'sliderPx', 'sliderPy'];
+        const sliders = ['widgetSize', 'fontSize', 'widgetOpacity', 'sliderWx', 'sliderWy'];
         sliders.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('input', updatePreview);
@@ -387,8 +377,6 @@
                     opacity: document.getElementById('widgetOpacity').value,
                     x: widgetX,
                     y: widgetY,
-                    photo_x: photoX,
-                    photo_y: photoY,
                     type: "custom"
                 },
                 selected_photo: currentPhoto // Save specifically which photo is active

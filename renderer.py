@@ -38,11 +38,7 @@ def get_font(size=20, bold=True):
         return ImageFont.truetype(path, size)
     return ImageFont.load_default()
 
-def resize_image_fill(image, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, crop_x=0.5, crop_y=0.5):
-    """
-    Resize and crop image. 
-    crop_x, crop_y: Center point of the crop (0.0 to 1.0). Default 0.5 (Center).
-    """
+def resize_image_fill(image, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT):
     target_ratio = width / height
     img_ratio = image.width / image.height
     
@@ -57,18 +53,9 @@ def resize_image_fill(image, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT, crop_x=
         
     resized = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
     
-    # Calculate crop box based on center point (crop_x, crop_y)
-    # Available overflow
-    overflow_x = new_width - width
-    overflow_y = new_height - height
-    
-    # Left/Top calculation based on 0.0-1.0 range
-    left = int(overflow_x * crop_x)
-    top = int(overflow_y * crop_y)
-    
-    # Constraint
-    left = max(0, min(left, overflow_x))
-    top = max(0, min(top, overflow_y))
+    # Simple Center Crop
+    left = (new_width - width) / 2
+    top = (new_height - height) / 2
     
     return resized.crop((left, top, left + width, top + height))
 
@@ -118,11 +105,7 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
     except:
         img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), (200, 200, 200))
         
-    # Photo Position (0.0 - 1.0)
-    px = float(layout_config.get('photo_x', 0.5))
-    py = float(layout_config.get('photo_y', 0.5))
-    
-    img = resize_image_fill(img, crop_x=px, crop_y=py)
+    img = resize_image_fill(img)
     img = enhance_image(img)
     
     # Overlay
