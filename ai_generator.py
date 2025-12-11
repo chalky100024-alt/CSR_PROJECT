@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 # --- Models ---
 TEXT2IMG_MODEL = "black-forest-labs/FLUX.1-schnell" # Best Free T2I
-IMG2IMG_MODEL = "runwayml/stable-diffusion-v1-5"    # Fallback to Standard SD 1.5 (Always Online)
+
 
 def _get_hf_client():
     config = settings.load_config()
@@ -68,53 +68,7 @@ def generate_image(prompt, style_preset, provider="huggingface"):
         return None
 
 
-def generate_image_from_image(prompt, style_preset, source_path, provider="huggingface"):
-    # Img2Img is HF ONLY for now
-    if provider != "huggingface":
-        logger.error("Img2Img only supported on Hugging Face")
-        return None
 
-    client = _get_hf_client()
-    if not client: return None
-
-    # Auto-Translate
-    try:
-        from deep_translator import GoogleTranslator
-        if prompt: prompt = GoogleTranslator(source='auto', target='en').translate(prompt)
-    except: pass
-
-    if style_preset == "anime style": style_preset = "Studio Ghibli"
-    
-    # Load Source Image
-    try:
-        # Implicitly handled by file path in client, but let's keep validation logging if needed
-        pass 
-    except Exception as e:
-        logger.error(f"Invalid Source Image: {e}")
-        return None
-
-    # Standard SD Prompt logic (SD 1.5 understands descriptions, not instructions)
-    # Was: "Make it into..." -> Now: "cat, studio ghibli style..."
-    final_prompt = f"{prompt}, {style_preset} style, high quality, detailed"
-    logger.info(f"🎨 Img2Img Request: {final_prompt}")
-
-    try:
-        # Pass file path directly
-        edited_image = client.image_to_image(
-            image=source_path, 
-            prompt=final_prompt,
-            model=IMG2IMG_MODEL,
-            strength=0.75, # Slight adjustment for SD1.5
-            guidance_scale=7.5,
-            num_inference_steps=30
-        )
-        return _save_result(edited_image, "hf_edit")
-    except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
-        logger.error(f"❌ Img2Img Failed: {e}")
-        logger.error(f"🔍 Traceback: {error_details}")
-        return None
 
 # --- Helper Functions ---
 

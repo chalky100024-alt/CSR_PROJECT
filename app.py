@@ -213,25 +213,7 @@ def api_gen_ai():
     else:
         return jsonify({"status": "error"}), 500
 
-@app.route('/api/generate_ai_img2img', methods=['POST'])
-def api_gen_ai_img2img():
-    prompt = request.json.get('prompt')
-    style = request.json.get('style', 'anime')
-    source_file = request.json.get('source_file')
-    provider = settings.load_config().get('ai_provider', 'huggingface')
-    
-    if not source_file:
-        return jsonify({"status": "error", "message": "No source file"}), 400
-        
-    source_path = os.path.join(settings.UPLOADS_DIR, source_file)
-    if not os.path.exists(source_path):
-        return jsonify({"status": "error", "message": "File not found"}), 404
-    
-    filename = ai_generator.generate_image_from_image(prompt, style, source_path, provider)
-    if filename:
-        return jsonify({"status": "success", "image": filename})
-    else:
-        return jsonify({"status": "error"}), 500
+
 
 @app.route('/api/search_location')
 def search_location():

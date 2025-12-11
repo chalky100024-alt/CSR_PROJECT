@@ -278,8 +278,8 @@
             <h2>AI Atelier 🎨
                 <select id="aiModelSelect" onchange="changeAiProvider(this.value)"
                     style="font-size:14px; padding:5px; border-radius:8px; width:auto; display:inline-block; margin-left:10px; border:1px solid #ddd;">
-                    <option value="huggingface">Hugging Face (무료/변환가능)</option>
-                    <option value="google">Google Vertex AI (고화질/변환불가)</option>
+                    <option value="huggingface">Hugging Face (무료)</option>
+                    <option value="google">Google Vertex AI (고화질)</option>
                 </select>
             </h2>
             <input type="text" id="aiPrompt" placeholder="예: 고양이, 수채화, 비오는 창가">
@@ -300,11 +300,7 @@
                 <option value="noir film">느와르 영화 (Noir)</option>
             </select>
             <!-- AI Controls -->
-            <div id="img2imgControl" style="display:flex; align-items:center; margin-top:10px; gap:10px;">
-                <input type="checkbox" id="useBaseImage">
-                <label for="useBaseImage" style="display:inline; margin:0; color:#333;">선택된 사진을 변환하기 (Img2Img)</label>
-            </div>
-
+            <!-- AI Controls -->
             <button class="btn btn-secondary" onclick="generateAI()">
                 <span id="btnText">AI 그림 생성하기</span>
                 <div class="spinner" id="loading"></div>
