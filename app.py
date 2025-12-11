@@ -10,12 +10,67 @@ import random
 
 import photo_frame
 import threading
-from PIL import Image
+from PIL import Image, ImageCms
+import io
+
 try:
     import pillow_heif
     pillow_heif.register_heif_opener()
 except ImportError:
     print("pillow-heif not installed. HEIC support disabled.")
+
+# ... (rest of imports)
+
+# ... (inside upload_file or checks) ...
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    if file:
+        from werkzeug.utils import secure_filename
+        filename = secure_filename(file.filename)
+        if not os.path.exists(settings.UPLOADS_DIR):
+            os.makedirs(settings.UPLOADS_DIR)
+            
+        file_path = os.path.join(settings.UPLOADS_DIR, filename)
+        
+        # HEIC Conversion & Color Correction Logic
+        if filename.lower().endswith(('.heic', '.heif')):
+            try:
+                # Save temp
+                file.save(file_path)
+                # Convert
+                img = Image.open(file_path)
+                
+                # Color Profile Correction (P3 -> sRGB)
+                if img.info.get('icc_profile'):
+                    try:
+                        f = io.BytesIO(img.info['icc_profile'])
+                        src_profile = ImageCms.ImageCmsProfile(f)
+                        dst_profile = ImageCms.createProfile('sRGB')
+                        img = ImageCms.profileToProfile(img, src_profile, dst_profile)
+                    except Exception as e:
+                        print(f"ICC Profile conversion failed: {e}")
+
+                new_filename = os.path.splitext(filename)[0] + ".jpg"
+                new_path = os.path.join(settings.UPLOADS_DIR, new_filename)
+                
+                img.convert('RGB').save(new_path, "JPEG", quality=95) # High quality
+                
+                # Remove original HEIC
+                os.remove(file_path)
+                filename = new_filename
+            except Exception as e:
+                print(f"HEIC conversion failed: {e}")
+                return jsonify({'error': 'HEIC conversion failed'}), 500
+        else:
+            file.save(file_path)
+            
+        return jsonify({'success': True, 'filename': filename}), 200
 
 app = Flask(__name__, template_folder='my_frame_web/templates', static_folder='my_frame_web/static')
 hw = hardware.HardwareController()
