@@ -275,7 +275,10 @@
         </div>
 
         <div class="card">
-            <h2>AI Atelier 🎨</h2>
+            <h2>AI Atelier 🎨 <span id="aiProviderBadge"
+                    style="font-size:12px; background:#e5e5ea; padding:4px 8px; border-radius:10px; color:#555; vertical-align:middle; margin-left:5px;">
+                    Loading...
+                </span></h2>
             <input type="text" id="aiPrompt" placeholder="예: 고양이, 수채화, 비오는 창가">
             <select id="aiStyle" style="margin-top:10px;">
                 <option value="anime style">지브리 애니메이션 (Ghibli)</option>
@@ -574,6 +577,39 @@
 
         // Init
         loadGallery();
+        loadConfigAndBadge();
+
+        async function loadConfigAndBadge() {
+            try {
+                const res = await fetch('/api/get_config');
+                const config = await res.json();
+
+                const badge = document.getElementById('aiProviderBadge');
+                if (config.ai_provider === 'google') {
+                    badge.innerText = "Google Vertex AI 🤖";
+                    badge.style.color = "#ea4335";
+                    badge.style.background = "#fce8e6";
+                } else if (config.ai_provider === 'openai') {
+                    badge.innerText = "OpenAI DALL-E 3 🤖";
+                    badge.style.color = "#10a37f";
+                    badge.style.background = "#e5f6f1";
+                } else {
+                    badge.innerText = "Hugging Face (Free) 🤗";
+                    badge.style.color = "#ff9d00";
+                    badge.style.background = "#fff8e6";
+                }
+
+                // If user has specific layout settings, we could load them here too
+                // currently layout is loaded by preview image parameters mostly, 
+                // but sliders could be synced if we wanted.
+                if (config.layout) {
+                    // Sync sliders if needed (optional, as duplicate with preview logic)
+                }
+
+            } catch (e) {
+                console.error("Config load failed", e);
+            }
+        }
     </script>
 </body>
 
