@@ -12,6 +12,7 @@ IS_RPI = os.path.exists("/sys/firmware/devicetree/base/model")
 
 class HardwareController:
     def __init__(self):
+        self.epd = None
         self.init_error = None
         if IS_RPI:
             try:
