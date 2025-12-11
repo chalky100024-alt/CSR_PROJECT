@@ -3,6 +3,5 @@ __pycache__/
 .DS_Store
 .venv/
 uploads/
-*.db
-.gemini/
-my_frame_web/config.json
+# *.db  <-- Database allowed for location search
+# my_frame_web/config.json <-- Config/Keys allowed by user request
