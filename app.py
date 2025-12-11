@@ -82,7 +82,9 @@ def get_preview():
         "opacity": request.args.get('opacity', 0.6, type=float),
         "position": request.args.get('position', 'top'),
         "x": request.args.get('x'),
-        "y": request.args.get('y')
+        "y": request.args.get('y'),
+        "photo_x": request.args.get('photo_x', 0.5, type=float),
+        "photo_y": request.args.get('photo_y', 0.5, type=float)
     }
     
     # ... (photo loading)

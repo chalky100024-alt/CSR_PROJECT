@@ -66,8 +66,16 @@ class EInkPhotoFrame:
         selected_photo = random.choice(photos)
         
         # 2. Fetch Data
-        w_data = data_api.get_weather_data(self.api_key_kma, self.nx, self.ny)
-        d_data = data_api.get_fine_dust_data(self.api_key_air, self.station_name)
+        # 2. Fetch Data (Retry 2 times)
+        w_data = None
+        d_data = None
+        
+        for _ in range(2):
+            if w_data is None: w_data = data_api.get_weather_data(self.api_key_kma, self.nx, self.ny)
+            if d_data is None: d_data = data_api.get_fine_dust_data(self.api_key_air, self.station_name)
+            
+            if w_data and d_data: break
+            time.sleep(2) # Wait a bit before retry
         
         # 3. Render
         layout = self.config.get('layout', {})

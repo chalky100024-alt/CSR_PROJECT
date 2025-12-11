@@ -233,8 +233,11 @@
             </div>
 
             <!-- Position Controls -->
-            <button id="btnAdjustPos" class="btn btn-secondary" style="margin-top:10px;"
-                onclick="togglePositionMode()">위젯 위치 조절</button>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button id="btnMoveWidget" class="btn btn-secondary" onclick="setMode('widget')">위젯 위치 이동</button>
+                <button id="btnMovePhoto" class="btn btn-secondary" onclick="setMode('photo')">사진 위치 이동</button>
+            </div>
+            <button class="btn btn-secondary" style="margin-top:10px;" onclick="setMode('none')">이동 종료</button>
             <button class="btn" style="margin-top:10px;" onclick="saveLayout()">현재 레이아웃 저장 & 액자로 전송</button>
         </div>
 
@@ -279,15 +282,23 @@
     <script>
         // --- Preview Logic ---
         let timeout;
-        let currentPhoto = ""; // Lock the preview image
+        let currentPhoto = "";
 
         // Drag state
         let isDragging = false;
-        let isPosMode = false; // Toggle state
-        let currentX = null; // null means auto
-        let currentY = null;
+        let controlMode = "none"; // "widget" or "photo"
+
+        // Widget Coords (0-800, 0-480)
+        let widgetX = null;
+        let widgetY = null;
+
+        // Photo Coords (0.0 - 1.0)
+        let photoX = 0.5;
+        let photoY = 0.5;
+
         let dragStartX, dragStartY;
-        let dragStartLeft, dragStartTop;
+        let initialPhotoX, initialPhotoY;
+        let initialWidgetX, initialWidgetY;
 
         const updatePreview = () => {
             clearTimeout(timeout);
@@ -296,11 +307,12 @@
                 const font = document.getElementById('fontSize').value;
                 const opacity = document.getElementById('widgetOpacity').value;
                 const ts = Date.now();
+
                 let url = `/api/preview?widget_size=${size}&font_size=${font}&opacity=${opacity}&t=${ts}`;
                 if (currentPhoto) url += `&min_filename=${encodeURIComponent(currentPhoto)}`;
-                if (currentX !== null && currentY !== null) {
-                    url += `&x=${currentX}&y=${currentY}`;
-                }
+
+                if (widgetX !== null && widgetY !== null) url += `&x=${widgetX}&y=${widgetY}`;
+                url += `&photo_x=${photoX}&photo_y=${photoY}`;
 
                 try {
                     const res = await fetch(url);
@@ -308,124 +320,143 @@
                     const objectURL = URL.createObjectURL(blob);
                     document.getElementById('previewImg').src = objectURL;
 
-                    // Sync Drag Box
+                    // Sync Widget Box
                     const w = res.headers.get('X-Widget-Width');
                     const h = res.headers.get('X-Widget-Height');
                     const x = res.headers.get('X-Widget-X');
                     const y = res.headers.get('X-Widget-Y');
 
-                    if (w && h && x && y) {
-                        syncOverlay(parseFloat(x), parseFloat(y), parseFloat(w), parseFloat(h));
-                    }
+                    if (w && h) syncWidgetOverlay(x, y, w, h);
+
                 } catch (e) {
                     console.error("Preview load failed", e);
                 }
             }, 300);
         };
 
-        function syncOverlay(x, y, w, h) {
-            // Server coords are 800x480 based
+        function syncWidgetOverlay(x, y, w, h) {
             const previewBox = document.querySelector('.preview-box');
             const rect = previewBox.getBoundingClientRect();
-
             const scaleX = rect.width / 800;
             const scaleY = rect.height / 480;
 
-            // Apply scale
-            overlayBox.style.width = (w * scaleX) + "px";
-            overlayBox.style.height = (h * scaleY) + "px";
+            const box = document.getElementById('widgetOverlay');
+            box.style.width = (w * scaleX) + "px";
+            box.style.height = (h * scaleY) + "px";
 
-            // Only update pos if NOT dragging, to prevent jitter loop
-            if (!isDragging) {
-                overlayBox.style.left = (x * scaleX) + "px";
-                overlayBox.style.top = (y * scaleY) + "px";
+            // If not dragging widget, update position
+            if (controlMode !== 'widget' || !isDragging) {
+                box.style.left = (x * scaleX) + "px";
+                box.style.top = (y * scaleY) + "px";
             }
         }
 
-        // Toggle Position Mode
-        function togglePositionMode() {
-            isPosMode = !isPosMode;
-            const btn = document.getElementById('btnAdjustPos');
+        // Mode Toggles
+        function setMode(mode) {
+            controlMode = mode;
+            const widgetBox = document.getElementById('widgetOverlay');
+            const photoOverlay = document.getElementById('photoOverlay');
 
-            if (isPosMode) {
-                btn.innerText = "위젯 위치 저장 (편집 종료)";
-                btn.className = "btn"; // Blue
-                overlayBox.style.display = "flex";
-            } else {
-                btn.innerText = "위젯 위치 조절";
-                btn.className = "btn btn-secondary";
-                overlayBox.style.display = "none";
-                // Optionally trigger a save here or just let the main Save button do it
+            // Reset Styles
+            document.getElementById('btnMoveWidget').className = "btn btn-secondary";
+            document.getElementById('btnMovePhoto').className = "btn btn-secondary";
+            widgetBox.style.display = "none";
+            photoOverlay.style.display = "none";
+
+            if (mode === 'widget') {
+                document.getElementById('btnMoveWidget').className = "btn"; // Active Blue
+                widgetBox.style.display = "flex";
+                widgetBox.innerText = "위젯 드래그";
+            } else if (mode === 'photo') {
+                document.getElementById('btnMovePhoto').className = "btn"; // Active Blue
+                photoOverlay.style.display = "block"; // Full cover
             }
         }
 
+        // Init Overlays
         const previewBox = document.querySelector('.preview-box');
-        // Ensure preview box is relative for absolute children
         previewBox.style.position = 'relative';
 
-        const overlayBox = document.createElement('div');
-        overlayBox.style.cssText = `
-            position: absolute; 
-            border: 2px dashed red; 
-            background: rgba(255,0,0,0.2);
-            cursor: move; 
-            display: none; /* Hidden by default */
-            align-items: center; 
-            justify-content: center;
-            color: red;
-            font-weight: bold;
-            font-size: 14px;
-            z-index: 10;
-        `;
-        overlayBox.innerText = "Drag Me";
-        previewBox.appendChild(overlayBox);
+        // 1. Widget Overlay
+        const widgetOverlay = document.createElement('div');
+        widgetOverlay.id = "widgetOverlay";
+        widgetOverlay.style.cssText = `position:absolute; border:2px dashed blue; background:rgba(0,0,255,0.2); cursor:move; display:none; align-items:center; justify-content:center; color:blue; font-weight:bold; font-size:12px; z-index:20;`;
+        previewBox.appendChild(widgetOverlay);
 
-        // Remove old event listeners if any (by replacing logic)
-        // Drag Logic
-        overlayBox.addEventListener('mousedown', (e) => {
+        // 2. Photo Overlay (Invisible full cover for dragging photo)
+        const photoOverlay = document.createElement('div');
+        photoOverlay.id = "photoOverlay";
+        photoOverlay.style.cssText = `position:absolute; top:0; left:0; width:100%; height:100%; cursor:grab; display:none; z-index:10;`;
+        previewBox.appendChild(photoOverlay);
+
+        // Event Listeners
+        const handleDown = (e) => {
+            if (controlMode === 'none') return;
             isDragging = true;
             dragStartX = e.clientX;
             dragStartY = e.clientY;
-            dragStartLeft = overlayBox.offsetLeft;
-            dragStartTop = overlayBox.offsetTop;
-            overlayBox.style.borderColor = "blue";
-            e.preventDefault(); // Prevent text selection
-        });
 
-        document.addEventListener('mousemove', (e) => {
+            if (controlMode === 'photo') {
+                document.body.style.cursor = 'grabbing';
+                initialPhotoX = photoX;
+                initialPhotoY = photoY;
+            } else if (controlMode === 'widget') {
+                initialWidgetX = widgetOverlay.offsetLeft;
+                initialWidgetY = widgetOverlay.offsetTop;
+            }
+            e.preventDefault();
+        };
+
+        const handleMove = (e) => {
             if (!isDragging) return;
             const dx = e.clientX - dragStartX;
             const dy = e.clientY - dragStartY;
+            const rect = previewBox.getBoundingClientRect();
 
-            // Boundary checks (optional but good)
-            let newLeft = dragStartLeft + dx;
-            let newTop = dragStartTop + dy;
+            if (controlMode === 'photo') {
+                // Photo Drag Logic (Inverted: dragging mouse RIGHT moves crop LEFT (decreasing crop_x), effectively panning image right)
+                // Sensitivity: 1 full width drag = 1.0 change
+                const deltaX = dx / rect.width;
+                const deltaY = dy / rect.height;
 
-            overlayBox.style.left = newLeft + "px";
-            overlayBox.style.top = newTop + "px";
-        });
+                // If I drag mouse right, I want to see left part of image -> crop center moves left -> subtract
+                photoX = Math.max(0, Math.min(1, initialPhotoX - deltaX));
+                photoY = Math.max(0, Math.min(1, initialPhotoY - deltaY));
 
-        document.addEventListener('mouseup', (e) => {
+                // Aggressive update might lag, maybe optimize?
+                // limit updates? For now rely on debounce in updatePreview? 
+                // updatePreview has debounce 300ms, too slow for drag.
+                // We shouldn't call updatePreview on every move.
+                // Just let user drag and update on UP? or throttle.
+            } else if (controlMode === 'widget') {
+                widgetOverlay.style.left = (initialWidgetX + dx) + "px";
+                widgetOverlay.style.top = (initialWidgetY + dy) + "px";
+            }
+        };
+
+        const handleUp = (e) => {
             if (!isDragging) return;
             isDragging = false;
-            overlayBox.style.borderColor = "red";
+            document.body.style.cursor = 'default';
 
-            // Calculate scale
-            const rect = previewBox.getBoundingClientRect();
-            // Original Image Size is 800x480. 
-            // We need to map current visual position to 800x480 coordinates.
-            // Check if image is loaded to get natural dims? No, assume 800x480 base.
-            const scaleX = 800 / rect.width;
-            const scaleY = 480 / rect.height;
+            if (controlMode === 'widget') {
+                const rect = previewBox.getBoundingClientRect();
+                const scaleX = 800 / rect.width;
+                const scaleY = 480 / rect.height;
+                widgetX = Math.round(widgetOverlay.offsetLeft * scaleX);
+                widgetY = Math.round(widgetOverlay.offsetTop * scaleY);
+                updatePreview();
+            } else if (controlMode === 'photo') {
+                updatePreview(); // Update final rendering
+            }
+        };
 
-            const visX = overlayBox.offsetLeft;
-            const visY = overlayBox.offsetTop;
+        // Attach events to overlays
+        widgetOverlay.addEventListener('mousedown', handleDown);
+        photoOverlay.addEventListener('mousedown', handleDown);
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('mouseup', handleUp);
 
-            currentX = Math.round(visX * scaleX);
-            currentY = Math.round(visY * scaleY);
-
-            updatePreview();
-        });
 
         ['widgetSize', 'fontSize', 'widgetOpacity'].forEach(id => {
             document.getElementById(id).addEventListener('input', updatePreview);
@@ -437,8 +468,10 @@
                     widget_size: document.getElementById('widgetSize').value,
                     font_size: document.getElementById('fontSize').value,
                     opacity: document.getElementById('widgetOpacity').value,
-                    x: currentX,
-                    y: currentY,
+                    x: widgetX,
+                    y: widgetY,
+                    photo_x: photoX,
+                    photo_y: photoY,
                     type: "custom"
                 }
             };
