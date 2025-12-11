@@ -32,8 +32,7 @@ def generate_image(prompt, style_preset, provider="huggingface"):
         logger.error(f"Translation failed: {e}")
 
     # Subject first, then style.
-    # Removed "masterpiece, best quality, 8k" as requested
-    full_prompt = f"{prompt}. {style_preset} style"
+    full_prompt = f"{prompt}. {style_preset} style, masterpiece, best quality, 8k"
     logger.info(f"Generating with Prompt: [{full_prompt}]")
     
     try:
@@ -88,7 +87,8 @@ def _gen_dalle3(prompt, api_key):
     return _save_result(img, "dalle")
 
 def _gen_google_vertex(prompt, api_key):
-    # Google Vertex AI via REST API
+    # Google Vertex AI (Imagen 3) via REST API with API Key
+    # URL: https://{LOCATION}-aiplatform.googleapis.com/v1/projects/{PROJECT}/locations/{LOCATION}/publishers/google/models/{MODEL}:predict?key={KEY}
     
     config = settings.load_config()
     project_id = config.get('google_project_id')
@@ -98,38 +98,43 @@ def _gen_google_vertex(prompt, api_key):
         logger.error("Google Project ID is missing")
         return None
 
-    # Model: Use "image-generation-001" (Imagen 2) which is generally available and has lower permission barriers than Imagen 3
-    # If using 'gemini-3-pro-image-preview', it requires Generative Language API, not Vertex AIPlatform usually.
-    # We stick to standard Vertex Image Generation.
-    model_id = "image-generation-001"
+    # Model: imagen-3.0-generate-001 (or similar)
+    model_id = "image-generation-001" # Standard Imagen 2/3 endpoint often uses this generic tag or specific version
+    # Let's try the specific one user might expect    # Model: Use "imagen-3.0-generate-001" as requested by user
+    model_id = "imagen-3.0-generate-001"
 
     url = f"https://{location}-aiplatform.googleapis.com/v1/projects/{project_id}/locations/{location}/publishers/google/models/{model_id}:predict"
     
-    headers = {"Content-Type": "application/json"}
+    headers = {
+        "Content-Type": "application/json"
+    }
+    # Important: When using API Key, it is passed as query param, NOT header
     params = {"key": api_key}
     
-    # Imagen 2 payload
     payload = {
         "instances": [
             {"prompt": prompt}
         ],
         "parameters": {
             "sampleCount": 1,
-            # 'aspectRatio' is not supported in older Imagen 2 versions via this exact schema sometimes, 
-            # but usually it handles it. If it fails, we default to square.
-            "aspectRatio": "16:9" 
+            "aspectRatio": "5:3" # 15:9 is closest to 800:480? Or just let it be square and crop. 5:3 is supported by Imagen 3? 
+            # Imagen 3 supports: "1:1", "3:4", "4:3", "9:16", "16:9". 
+            # We want 16:9 (close to 5:3)
         }
     }
     
-    logger.info(f"Google Vertex ({model_id}) Request: {prompt}")
+    # Add aspect ratio parameter correct format
+    payload["parameters"]["aspectRatio"] = "16:9" 
+    
+    logger.info(f"Google Vertex Request: {prompt}")
     response = requests.post(url, headers=headers, params=params, json=payload, timeout=60)
     
     if response.status_code != 200:
-        # Check permissions or model availability
         logger.error(f"Google Vertex Error: {response.text}")
         return None
         
     try:
+        # Vertex Response: { "predictions": [ "base64_string_..." ] }
         res_json = response.json()
         b64_img = res_json['predictions'][0]['bytesBase64Encoded']
         
@@ -190,12 +195,11 @@ def generate_image_from_image(prompt, style_preset, source_path, provider="huggi
     
     # Clean style preset
     style_text = style_preset
-    # Clean style preset (remove 'style' word if present to avoid duplication)
-    style_text = style_preset.lower().replace("style", "").strip()
-    
-    # Vertex AI / SD 1.5 Prompting
-    # Removed "masterpiece, 8k" to avoid over-quality as requested
-    full_prompt = f"{prompt}, {style_text} style"
+    if "style" in style_preset.lower() and "style" in prompt.lower():
+         style_text = style_preset.replace("style", "").replace("Style", "").strip()
+
+    # SD 1.5 Prompting
+    full_prompt = f"{prompt}, {style_text} style, masterpiece, best quality"
     
     try:
         if provider == "huggingface":
