@@ -3,6 +3,7 @@ import time
 import requests
 from PIL import Image
 import io
+import base64
 import logging
 import settings
 from huggingface_hub import InferenceClient # Official Library

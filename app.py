@@ -209,30 +209,6 @@ def api_gen_ai():
     
     filename = ai_generator.generate_image(prompt, style, provider)
     if filename:
-        # Trigger Background Refresh (Physical Frame)
-        def refresh_task():
-            try:
-                # Update config to select this new photo
-                # Optional: If you want the frame to strictly show the new photo,
-                # you might want to update 'selected_photo' in config.
-                # For now, refresh_display logic picks random or pinned.
-                # Let's temp pin it for user satisfaction?
-                # Actually, refresh_display picks pinned if set, else random.
-                # If we want to show THIS photo, we should pin it.
-                
-                # 1. Load config, set selected_photo, save
-                cfg = settings.load_config()
-                cfg['selected_photo'] = filename
-                settings.save_config(cfg)
-                
-                # 2. Refresh
-                pf = photo_frame.EInkPhotoFrame()
-                pf.refresh_display()
-            except Exception as e:
-                print(f"AI Refresh failed: {e}")
-                
-        threading.Thread(target=refresh_task).start()
-        
         return jsonify({"status": "success", "image": filename})
     else:
         return jsonify({"status": "error"}), 500
