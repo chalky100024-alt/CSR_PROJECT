@@ -13,10 +13,20 @@ def get_font_path(bold=True):
     # This might need to be adjusted or we can pass font paths in
     # For now, we reuse the logic or hardcode paths relative to project
     base_dir = os.path.dirname(os.path.abspath(__file__))
+    # Fonts from user reference
     fonts = [
+        # User specific local paths
+        "/usr/local/share/fonts/apple_sandol/AppleSDGothicNeoEB.ttf" if bold else "/usr/local/share/fonts/apple_sandol/AppleSDGothicNeoB.ttf",
+        "/usr/local/share/fonts/apple_sandol/AppleSDGothicNeoM.ttf",
+        # Project local fallback
         os.path.join(base_dir, "Apple_산돌고딕_Neo", "AppleSDGothicNeoEB.ttf" if bold else "AppleSDGothicNeoB.ttf"),
-        "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        # Standard System Fonts
+        "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf" if bold else "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Bold.ttc" if bold else "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+         # Generic Fallbacks
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
     ]
     for f in fonts:
         if os.path.exists(f): return f
