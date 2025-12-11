@@ -61,17 +61,17 @@ def upload_file():
                     except Exception as e:
                         print(f"ICC Profile conversion failed: {e}")
 
-                # --- [Comparison Logic for User Verification] ---
-                # Create a side-by-side comparison image
-                # Left: Original (converted directly) / Right: Corrected
+                # --- [Comparison Logic: Split Screen] ---
+                # Create a single image split vertically:
+                # Left 50% = Original (Uncorrected)
+                # Right 50% = Corrected
                 from PIL import ImageDraw, ImageFont
                 
-                # Resize for comparison (fit to 800 width total, so 400 each)
+                # Target size for comparison
                 comp_w, comp_h = 800, 480
-                half_w = comp_w // 2
                 
-                # Helper to crop/resize
-                def get_preview_crop(i, w, h):
+                # Helper to resize/crop to exact fit
+                def get_fit_image(i, w, h):
                     ratio = w/h
                     src_ratio = i.width/i.height
                     if src_ratio > ratio:
@@ -80,23 +80,34 @@ def upload_file():
                     else:
                         new_w = w
                         new_h = int(w / src_ratio)
-                    return i.resize((new_w, new_h)).crop(((new_w-w)//2, (new_h-h)//2, (new_w+w)//2, (new_h+h)//2))
+                        
+                    resized = i.resize((new_w, new_h), Image.LANCZOS)
+                    # Center Crop
+                    l = (new_w - w) // 2
+                    t = (new_h - h) // 2
+                    return resized.crop((l, t, l+w, t+h))
 
-                img_l = get_preview_crop(img.copy(), half_w, comp_h).convert('RGB')
-                img_r = get_preview_crop(img_corrected.copy(), half_w, comp_h).convert('RGB')
+                # 1. Prepare fully resized versions of both
+                full_orig = get_fit_image(img.copy(), comp_w, comp_h).convert('RGB')
+                full_corr = get_fit_image(img_corrected.copy(), comp_w, comp_h).convert('RGB')
                 
-                comp_img = Image.new('RGB', (comp_w, comp_h))
-                comp_img.paste(img_l, (0, 0))
-                comp_img.paste(img_r, (half_w, 0))
+                # 2. Stitch Loop
+                # Left Half from Original
+                # Right Half from Corrected
+                mid_x = comp_w // 2
                 
-                draw = ImageDraw.Draw(comp_img)
-                # Labels
-                draw.text((10, 10), "BEFORE (Original)", fill=(255, 255, 255))
-                draw.text((half_w + 10, 10), "AFTER (Corrected)", fill=(255, 255, 255))
+                final_comp = Image.new('RGB', (comp_w, comp_h))
+                final_comp.paste(full_orig.crop((0, 0, mid_x, comp_h)), (0, 0))
+                final_comp.paste(full_corr.crop((mid_x, 0, comp_w, comp_h)), (mid_x, 0))
+                
+                draw = ImageDraw.Draw(final_comp)
+                draw.line([(mid_x, 0), (mid_x, comp_h)], fill=(255, 255, 255), width=2)
+                draw.text((10, 10), "ORIGINAL (Raw)", fill=(255, 255, 255))
+                draw.text((mid_x + 10, 10), "CORRECTED (sRGB)", fill=(255, 255, 255))
                 
                 # Save Comparison File
                 comp_filename = "COMPARE_" + os.path.splitext(filename)[0] + ".jpg"
-                comp_img.save(os.path.join(settings.UPLOADS_DIR, comp_filename), quality=85)
+                final_comp.save(os.path.join(settings.UPLOADS_DIR, comp_filename), quality=85)
                 # -----------------------------------------------
 
                 new_filename = os.path.splitext(filename)[0] + ".jpg"
