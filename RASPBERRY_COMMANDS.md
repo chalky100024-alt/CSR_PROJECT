@@ -25,15 +25,12 @@ ssh pi@raspberrypi.local
 # 2. 프로젝트 폴더로 이동
 cd ~/CSR_PROJECT
 
-# 3. 최신 코드 받기
+# 1. 최신 코드 받기
 git pull origin main
 
-# 4. (혹시 모르니) 라이브러리 업데이트
-source .venv/bin/activate
-pip install -r requirements.txt
-pip install huggingface_hub
+# 2. 기존 포트(8080) 강제 종료 (Address already in use 해결)
+sudo fuser -k 8080/tcp
 
-# 5. 서버 수동 실행 (개발용)
-# (이미 실행 중인 게 있다면 Ctrl+C로 끄고 다시 실행)
+# 3. 서버 실행
 python app.py
 ```
