@@ -301,7 +301,7 @@
             </select>
             <!-- AI Controls -->
             <!-- AI Controls -->
-            <button class="btn btn-secondary" onclick="generateAI()">
+            <button id="btnGenAI" class="btn btn-secondary" onclick="generateAI()">
                 <span id="btnText">AI 그림 생성하기</span>
                 <div class="spinner" id="loading"></div>
             </button>
@@ -524,34 +524,24 @@
         }
 
         // --- AI Logic ---
+        // --- AI Logic ---
         async function generateAI() {
-            const btn = document.querySelector('.btn-secondary'); // Caution: selects first btn-secondary, which might be "My Photos". 
-            // Better selector:
-            const aiBtn = event.currentTarget;
+            const btn = document.getElementById('btnGenAI');
+            if (!btn) return; // Safety
+
             const spinner = document.getElementById('loading');
             const txt = document.getElementById('btnText');
 
             txt.style.display = 'none';
             spinner.style.display = 'block';
+            btn.disabled = true;
 
             const prompt = document.getElementById('aiPrompt').value;
             const style = document.getElementById('aiStyle').value;
-            const useBase = document.getElementById('useBaseImage').checked;
 
             try {
                 let url = '/api/generate_ai';
                 let body = { prompt, style };
-
-                if (useBase) {
-                    if (!currentPhoto) {
-                        alert("먼저 갤러리에서 변환할 원본 사진을 선택해주세요!");
-                        txt.style.display = 'block';
-                        spinner.style.display = 'none';
-                        return;
-                    }
-                    url = '/api/generate_ai_img2img';
-                    body.source_file = currentPhoto;
-                }
 
                 const res = await fetch(url, {
                     method: 'POST',
@@ -560,17 +550,19 @@
                 });
                 const data = await res.json();
                 if (data.status === 'success') {
-                    alert("그림이 완성되었습니다!");
+                    alert("그림이 완성되었습니다! 액자에 전송됩니다.");
                     currentPhoto = ""; // Reset so newest is picked
                     loadGallery();
                 } else {
                     alert("생성 실패.");
                 }
             } catch (e) {
+                console.error(e);
                 alert("오류 발생");
             } finally {
                 txt.style.display = 'block';
                 spinner.style.display = 'none';
+                btn.disabled = false;
             }
         }
 
