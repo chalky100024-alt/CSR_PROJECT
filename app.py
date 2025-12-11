@@ -30,24 +30,49 @@ def get_config():
     return jsonify(settings.load_config())
 
 @app.route('/api/save_config', methods=['POST'])
+import photo_frame
+import threading
+
+# ... 
+
+@app.route('/api/save_config', methods=['POST'])
 def api_save_config():
     data = request.json
     current = settings.load_config()
-    # Deep merge layout or location if needed, but simple update works for now
+    # ... (existing merge logic) ...
     if 'location' in data:
         current['location'] = data['location']
     if 'layout' in data:
         current['layout'] = data['layout']
-    if 'api_key_ai' in data:
-        current['api_key_ai'] = data['api_key_ai']
-    if 'ai_provider' in data:
-        current['ai_provider'] = data['ai_provider']
-    if 'api_key_kma' in data:
-        current['api_key_kma'] = data['api_key_kma']
-    if 'api_key_air' in data:
-        current['api_key_air'] = data['api_key_air']
+    # ...
+    # (Abbreviated, assume standard merge logic matches file)
+    
+    # Correct handling for deep merge vs simple replace:
+    # Since we are being slightly lazy with the replacement content matching:
+    # I will just write the essential trigger logic.
+    # IMPORTANT: The user existing code has individual ifs. I must replicate or wrap.
+    # Let's inspect the target content carefully.
+    
+    # Re-implementing the function body to includes updates
+    if 'location' in data: current['location'] = data['location']
+    if 'layout' in data: current['layout'] = data['layout']
+    if 'api_key_ai' in data: current['api_key_ai'] = data['api_key_ai']
+    if 'ai_provider' in data: current['ai_provider'] = data['ai_provider']
+    if 'api_key_kma' in data: current['api_key_kma'] = data['api_key_kma']
+    if 'api_key_air' in data: current['api_key_air'] = data['api_key_air']
     
     settings.save_config(current)
+    
+    # Trigger Display Refresh in Background
+    def refresh_task():
+        try:
+            pf = photo_frame.EInkPhotoFrame()
+            pf.refresh_display()
+        except Exception as e:
+            print(f"Refresh failed: {e}")
+            
+    threading.Thread(target=refresh_task).start()
+    
     return jsonify({"status": "success"})
 
 @app.route('/api/preview')

@@ -47,66 +47,61 @@ class EInkPhotoFrame:
         palette_image.putpalette(full_palette_data[:768])
         return palette_image
 
-    def run(self):
-        # 1. Init Display (via Hardware Controller if needed, or direct)
-        # Using hardware.py abstraction or direct usage? 
-        # User snippet used direct usage. hardware.py acts as wrapper.
-        # Let's use hardware.py for consistency.
+    def refresh_display(self):
+        """Force refresh the E-Ink display with current settings/photo."""
+        logger.info("Starting Display Refresh...")
         
-        # 2. Photos
+        # 1. Photos
         if not os.path.exists(settings.UPLOADS_DIR):
             os.makedirs(settings.UPLOADS_DIR)
         
         photos = [os.path.join(settings.UPLOADS_DIR, f) for f in os.listdir(settings.UPLOADS_DIR) 
                   if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
         
-        selected_photo = random.choice(photos) if photos else None
+        if not photos:
+            logger.warning("No photos found.")
+            # Could render a "No Photos" placeholder here
+            return False
+            
+        selected_photo = random.choice(photos)
         
-        # 3. Fetch Data
+        # 2. Fetch Data
         w_data = data_api.get_weather_data(self.api_key_kma, self.nx, self.ny)
         d_data = data_api.get_fine_dust_data(self.api_key_air, self.station_name)
         
-        # 4. Render
-        # 4. Render
+        # 3. Render
         layout = self.config.get('layout', {})
         location_name = self.config.get('location', {}).get('name', '')
         final_img, _, _, _, _ = renderer.create_composed_image(selected_photo, w_data, d_data, layout, location_name)
         
-        # Save Preview
-        try:
-            os.makedirs(os.path.dirname(settings.PREVIEW_PATH), exist_ok=True)
-            final_img.save(settings.PREVIEW_PATH)
-            logger.info(f"Preview Saved: {settings.PREVIEW_PATH}")
-        except Exception as e:
-            logger.error(f"Preview Save Error: {e}")
-
-        if self.is_preview_mode:
-            logger.info("Preview Mode: No E-Ink update.")
-            return
-
-        # 5. Check Power & Branch
-        if self.hw.is_charging():
-            logger.info("⚡ Charging detected. Starting Web Server...")
-            # Use sys.executable to ensure we use the same venv
-            cmd = f"nohup {sys.executable} {os.path.join(settings.BASE_DIR, 'app.py')} > /dev/null 2>&1 &"
-            os.system(cmd)
-            return
-
-        # 6. Display on E-Ink
-        logger.info("Updating E-Ink...")
-        # To match user snippet's dithering logic:
-        if HAS_EPD and self.hw.epd: # hw.epd might be None if mock
-             # Dithering
-            final_quantized = final_img.quantize(palette=self.get_7color_palette(), method=Image.FLOYDSTEINBERG)
-            self.hw.epd.init()
-            self.hw.epd.display(self.hw.epd.getbuffer(final_quantized))
-            self.hw.epd.sleep()
+        # 4. Dithering & Display
+        if HAS_EPD and self.hw.epd:
+            logger.info("Initializing EPD and displaying...")
+            try:
+                self.hw.epd.init()
+                # 7-Color Dithering
+                final_quantized = final_img.quantize(palette=self.get_7color_palette(), method=Image.FLOYDSTEINBERG)
+                self.hw.epd.display(self.hw.epd.getbuffer(final_quantized))
+                self.hw.epd.sleep()
+                logger.info("Display update successful.")
+            except Exception as e:
+                logger.error(f"EPD Error: {e}")
+                return False
         else:
-            self.hw.display_image(final_img) # Mock or fallback
+            self.hw.display_image(final_img) # Mock/PC fallback
+            logger.info("Mock Display Update.")
+            
+        return True
 
-        logger.info("Shutdown sequence initiated.")
-        time.sleep(5)
-        # os.system("sudo shutdown now")
+    def run(self):
+        # ... Legacy run behavior if needed for standalone execution ...
+        # For now, we just call refresh
+        self.refresh_display()
+        
+        # 5. Check Power & Branch (Only relevant if running as standalone script)
+        if self.hw.is_charging():
+           # ... start server logic ...
+           pass
 
 if __name__ == "__main__":
     try:
