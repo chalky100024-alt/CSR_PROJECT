@@ -12,7 +12,7 @@ IS_RPI = os.path.exists("/sys/firmware/devicetree/base/model")
 
 class HardwareController:
     def __init__(self):
-        self.epd = None
+        self.init_error = None
         if IS_RPI:
             try:
                 # Waveshare 라이브러리 임포트 (경로 주의)
@@ -23,12 +23,16 @@ class HardwareController:
                 self.epd = epd7in3f.EPD()
                 logger.info("E-Ink Driver Loaded.")
             except Exception as e:
+                self.init_error = str(e)
                 logger.warning(f"E-Ink Driver Load Failed: {e}")
 
     def display_image(self, pil_image):
         """이미지를 E-Ink에 전송"""
         if not self.epd:
-            logger.info("[Mock] E-Ink 업데이트 흉내 (PC 모드)")
+            if IS_RPI:
+                logger.error(f"[Hardware Fail] E-Ink Driver load failed previously. Error: {self.init_error}")
+            else:
+                logger.info("[Mock] E-Ink 업데이트 흉내 (PC 모드)")
             return True
         
         try:
