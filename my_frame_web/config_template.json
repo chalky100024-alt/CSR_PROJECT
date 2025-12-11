@@ -12,6 +12,8 @@
     },
     "api_key_ai": "",
     "ai_provider": "huggingface",
+    "google_project_id": "",
+    "google_location": "us-central1",
     "api_key_kma": "",
     "api_key_air": ""
 }
