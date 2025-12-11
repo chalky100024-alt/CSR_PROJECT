@@ -97,8 +97,10 @@ def generate_image_from_image(prompt, style_preset, source_path, provider="huggi
     logger.info(f"🎨 Img2Img Request: {instruction}")
 
     try:
+        # Pass file path directly instead of PIL object to avoid serialization issues
+        # Also ensure model is explicitly passed
         edited_image = client.image_to_image(
-            image=original_image,
+            image=source_path, 
             prompt=instruction,
             model=IMG2IMG_MODEL,
             strength=0.8,
@@ -107,7 +109,10 @@ def generate_image_from_image(prompt, style_preset, source_path, provider="huggi
         )
         return _save_result(edited_image, "hf_edit")
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
         logger.error(f"❌ Img2Img Failed: {e}")
+        logger.error(f"🔍 Traceback: {error_details}")
         return None
 
 # --- Helper Functions ---
