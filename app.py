@@ -10,6 +10,12 @@ import random
 
 import photo_frame
 import threading
+from PIL import Image
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+except ImportError:
+    print("pillow-heif not installed. HEIC support disabled.")
 
 app = Flask(__name__, template_folder='my_frame_web/templates', static_folder='my_frame_web/static')
 hw = hardware.HardwareController()
@@ -234,7 +240,30 @@ def upload_file():
         filename = secure_filename(file.filename)
         if not os.path.exists(settings.UPLOADS_DIR):
             os.makedirs(settings.UPLOADS_DIR)
-        file.save(os.path.join(settings.UPLOADS_DIR, filename))
+            
+        file_path = os.path.join(settings.UPLOADS_DIR, filename)
+        
+        # HEIC Conversion Logic
+        if filename.lower().endswith(('.heic', '.heif')):
+            try:
+                # Save temp
+                file.save(file_path)
+                # Convert
+                img = Image.open(file_path)
+                new_filename = os.path.splitext(filename)[0] + ".jpg"
+                new_path = os.path.join(settings.UPLOADS_DIR, new_filename)
+                
+                img.convert('RGB').save(new_path, "JPEG", quality=90)
+                
+                # Remove original HEIC
+                os.remove(file_path)
+                filename = new_filename
+            except Exception as e:
+                print(f"HEIC conversion failed: {e}")
+                return jsonify({'error': 'HEIC conversion failed'}), 500
+        else:
+            file.save(file_path)
+            
         return jsonify({'success': True, 'filename': filename}), 200
     return jsonify({'error': 'Error'}), 400
 
