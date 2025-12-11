@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 # --- Models ---
 TEXT2IMG_MODEL = "black-forest-labs/FLUX.1-schnell" # Best Free T2I
-IMG2IMG_MODEL = "timbrooks/instruct-pix2pix"       # Best I2I Instruction
+IMG2IMG_MODEL = "runwayml/stable-diffusion-v1-5"    # Fallback to Standard SD 1.5 (Always Online)
 
 def _get_hf_client():
     config = settings.load_config()
@@ -87,25 +87,26 @@ def generate_image_from_image(prompt, style_preset, source_path, provider="huggi
     
     # Load Source Image
     try:
-        original_image = Image.open(source_path).convert("RGB")
+        # Implicitly handled by file path in client, but let's keep validation logging if needed
+        pass 
     except Exception as e:
         logger.error(f"Invalid Source Image: {e}")
         return None
 
-    # Instruct Pix2Pix Prompt
-    instruction = f"Make it into {style_preset} style. {prompt}"
-    logger.info(f"🎨 Img2Img Request: {instruction}")
+    # Standard SD Prompt logic (SD 1.5 understands descriptions, not instructions)
+    # Was: "Make it into..." -> Now: "cat, studio ghibli style..."
+    final_prompt = f"{prompt}, {style_preset} style, high quality, detailed"
+    logger.info(f"🎨 Img2Img Request: {final_prompt}")
 
     try:
-        # Pass file path directly instead of PIL object to avoid serialization issues
-        # Also ensure model is explicitly passed
+        # Pass file path directly
         edited_image = client.image_to_image(
             image=source_path, 
-            prompt=instruction,
+            prompt=final_prompt,
             model=IMG2IMG_MODEL,
-            strength=0.8,
+            strength=0.75, # Slight adjustment for SD1.5
             guidance_scale=7.5,
-            num_inference_steps=25
+            num_inference_steps=30
         )
         return _save_result(edited_image, "hf_edit")
     except Exception as e:
