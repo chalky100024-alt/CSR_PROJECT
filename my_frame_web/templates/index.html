@@ -473,7 +473,8 @@
                     photo_x: photoX,
                     photo_y: photoY,
                     type: "custom"
-                }
+                },
+                selected_photo: currentPhoto // Save specifically which photo is active
             };
             await fetch('/api/save_config', {
                 method: 'POST',
@@ -512,7 +513,7 @@
 
                     // Image
                     const img = document.createElement('img');
-                    img.src = `/uploads/${photo}`;
+                    img.src = `/uploads/${photo}?v=${Date.now()}`; // Prevent caching
                     img.loading = 'lazy';
                     div.appendChild(img);
 

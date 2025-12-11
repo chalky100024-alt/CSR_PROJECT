@@ -60,22 +60,45 @@ class EInkPhotoFrame:
         
         if not photos:
             logger.warning("No photos found.")
-            # Could render a "No Photos" placeholder here
             return False
             
-        selected_photo = random.choice(photos)
+        # Check if a specific photo is fixed in config
+        pinned_photo = self.config.get('selected_photo')
+        if pinned_photo:
+            # Validate existence
+            full_path = os.path.join(settings.UPLOADS_DIR, pinned_photo)
+            if os.path.exists(full_path):
+                selected_photo = full_path
+            else:
+                selected_photo = random.choice(photos) # Fallback
+        else:
+            selected_photo = random.choice(photos)
         
-        # 2. Fetch Data
-        # 2. Fetch Data (Retry 2 times)
+        # 2. Fetch Data (Blocking with Timeout)
+        # User requested to ensure data is received before displaying
         w_data = None
         d_data = None
         
-        for _ in range(2):
-            if w_data is None: w_data = data_api.get_weather_data(self.api_key_kma, self.nx, self.ny)
-            if d_data is None: d_data = data_api.get_fine_dust_data(self.api_key_air, self.station_name)
+        max_retries = 10 # 10 * 2sec = 20 seconds max wait
+        for i in range(max_retries):
+            logger.info(f"Fetching data attempt {i+1}/{max_retries}...")
             
-            if w_data and d_data: break
-            time.sleep(2) # Wait a bit before retry
+            if w_data is None: 
+                w_data = data_api.get_weather_data(self.api_key_kma, self.nx, self.ny)
+            
+            if d_data is None: 
+                d_data = data_api.get_fine_dust_data(self.api_key_air, self.station_name)
+            
+            # If we have both (or at least one if the other is failing hard?), break
+            # For now, strict: wait for both unless retries exhausted
+            if w_data and d_data: 
+                logger.info("Data fetch complete.")
+                break
+                
+            time.sleep(2)
+            
+        if not w_data: logger.warning("Weather data fetch failed after retries.")
+        if not d_data: logger.warning("Dust data fetch failed after retries.")
         
         # 3. Render
         layout = self.config.get('layout', {})

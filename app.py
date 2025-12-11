@@ -56,7 +56,9 @@ def api_save_config():
     if 'api_key_ai' in data: current['api_key_ai'] = data['api_key_ai']
     if 'ai_provider' in data: current['ai_provider'] = data['ai_provider']
     if 'api_key_kma' in data: current['api_key_kma'] = data['api_key_kma']
+    if 'api_key_kma' in data: current['api_key_kma'] = data['api_key_kma']
     if 'api_key_air' in data: current['api_key_air'] = data['api_key_air']
+    if 'selected_photo' in data: current['selected_photo'] = data['selected_photo']
     
     settings.save_config(current)
     
