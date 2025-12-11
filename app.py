@@ -122,15 +122,20 @@ def api_save_config():
 
     settings.save_config(current)
     
-    # Trigger Display Refresh in Background
-    def refresh_task():
-        try:
-            pf = photo_frame.EInkPhotoFrame()
-            pf.refresh_display()
-        except Exception as e:
-            print(f"Refresh failed: {e}")
-            
-    threading.Thread(target=refresh_task).start()
+    # Trigger Display Refresh in Background ONLY if requested
+    # User Requirement: Refresh ONLY when "Save Layout & Transfer" is pressed.
+    should_refresh = request.args.get('refresh', 'false').lower() == 'true'
+    
+    if should_refresh:
+        def refresh_task():
+            try:
+                # 2. Refresh
+                pf = photo_frame.EInkPhotoFrame()
+                pf.refresh_display()
+            except Exception as e:
+                print(f"Refresh failed: {e}")
+                
+        threading.Thread(target=refresh_task).start()
     
     return jsonify({"status": "success"})
 
