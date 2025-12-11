@@ -116,8 +116,8 @@ def _save_result(img, prefix):
 # --- Image to Image ---
 import base64
 
-# Updated URL based on error message, removing 'hf-inference' which caused 404 previously
-IMG2IMG_URL = "https://router.huggingface.co/models/timbrooks/instruct-pix2pix"
+# Switch to Stable Diffusion 1.5 which is widely available on the Router API
+IMG2IMG_URL = "https://router.huggingface.co/hf-inference/models/runwayml/stable-diffusion-v1-5"
 
 def generate_image_from_image(prompt, style_preset, source_path, provider="huggingface"):
     config = settings.load_config()
@@ -134,11 +134,11 @@ def generate_image_from_image(prompt, style_preset, source_path, provider="huggi
     
     # Clean style preset
     style_text = style_preset
-    if "style" in style_preset and "style" in prompt:
-         # Avoid double style
-         pass
-         
-    full_prompt = f"{prompt}. {style_text}, high quality"
+    if "style" in style_preset.lower() and "style" in prompt.lower():
+         style_text = style_preset.replace("style", "").replace("Style", "").strip()
+
+    # SD 1.5 Prompting
+    full_prompt = f"{prompt}, {style_text} style, masterpiece, best quality"
     
     try:
         if provider == "huggingface":
@@ -147,6 +147,46 @@ def generate_image_from_image(prompt, style_preset, source_path, provider="huggi
             return generate_image(prompt, style_preset, provider)
     except Exception as e:
         logger.error(f"Img2Img Failed: {e}")
+        return None
+
+def _gen_hf_img2img(prompt, source_path, api_key):
+    # For SD1.5 via API, sending image as inputs is standard for Img2Img task?
+    # Or sending inputs=prompt, parameters={image=b64}?
+    # We will try the most standard multi-modal payload.
+    
+    with open(source_path, "rb") as f:
+        img_bytes = f.read()
+    
+    b64_img = base64.b64encode(img_bytes).decode('utf-8')
+    
+    headers = {"Authorization": f"Bearer {api_key}"}
+    
+    # Standard Inference API for Img2Img often works by inputs=prompt, image in parameters?
+    # Or inputs=image, parameters={prompt}? 
+    
+    # Attempt 1: Similar to Pix2Pix but for SD1.5
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "image": b64_img,
+            "strength": 0.75, # 0.0 to 1.0 (Higher = more AI, Lower = more original)
+            "guidance_scale": 7.5
+        }
+    }
+    
+    logger.info(f"HF Img2Img (SD1.5) Request: {prompt}")
+    response = requests.post(IMG2IMG_URL, headers=headers, json=payload, timeout=60)
+    
+    if response.status_code != 200:
+        logger.error(f"HF Img2Img Error: {response.text}")
+        return None
+        
+    image_bytes = response.content
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        return _save_result(img, "hf_edit")
+    except:
+        logger.error(f"Response not image: {response.text}")
         return None
 
 def _gen_hf_img2img(prompt, source_path, api_key):
