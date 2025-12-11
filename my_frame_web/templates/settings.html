@@ -267,10 +267,7 @@
                 // AI Keys
                 if (currentConfig.api_key_hf) document.getElementById('hfKey').value = currentConfig.api_key_hf;
                 if (currentConfig.api_key_google) document.getElementById('googleKey').value = currentConfig.api_key_google;
-                // OpenAI maps to api_key_ai for now or new field? Let's assume shared 'api_key_ai' is now OpenAI if we want, or add new.
-                // For simplicity, we mapped old 'api_key_ai' -> OpenAI if provider=openai. 
-                // But let's separate. 'api_key_ai' in config will be used for OpenAI for legacy compat.
-                if (currentConfig.api_key_ai) document.getElementById('openaiKey').value = currentConfig.api_key_ai;
+
 
                 if (currentConfig.ai_provider) {
                     document.getElementById('aiProvider').value = currentConfig.ai_provider;
