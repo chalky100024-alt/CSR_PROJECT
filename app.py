@@ -61,55 +61,6 @@ def upload_file():
                     except Exception as e:
                         print(f"ICC Profile conversion failed: {e}")
 
-                # --- [Comparison Logic: Split Screen] ---
-                # Create a single image split vertically:
-                # Left 50% = Original (Uncorrected)
-                # Right 50% = Corrected
-                from PIL import ImageDraw, ImageFont
-                
-                # Target size for comparison
-                comp_w, comp_h = 800, 480
-                
-                # Helper to resize/crop to exact fit
-                def get_fit_image(i, w, h):
-                    ratio = w/h
-                    src_ratio = i.width/i.height
-                    if src_ratio > ratio:
-                        new_h = h
-                        new_w = int(h * src_ratio)
-                    else:
-                        new_w = w
-                        new_h = int(w / src_ratio)
-                        
-                    resized = i.resize((new_w, new_h), Image.LANCZOS)
-                    # Center Crop
-                    l = (new_w - w) // 2
-                    t = (new_h - h) // 2
-                    return resized.crop((l, t, l+w, t+h))
-
-                # 1. Prepare fully resized versions of both
-                full_orig = get_fit_image(img.copy(), comp_w, comp_h).convert('RGB')
-                full_corr = get_fit_image(img_corrected.copy(), comp_w, comp_h).convert('RGB')
-                
-                # 2. Stitch Loop
-                # Left Half from Original
-                # Right Half from Corrected
-                mid_x = comp_w // 2
-                
-                final_comp = Image.new('RGB', (comp_w, comp_h))
-                final_comp.paste(full_orig.crop((0, 0, mid_x, comp_h)), (0, 0))
-                final_comp.paste(full_corr.crop((mid_x, 0, comp_w, comp_h)), (mid_x, 0))
-                
-                draw = ImageDraw.Draw(final_comp)
-                draw.line([(mid_x, 0), (mid_x, comp_h)], fill=(255, 255, 255), width=2)
-                draw.text((10, 10), "ORIGINAL (Raw)", fill=(255, 255, 255))
-                draw.text((mid_x + 10, 10), "CORRECTED (sRGB)", fill=(255, 255, 255))
-                
-                # Save Comparison File
-                comp_filename = "COMPARE_" + os.path.splitext(filename)[0] + ".jpg"
-                final_comp.save(os.path.join(settings.UPLOADS_DIR, comp_filename), quality=85)
-                # -----------------------------------------------
-
                 new_filename = os.path.splitext(filename)[0] + ".jpg"
                 new_path = os.path.join(settings.UPLOADS_DIR, new_filename)
                 
