@@ -232,12 +232,25 @@
                 <input type="range" id="fontSize" min="15" max="40" step="1" value="20">
             </div>
 
-            <!-- Position Controls -->
-            <div style="display:flex; gap:10px; margin-top:10px;">
-                <button id="btnMoveWidget" class="btn btn-secondary" onclick="setMode('widget')">위젯 위치 이동</button>
-                <button id="btnMovePhoto" class="btn btn-secondary" onclick="setMode('photo')">사진 위치 이동</button>
+            <!-- Position Controls: Sliders -->
+            <!-- Widget Position -->
+            <div class="control-group" style="margin-top:20px; background:#fafafa; padding:10px; border-radius:8px;">
+                <label style="font-weight:bold; color:blue;">위젯 위치</label>
+                <label>가로 (X): <span id="valWx">0</span> px</label>
+                <input type="range" id="sliderWx" min="0" max="700" step="5" value="10">
+                <label>세로 (Y): <span id="valWy">0</span> px</label>
+                <input type="range" id="sliderWy" min="0" max="400" step="5" value="10">
             </div>
-            <button class="btn btn-secondary" style="margin-top:10px;" onclick="setMode('none')">이동 종료</button>
+
+            <!-- Photo Position -->
+            <div class="control-group" style="margin-top:10px; background:#fafafa; padding:10px; border-radius:8px;">
+                <label style="font-weight:bold; color:blue;">사진 위치 (Crop)</label>
+                <label>가로 (X): <span id="valPx">0.5</span></label>
+                <input type="range" id="sliderPx" min="0.0" max="1.0" step="0.05" value="0.5">
+                <label>세로 (Y): <span id="valPy">0.5</span></label>
+                <input type="range" id="sliderPy" min="0.0" max="1.0" step="0.05" value="0.5">
+            </div>
+
             <button class="btn" style="margin-top:10px;" onclick="saveLayout()">현재 레이아웃 저장 & 액자로 전송</button>
         </div>
 

@@ -19,16 +19,28 @@ def get_fine_dust_data(api_key, station_name):
     }
     try:
         res = requests.get(url, params=params, timeout=10)
-        items = res.json().get('response', {}).get('body', {}).get('items', [])
+        data = res.json()
+        
+        # Verbose Logging for Debugging
+        logger.info(f"Dust API Params: {params}")
+        logger.info(f"Dust API Response: {data}")
+
+        items = data.get('response', {}).get('body', {}).get('items', [])
         if items:
             return {
                 'pm10': int(items[0]['pm10Value']), 
                 'pm25': int(items[0]['pm25Value']),
                 'time': items[0]['dataTime']
             }
+        else:
+             logger.warning("Dust API: No items found in response.")
+             
     except Exception as e:
         logger.error(f"Dust API Error: {e}")
-        pass
+        # Log response text if JSON parse failed
+        try: logger.error(f"Response Text: {res.text}")
+        except: pass
+        
     return None
 
 def get_kma_base_time(api_type='ultrasrt'):
