@@ -236,6 +236,8 @@
             <button class="btn btn-secondary" onclick="callSystem('reboot')">재부팅</button>
             <button class="btn" style="margin-top:10px; background: linear-gradient(180deg, #34c759 0%, #30b351 100%);"
                 onclick="updateFirmware()">🔄 펌웨어 업데이트 (Git Pull)</button>
+            <button class="btn" style="margin-top:10px; background: linear-gradient(180deg, #5856d6 0%, #4a48b8 100%);"
+                onclick="refreshDisplay()">🖼️ 화면 강제 새로고침</button>
         </div>
         <!-- Custom Modal -->
         <div id="confirmModal" class="hidden"
@@ -289,7 +291,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newConfig)
             });
-            alert("API 키가 저장되었습니다.");
+            alert("키가 저장되었습니다. (화면이 잠시 후 갱신됩니다)");
         }
 
         async function saveAiSettings() {
@@ -306,7 +308,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newConfig)
             });
-            alert("AI 설정이 저장되었습니다.");
+            alert("AI 설정이 저장되었습니다. (화면이 잠시 후 갱신됩니다)");
         }
 
         // Location Search
@@ -485,6 +487,22 @@
         function callSystem(action) {
             if (confirm("정말 실행하시겠습니까?")) {
                 fetch(`/api/system?action=${action}`); // Needs implementing in app.py
+            }
+        }
+
+        async function refreshDisplay() {
+            if (!confirm("화면을 새로고침 하시겠습니까?")) return;
+            // Re-saving current config triggers refresh implicitly, or we can add explicit action
+            // Re-saving current config is easiest way for now without new endpoint
+            try {
+                const res = await fetch('/api/save_config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}) // Empty body just triggers load_config & refresh
+                });
+                alert("새로고침 요청을 보냈습니다. 약 30초 후 화면이 바뀝니다.");
+            } catch (e) {
+                alert("요청 실패");
             }
         }
     </script>
