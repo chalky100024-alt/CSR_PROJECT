@@ -50,21 +50,20 @@
 
         .preview-box {
             width: 100%;
-            aspect-ratio: 800 / 480;
+            aspect-ratio: 16 / 9;
             /* Enforce fixed aspect ratio */
             border-radius: 8px;
             overflow: hidden;
             border: 1px solid #ddd;
             position: relative;
-            background: #333;
-            /* Dark background to see boundaries */
+            background: #222;
         }
 
         .preview-box img {
             width: 100%;
             height: 100%;
-            object-fit: contain;
-            /* Ensure image fits perfectly */
+            object-fit: cover;
+            /* Fill container completely, cropping if necessary */
             display: block;
         }
 
@@ -250,9 +249,9 @@
                 <!-- Widget Position -->
                 <div class="control-group" style="background:#fafafa; padding:10px; border-radius:8px;">
                     <label style="font-weight:bold; color:blue;">위젯 위치</label>
-                    <label>가로 (X): <span id="valWx">0</span> px</label>
-                    <input type="range" id="sliderWx" min="0" max="700" step="5" value="10">
-                    <label>세로 (Y): <span id="valWy">0</span> px</label>
+                    <label>가로 (X): <span id="valWx">550</span> px</label>
+                    <input type="range" id="sliderWx" min="0" max="700" step="5" value="550">
+                    <label>세로 (Y): <span id="valWy">10</span> px</label>
                     <input type="range" id="sliderWy" min="0" max="400" step="5" value="10">
                 </div>
             </div>
@@ -303,8 +302,8 @@
         let timeout;
         let currentPhoto = "";
 
-        // Coords
-        let widgetX = 10;
+        // Inits
+        let widgetX = 550; // Top-Rightish default
         let widgetY = 10;
 
         function togglePositionControls() {
