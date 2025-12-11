@@ -31,6 +31,7 @@ git pull origin main
 # 4. (혹시 모르니) 라이브러리 업데이트
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install huggingface_hub
 
 # 5. 서비스 재시작 (화면이 깜빡이며 갱신됩니다)
 sudo systemctl restart photoframe.service
