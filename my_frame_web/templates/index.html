@@ -281,7 +281,43 @@
             </div>
         </div>
 
-        <!-- ... (Rest of HTML) ... -->
+        <div class="card">
+            <h2>AI Atelier 🎨
+                <select id="aiModelSelect" onchange="changeAiProvider(this.value)"
+                    style="font-size:14px; padding:5px; border-radius:8px; width:auto; display:inline-block; margin-left:10px; border:1px solid #ddd;">
+                    <option value="huggingface">Hugging Face (무료)</option>
+                    <option value="google">Google Vertex AI (고화질)</option>
+                </select>
+            </h2>
+            <input type="text" id="aiPrompt" placeholder="예: 고양이, 수채화, 비오는 창가">
+            <select id="aiStyle" style="margin-top:10px;">
+                <option value="anime style">지브리 애니메이션 (Ghibli)</option>
+                <option value="photorealistic">실사 사진 (Realistic)</option>
+                <option value="oil painting">유화 (Van Gogh Style)</option>
+                <option value="watercolor">수채화 (Watercolor)</option>
+                <option value="pencil sketch">연필 스케치 (Sketch)</option>
+                <option value="cyberpunk">사이버펑크 (Cyberpunk)</option>
+                <option value="pixel art">레트로 픽셀 아트 (Pixel)</option>
+                <option value="retro polaroid">빈티지 폴라로이드 (Polaroid)</option>
+                <option value="lego">레고 블럭 (Lego)</option>
+                <option value="3d render">3D 렌더링 (Pixar Style)</option>
+                <option value="ukiyo-e">일본 풍속화 (Ukiyo-e)</option>
+                <option value="vaporwave">베이퍼웨이브 (Vaporwave)</option>
+                <option value="papercut">종이 공예 (Papercut)</option>
+                <option value="noir film">느와르 영화 (Noir)</option>
+            </select>
+            <!-- AI Controls -->
+            <button id="btnGenAI" class="btn btn-secondary" onclick="generateAI()">
+                <span id="btnText">AI 그림 생성하기</span>
+                <div class="spinner" id="loading"></div>
+            </button>
+        </div>
+
+        <div style="text-align:center; margin-top:20px;">
+            <a href="/settings" class="btn btn-secondary"
+                style="display:inline-block; width:auto; padding:12px 30px;">⚙️ 설정 (위치, Wi-Fi, API)</a>
+        </div>
+        <br>
     </div>
 
     <script>
