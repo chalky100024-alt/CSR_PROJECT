@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iFrame Controller</title>
+    <style>
+        :root {
+            --bg: #f2f2f7;
+            --card: #ffffff;
+            --text: #1c1c1e;
+            --blue: #007aff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        h2 {
+            font-size: 20px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        h3 {
+            font-size: 16px;
+            margin: 10px 0 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .preview-box {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #ddd;
+            position: relative;
+        }
+
+        .preview-box img {
+            width: 100%;
+            display: block;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            color: #8e8e93;
+            margin-bottom: 5px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        select,
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e5e5ea;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            /* Liquid Blue Gradient */
+            background: linear-gradient(180deg, #007aff 0%, #0062cc 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            /* More rounded for Apple feel */
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+            /* Glass Depth Shadows */
+            box-shadow:
+                0 4px 12px rgba(0, 122, 255, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        /* Top Gloss Shine */
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%);
+            border-radius: 12px 12px 0 0;
+            pointer-events: none;
+        }
+
+        .btn:hover {
+            transform: scale(1.02);
+            filter: brightness(1.1);
+            box-shadow:
+                0 6px 16px rgba(0, 122, 255, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+            filter: brightness(0.9);
+        }
+
+        .btn-secondary {
+            /* Glassy White */
+            background: linear-gradient(180deg, #ffffff 0%, #f2f2f7 100%);
+            color: #007aff;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 1.0);
+        }
+
+        .btn-secondary::after {
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 100%);
+        }
+
+        .btn-secondary:hover {
+            background: #ffffff;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .spinner {
+            display: none;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Gallery Grid */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .gallery-item {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #eee;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .gallery-item.selected {
+            border-color: var(--blue);
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .empty-gallery {
+            grid-column: 1 / -1;
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="card">
+            <h2>Live Preview</h2>
+            <div class="preview-box">
+                <img id="previewImg" src="/api/preview?t=0" style="min-height: 200px; background: #eee;">
+            </div>
+
+            <div class="control-group" style="margin-top:20px;">
+                <label>위젯 크기</label>
+                <input type="range" id="widgetSize" min="0.5" max="3.0" step="0.1" value="1.0">
+            </div>
+            <div class="control-group">
+                <label>위젯 투명도</label>
+                <input type="range" id="widgetOpacity" min="0.1" max="1.0" step="0.1" value="0.6">
+            </div>
+            <div class="control-group">
+                <label>폰트 크기</label>
+                <input type="range" id="fontSize" min="15" max="40" step="1" value="20">
+            </div>
+
+            <!-- Position Controls -->
+            <button id="btnAdjustPos" class="btn btn-secondary" style="margin-top:10px;"
+                onclick="togglePositionMode()">위젯 위치 조절</button>
+            <button class="btn" style="margin-top:10px;" onclick="saveLayout()">현재 레이아웃 저장 & 액자로 전송</button>
+        </div>
+
+        <div class="card">
+            <h2>My Photos 📸</h2>
+            <h3>사진 업로드</h3>
+            <input type="file" id="fileUpload" multiple accept="image/*" style="display:none;"
+                onchange="handleUpload(this)">
+            <button class="btn btn-secondary" onclick="document.getElementById('fileUpload').click()">내 사진 올리기
+                (+)</button>
+            <div id="uploadStatus" style="margin-top:5px; font-size:14px; color:var(--blue);"></div>
+
+            <h3>갤러리 (스크롤하여 더 보기)</h3>
+            <div id="gallery" class="gallery-grid" style="max-height: 400px; overflow-y: auto; padding-right:5px;">
+                <!-- Javascript will populate this -->
+                <div class="empty-gallery">로딩 중...</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>AI Atelier 🎨</h2>
+            <input type="text" id="aiPrompt" placeholder="예: 고양이, 수채화, 비오는 창가">
+            <select id="aiStyle" style="margin-top:10px;">
+                <option value="anime style">애니메이션 (Ghibli)</option>
+                <option value="photorealistic">실사 (Photo)</option>
+                <option value="oil painting">유화 (Oil Painting)</option>
+                <option value="pixel art">픽셀 아트</option>
+            </select>
+            <button class="btn btn-secondary" onclick="generateAI()">
+                <span id="btnText">AI 그림 생성하기</span>
+                <div class="spinner" id="loading"></div>
+            </button>
+        </div>
+
+        <div style="text-align:center; margin-top:20px;">
+            <a href="/settings" class="btn btn-secondary"
+                style="display:inline-block; width:auto; padding:12px 30px;">⚙️ 설정 (위치, Wi-Fi, API)</a>
+        </div>
+        <br>
+    </div>
+
+    <script>
+        // --- Preview Logic ---
+        let timeout;
+        let currentPhoto = ""; // Lock the preview image
+
+        // Drag state
+        let isDragging = false;
+        let isPosMode = false; // Toggle state
+        let currentX = null; // null means auto
+        let currentY = null;
+        let dragStartX, dragStartY;
+        let dragStartLeft, dragStartTop;
+
+        const updatePreview = () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(async () => {
+                const size = document.getElementById('widgetSize').value;
+                const font = document.getElementById('fontSize').value;
+                const opacity = document.getElementById('widgetOpacity').value;
+                const ts = Date.now();
+                let url = `/api/preview?widget_size=${size}&font_size=${font}&opacity=${opacity}&t=${ts}`;
+                if (currentPhoto) url += `&min_filename=${encodeURIComponent(currentPhoto)}`;
+                if (currentX !== null && currentY !== null) {
+                    url += `&x=${currentX}&y=${currentY}`;
+                }
+
+                try {
+                    const res = await fetch(url);
+                    const blob = await res.blob();
+                    const objectURL = URL.createObjectURL(blob);
+                    document.getElementById('previewImg').src = objectURL;
+
+                    // Sync Drag Box
+                    const w = res.headers.get('X-Widget-Width');
+                    const h = res.headers.get('X-Widget-Height');
+                    const x = res.headers.get('X-Widget-X');
+                    const y = res.headers.get('X-Widget-Y');
+
+                    if (w && h && x && y) {
+                        syncOverlay(parseFloat(x), parseFloat(y), parseFloat(w), parseFloat(h));
+                    }
+                } catch (e) {
+                    console.error("Preview load failed", e);
+                }
+            }, 300);
+        };
+
+        function syncOverlay(x, y, w, h) {
+            // Server coords are 800x480 based
+            const previewBox = document.querySelector('.preview-box');
+            const rect = previewBox.getBoundingClientRect();
+
+            const scaleX = rect.width / 800;
+            const scaleY = rect.height / 480;
+
+            // Apply scale
+            overlayBox.style.width = (w * scaleX) + "px";
+            overlayBox.style.height = (h * scaleY) + "px";
+
+            // Only update pos if NOT dragging, to prevent jitter loop
+            if (!isDragging) {
+                overlayBox.style.left = (x * scaleX) + "px";
+                overlayBox.style.top = (y * scaleY) + "px";
+            }
+        }
+
+        // Toggle Position Mode
+        function togglePositionMode() {
+            isPosMode = !isPosMode;
+            const btn = document.getElementById('btnAdjustPos');
+
+            if (isPosMode) {
+                btn.innerText = "위젯 위치 저장 (편집 종료)";
+                btn.className = "btn"; // Blue
+                overlayBox.style.display = "flex";
+            } else {
+                btn.innerText = "위젯 위치 조절";
+                btn.className = "btn btn-secondary";
+                overlayBox.style.display = "none";
+                // Optionally trigger a save here or just let the main Save button do it
+            }
+        }
+
+        const previewBox = document.querySelector('.preview-box');
+        // Ensure preview box is relative for absolute children
+        previewBox.style.position = 'relative';
+
+        const overlayBox = document.createElement('div');
+        overlayBox.style.cssText = `
+            position: absolute; 
+            border: 2px dashed red; 
+            background: rgba(255,0,0,0.2);
+            cursor: move; 
+            display: none; /* Hidden by default */
+            align-items: center; 
+            justify-content: center;
+            color: red;
+            font-weight: bold;
+            font-size: 14px;
+            z-index: 10;
+        `;
+        overlayBox.innerText = "Drag Me";
+        previewBox.appendChild(overlayBox);
+
+        // Remove old event listeners if any (by replacing logic)
+        // Drag Logic
+        overlayBox.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            dragStartLeft = overlayBox.offsetLeft;
+            dragStartTop = overlayBox.offsetTop;
+            overlayBox.style.borderColor = "blue";
+            e.preventDefault(); // Prevent text selection
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - dragStartX;
+            const dy = e.clientY - dragStartY;
+
+            // Boundary checks (optional but good)
+            let newLeft = dragStartLeft + dx;
+            let newTop = dragStartTop + dy;
+
+            overlayBox.style.left = newLeft + "px";
+            overlayBox.style.top = newTop + "px";
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            overlayBox.style.borderColor = "red";
+
+            // Calculate scale
+            const rect = previewBox.getBoundingClientRect();
+            // Original Image Size is 800x480. 
+            // We need to map current visual position to 800x480 coordinates.
+            // Check if image is loaded to get natural dims? No, assume 800x480 base.
+            const scaleX = 800 / rect.width;
+            const scaleY = 480 / rect.height;
+
+            const visX = overlayBox.offsetLeft;
+            const visY = overlayBox.offsetTop;
+
+            currentX = Math.round(visX * scaleX);
+            currentY = Math.round(visY * scaleY);
+
+            updatePreview();
+        });
+
+        ['widgetSize', 'fontSize', 'widgetOpacity'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updatePreview);
+        });
+
+        async function saveLayout() {
+            const config = {
+                layout: {
+                    widget_size: document.getElementById('widgetSize').value,
+                    font_size: document.getElementById('fontSize').value,
+                    opacity: document.getElementById('widgetOpacity').value,
+                    x: currentX,
+                    y: currentY,
+                    type: "custom"
+                }
+            };
+            await fetch('/api/save_config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+            alert("설정이 저장되었습니다! 다음 부팅부터 적용됩니다.");
+        }
+
+        // --- Gallery & Upload ---
+        async function loadGallery() {
+            const gallery = document.getElementById('gallery');
+            try {
+                const res = await fetch('/api/list_photos');
+                const photos = await res.json();
+
+                gallery.innerHTML = "";
+                if (photos.length === 0) {
+                    gallery.innerHTML = '<div class="empty-gallery">사진이 없습니다. 업로드해보세요!</div>';
+                    return;
+                }
+
+                // Set initial photo lock if empty
+                if (!currentPhoto && photos.length > 0) {
+                    currentPhoto = photos[0];
+                    updatePreview();
+                }
+
+                // Show All photos (Scrollable)
+                photos.forEach(photo => {
+                    const div = document.createElement('div');
+                    div.className = 'gallery-item';
+                    div.style.position = 'relative'; // For absolute delete button
+
+                    if (photo === currentPhoto) div.classList.add('selected');
+
+                    // Image
+                    const img = document.createElement('img');
+                    img.src = `/uploads/${photo}`;
+                    img.loading = 'lazy';
+                    div.appendChild(img);
+
+                    // Delete Button
+                    const delBtn = document.createElement('button');
+                    delBtn.innerText = "X";
+                    delBtn.style.cssText = `
+                        position: absolute; top: 5px; right: 5px;
+                        background: rgba(0,0,0,0.6); color: white;
+                        border: none; border-radius: 50%;
+                        width: 24px; height: 24px; cursor: pointer;
+                        font-size: 12px; font-weight: bold;
+                    `;
+                    delBtn.onclick = async (e) => {
+                        e.stopPropagation(); // Prevent selection
+                        if (confirm("정말 삭제하시겠습니까?")) {
+                            await deletePhoto(photo);
+                        }
+                    };
+                    div.appendChild(delBtn);
+
+                    // Click to set as active
+                    div.onclick = () => {
+                        currentPhoto = photo;
+                        updatePreview();
+                        // Update UI selection
+                        document.querySelectorAll('.gallery-item').forEach(el => el.classList.remove('selected'));
+                        div.classList.add('selected');
+                    };
+                    gallery.appendChild(div);
+                });
+            } catch (e) {
+                gallery.innerHTML = '<div class="empty-gallery">로드 실패</div>';
+            }
+        }
+
+        async function deletePhoto(filename) {
+            try {
+                const res = await fetch('/api/delete_photo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filename })
+                });
+                if (res.ok) {
+                    // Refresh
+                    if (currentPhoto === filename) currentPhoto = "";
+                    loadGallery();
+                } else {
+                    alert("삭제 실패");
+                }
+            } catch (e) {
+                console.error(e);
+                alert("오류 발생");
+            }
+        }
+
+        async function handleUpload(input) {
+            const files = input.files;
+            if (!files.length) return;
+
+            const status = document.getElementById('uploadStatus');
+            status.innerText = `${files.length}장 업로드 중...`;
+
+            try {
+                for (let file of files) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    await fetch('/upload', { method: 'POST', body: formData });
+                }
+                status.innerText = "업로드 완료!";
+
+                // Set lock to newest photo
+                // currentPhoto = files[0].name; // Just name estimation, better to reload list
+                currentPhoto = ""; // Reset so loadGallery picks new one or we pick explicitly
+
+                loadGallery(); // Refresh gallery
+                // loadGallery will pick newest if currentPhoto is empty, or we can force it.
+                // Simplified: Just reload and let user click if they want specific, 
+                // but usually user wants to see what they uploaded.
+                // loadGallery logic: if(!currentPhoto) pick first.
+                // So if we clear currentPhoto, it picks first (newest).
+
+                setTimeout(() => { status.innerText = "", 3000 });
+            } catch (e) {
+                status.innerText = "업로드 실패";
+            }
+        }
+
+        // --- AI Logic ---
+        async function generateAI() {
+            const btn = document.querySelector('.btn-secondary'); // Caution: selects first btn-secondary, which might be "My Photos". 
+            // Better selector:
+            const aiBtn = event.currentTarget;
+            const spinner = document.getElementById('loading');
+            const txt = document.getElementById('btnText');
+
+            txt.style.display = 'none';
+            spinner.style.display = 'block';
+
+            const prompt = document.getElementById('aiPrompt').value;
+            const style = document.getElementById('aiStyle').value;
+
+            try {
+                const res = await fetch('/api/generate_ai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, style })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    alert("그림이 완성되었습니다!");
+                    currentPhoto = ""; // Reset so newest is picked
+                    loadGallery();
+                } else {
+                    alert("생성 실패.");
+                }
+            } catch (e) {
+                alert("오류 발생");
+            } finally {
+                txt.style.display = 'block';
+                spinner.style.display = 'none';
+            }
+        }
+
+        // Init
+        loadGallery();
+    </script>
+</body>
+
+</html>

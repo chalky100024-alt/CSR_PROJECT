@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Frame - Settings</title>
+    <style>
+        :root {
+            --bg: #f2f2f7;
+            --card: #ffffff;
+            --text: #1c1c1e;
+            --blue: #007aff;
+            --red: #ff3b30;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        h2 {
+            font-size: 20px;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(180deg, #007aff 0%, #0062cc 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            margin-top: 10px;
+            position: relative;
+            overflow: hidden;
+            box-shadow:
+                0 4px 12px rgba(0, 122, 255, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%);
+            border-radius: 12px 12px 0 0;
+            pointer-events: none;
+        }
+
+        .btn:hover {
+            transform: scale(1.02);
+            filter: brightness(1.1);
+            box-shadow:
+                0 6px 16px rgba(0, 122, 255, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.4);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(180deg, #ffffff 0%, #f2f2f7 100%);
+            color: #007aff;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 1.0);
+        }
+
+        .btn-secondary::after {
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(180deg, #ff3b30 0%, #d63229 100%);
+            box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 6px 16px rgba(255, 59, 48, 0.4);
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e5e5ea;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .list-group {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .list-item {
+            padding: 10px;
+            border-bottom: 1px solid #e5e5ea;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .list-item:hover {
+            background: #f9f9f9;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Helper for small buttons */
+        .btn-sm {
+            width: auto !important;
+            display: inline-block !important;
+            padding: 8px 16px !important;
+            font-size: 14px !important;
+            margin-top: 0 !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h1 style="margin:0; font-size:24px;">Settings</h1>
+            <a href="/" class="btn btn-secondary btn-sm">닫기</a>
+        </div>
+
+        <!-- Location Settings -->
+        <div class="card">
+            <h2>📍 위치 설정 (날씨용)</h2>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="locSearch" placeholder="동 이름 검색 (예: 고덕)">
+                <button class="btn btn-sm" onclick="searchLocation()">검색</button>
+            </div>
+            <ul id="locList" class="list-group" style="margin-top:10px; max-height:200px; overflow-y:auto;"></ul>
+            <p id="currentLoc" style="color:#666; font-size:14px; margin-top:10px;">현재: 로딩 중...</p>
+        </div>
+
+        <!-- WiFi Settings -->
+        <div class="card">
+            <h2>📶 Wi-Fi 연결</h2>
+            <button class="btn btn-secondary" onclick="scanWifi()" style="width:100%; margin-bottom:10px;">주변 와이파이
+                스캔</button>
+            <ul id="wifiList" class="list-group"></ul>
+
+            <div id="wifiInput" class="hidden"
+                style="margin-top:15px; background:#f9f9f9; padding:15px; border-radius:8px;">
+                <h3 id="targetSSID" style="margin:0 0 10px 0;"></h3>
+                <input type="password" id="wifiPw" placeholder="비밀번호 입력">
+                <button class="btn" onclick="connectWifi()">연결 시도</button>
+                <button class="btn btn-secondary"
+                    onclick="document.getElementById('wifiInput').classList.add('hidden')">취소</button>
+            </div>
+        </div>
+
+        <!-- Data API Settings -->
+        <div class="card">
+            <h2>☁️ 날씨/미세먼지 키 설정</h2>
+            <div style="margin-bottom:10px;">
+                <label>기상청 API Key (Encoding):</label>
+                <input type="password" id="kmaKey" placeholder="공공데이터포털 단기예보 Key">
+            </div>
+            <div style="margin-bottom:10px;">
+                <label>에어코리아 API Key (Encoding):</label>
+                <input type="password" id="airKey" placeholder="공공데이터포털 대기오염정보 Key">
+            </div>
+            <button class="btn" onclick="saveDataSettings()">키 저장</button>
+            <p style="font-size:12px; color:#888; margin-top:10px;">* 인증키가 없으면 미리보기 데이터는 임의값(Mock)으로 표시됩니다.<br>* Key 저장
+                후 반영까지 시간이 걸릴 수 있습니다.</p>
+        </div>
+
+        <!-- AI Settings -->
+        <div class="card">
+            <h2>🤖 AI 이미지 설정</h2>
+            <div style="margin-bottom:10px;">
+                <label>제공자 (Provider):</label>
+                <select id="aiProvider"
+                    style="width:100%; padding:10px; margin-top:5px; border-radius:8px; border:1px solid #e5e5ea;">
+                    <option value="huggingface">Hugging Face (무료/빠름)</option>
+                    <option value="openai">OpenAI DALL-E 3 (유료/고품질)</option>
+                </select>
+            </div>
+            <div style="margin-bottom:10px;">
+                <label>API Key:</label>
+                <input type="password" id="aiApiKey" placeholder="API Key 입력 (hf_... or sk-...)">
+            </div>
+            <button class="btn" onclick="saveAiSettings()">AI 설정 저장</button>
+            <p style="font-size:12px; color:#888; margin-top:10px;">* Hugging Face는 무료 토큰을 발급받아 사용할 수 있습니다.<br>* OpenAI는
+                과금이 발생할 수 있습니다.</p>
+        </div>
+
+        <!-- System -->
+        <div class="card">
+            <h2>⚙️ 시스템</h2>
+            <p>PiSugar 배터리: <span id="batteryStatus">-</span></p>
+            <button class="btn btn-danger" onclick="callSystem('shutdown')">시스템 종료</button>
+            <button class="btn btn-secondary" onclick="callSystem('reboot')">재부팅</button>
+        </div>
+        <!-- Custom Modal -->
+        <div id="confirmModal" class="hidden"
+            style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+            <div
+                style="background:white; padding:20px; border-radius:15px; width:300px; text-align:center; box-shadow:0 5px 15px rgba(0,0,0,0.2);">
+                <h3 id="modalTitle" style="margin-top:0;">위치 설정</h3>
+                <p id="modalDesc">이 위치로 설정하시겠습니까?</p>
+                <div style="display:flex; justify-content:space-around; margin-top:20px;">
+                    <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+                    <button class="btn" id="btnConfirmAction">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load initial config
+        let currentConfig = {};
+
+        async function loadConfig() {
+            try {
+                const res = await fetch('/api/get_config');
+                currentConfig = await res.json();
+                if (currentConfig.location) {
+                    document.getElementById('currentLoc').innerText = `현재: ${currentConfig.location.name}`;
+                }
+                // AI Config Load
+                if (currentConfig.api_key_ai) document.getElementById('aiApiKey').value = currentConfig.api_key_ai;
+                if (currentConfig.ai_provider) document.getElementById('aiProvider').value = currentConfig.ai_provider;
+
+                // Data API Config Load
+                if (currentConfig.api_key_kma) document.getElementById('kmaKey').value = currentConfig.api_key_kma;
+                if (currentConfig.api_key_air) document.getElementById('airKey').value = currentConfig.api_key_air;
+
+            } catch (e) { console.error(e); }
+        }
+        loadConfig();
+
+        async function saveDataSettings() {
+            const kma = document.getElementById('kmaKey').value;
+            const air = document.getElementById('airKey').value;
+
+            const newConfig = {
+                api_key_kma: kma,
+                api_key_air: air
+            };
+
+            await fetch('/api/save_config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newConfig)
+            });
+            alert("API 키가 저장되었습니다.");
+        }
+
+        async function saveAiSettings() {
+            const key = document.getElementById('aiApiKey').value;
+            const provider = document.getElementById('aiProvider').value;
+
+            const newConfig = {
+                api_key_ai: key,
+                ai_provider: provider
+            };
+
+            await fetch('/api/save_config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newConfig)
+            });
+            alert("AI 설정이 저장되었습니다.");
+        }
+
+        // Location Search
+        async function searchLocation() {
+            const query = document.getElementById('locSearch').value;
+            if (query.length < 2) return alert("2글자 이상 입력하세요.");
+
+            const res = await fetch(`/api/search_location?q=${query}`);
+            const data = await res.json();
+
+            const list = document.getElementById('locList');
+            list.innerHTML = "";
+
+            if (data.length === 0) {
+                list.innerHTML = "<li class='list-item'>검색 결과 없음</li>";
+                return;
+            }
+
+            data.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'list-item';
+                li.innerText = item.name;
+                li.onclick = () => selectLocation(item);
+                list.appendChild(li);
+            });
+        }
+
+        let pendingLoc = null;
+
+        function selectLocation(locData) {
+            pendingLoc = locData;
+            document.getElementById('modalTitle').innerText = "위치 설정";
+            document.getElementById('modalDesc').innerText = `${locData.name}으로 설정하시겠습니까?`;
+
+            const btn = document.getElementById('btnConfirmAction');
+            btn.disabled = false;
+            btn.innerText = "확인";
+
+            const modal = document.getElementById('confirmModal');
+            modal.style.display = 'flex'; // Override hidden class
+
+            btn.onclick = confirmLocationSet;
+        }
+
+        function closeModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+            pendingLoc = null;
+        }
+
+        async function confirmLocationSet() {
+            if (!pendingLoc) return;
+
+            // Prevent double click
+            const btn = document.getElementById('btnConfirmAction');
+            btn.disabled = true;
+            btn.innerText = "저장 중...";
+
+            const locData = pendingLoc;
+
+            try {
+                // Save config
+                const newConfig = {
+                    location: {
+                        name: locData.name,
+                        nx: locData.nx,
+                        ny: locData.ny
+                    }
+                };
+
+                await fetch('/api/save_config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newConfig)
+                });
+
+                // Show success feedback in modal then reload
+                document.getElementById('modalTitle').innerText = "완료";
+                document.getElementById('modalDesc').innerText = "저장되었습니다! 리로딩합니다...";
+
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } catch (e) {
+                console.error(e);
+                closeModal();
+                alert("저장 실패");
+            }
+        }
+
+        // WiFi
+        async function scanWifi() {
+            const list = document.getElementById('wifiList');
+            list.innerHTML = "<li>스캔 중...</li>";
+
+            try {
+                const res = await fetch('/api/wifi_scan');
+                const data = await res.json();
+
+                list.innerHTML = "";
+                data.forEach(net => {
+                    const li = document.createElement('li');
+                    li.className = 'list-item';
+                    li.innerHTML = `<span>${net.ssid}</span> <span style='font-size:12px; color:#888;'>${net.signal}%</span>`;
+                    li.onclick = () => showWifiInput(net.ssid);
+                    list.appendChild(li);
+                });
+            } catch (e) {
+                list.innerHTML = "<li>스캔 실패</li>";
+            }
+        }
+
+        let selectedSSID = "";
+        function showWifiInput(ssid) {
+            selectedSSID = ssid;
+            document.getElementById('targetSSID').innerText = ssid;
+            document.getElementById('wifiInput').classList.remove('hidden');
+        }
+
+        async function connectWifi() {
+            const pw = document.getElementById('wifiPw').value;
+            if (!pw) return alert("비밀번호를 입력하세요.");
+
+            alert("연결을 시도합니다. (약 10~20초 소요)");
+
+            fetch('/api/wifi_connect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ssid: selectedSSID, password: pw })
+            });
+        }
+
+        // Upload
+        async function handleUpload(input) {
+            const files = input.files;
+            if (!files.length) return;
+
+            const status = document.getElementById('uploadStatus');
+            status.innerText = "업로드 중...";
+
+            for (let file of files) {
+                const formData = new FormData();
+                formData.append('file', file);
+                await fetch('/upload', { method: 'POST', body: formData });
+            }
+            status.innerText = "업로드 완료!";
+        }
+
+        function callSystem(action) {
+            if (confirm("정말 실행하시겠습니까?")) {
+                fetch(`/api/system?action=${action}`); // Needs implementing in app.py
+            }
+        }
+    </script>
+</body>
+
+</html>
