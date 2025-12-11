@@ -50,23 +50,63 @@ def upload_file():
                 img = Image.open(file_path)
                 
                 # Color Profile Correction (P3 -> sRGB)
+                img_corrected = img.copy()
+                
                 if img.info.get('icc_profile'):
                     try:
                         f = io.BytesIO(img.info['icc_profile'])
                         src_profile = ImageCms.ImageCmsProfile(f)
                         dst_profile = ImageCms.createProfile('sRGB')
-                        img = ImageCms.profileToProfile(img, src_profile, dst_profile)
+                        img_corrected = ImageCms.profileToProfile(img_corrected, src_profile, dst_profile)
                     except Exception as e:
                         print(f"ICC Profile conversion failed: {e}")
+
+                # --- [Comparison Logic for User Verification] ---
+                # Create a side-by-side comparison image
+                # Left: Original (converted directly) / Right: Corrected
+                from PIL import ImageDraw, ImageFont
+                
+                # Resize for comparison (fit to 800 width total, so 400 each)
+                comp_w, comp_h = 800, 480
+                half_w = comp_w // 2
+                
+                # Helper to crop/resize
+                def get_preview_crop(i, w, h):
+                    ratio = w/h
+                    src_ratio = i.width/i.height
+                    if src_ratio > ratio:
+                        new_h = h
+                        new_w = int(h * src_ratio)
+                    else:
+                        new_w = w
+                        new_h = int(w / src_ratio)
+                    return i.resize((new_w, new_h)).crop(((new_w-w)//2, (new_h-h)//2, (new_w+w)//2, (new_h+h)//2))
+
+                img_l = get_preview_crop(img.copy(), half_w, comp_h).convert('RGB')
+                img_r = get_preview_crop(img_corrected.copy(), half_w, comp_h).convert('RGB')
+                
+                comp_img = Image.new('RGB', (comp_w, comp_h))
+                comp_img.paste(img_l, (0, 0))
+                comp_img.paste(img_r, (half_w, 0))
+                
+                draw = ImageDraw.Draw(comp_img)
+                # Labels
+                draw.text((10, 10), "BEFORE (Original)", fill=(255, 255, 255))
+                draw.text((half_w + 10, 10), "AFTER (Corrected)", fill=(255, 255, 255))
+                
+                # Save Comparison File
+                comp_filename = "COMPARE_" + os.path.splitext(filename)[0] + ".jpg"
+                comp_img.save(os.path.join(settings.UPLOADS_DIR, comp_filename), quality=85)
+                # -----------------------------------------------
 
                 new_filename = os.path.splitext(filename)[0] + ".jpg"
                 new_path = os.path.join(settings.UPLOADS_DIR, new_filename)
                 
-                img.convert('RGB').save(new_path, "JPEG", quality=95) # High quality
+                img_corrected.convert('RGB').save(new_path, "JPEG", quality=95) # Save Good Version
                 
                 # Remove original HEIC
                 os.remove(file_path)
-                filename = new_filename
+                filename = new_filename # Return the normal valid file to the UI
             except Exception as e:
                 print(f"HEIC conversion failed: {e}")
                 return jsonify({'error': 'HEIC conversion failed'}), 500
