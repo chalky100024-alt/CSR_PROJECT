@@ -67,9 +67,12 @@ def get_weather_data(api_key, nx, ny):
             cat = item.find("category").text
             val = item.find("obsrValue").text
             if cat == 'T1H':
-                weather_info['temp'] = float(val)
+                try: weather_info['temp'] = float(val)
+                except: weather_info['temp'] = 0.0
             elif cat == 'RN1':
-                weather_info['current_rain_amount'] = float(val)
+                # '강수없음' or 'null' handling
+                try: weather_info['current_rain_amount'] = float(val)
+                except: weather_info['current_rain_amount'] = 0.0
 
         # 2. 초단기예보
         bd, bt = get_kma_base_time('ultrasrt_fcst')
@@ -108,7 +111,11 @@ def get_weather_data(api_key, nx, ny):
             ft = datetime.strptime(t, '%Y%m%d%H%M')
             if now <= ft <= now + timedelta(hours=6):
                 pty = int(forecasts[t].get('PTY', '0'))
-                rn1 = float(forecasts[t].get('RN1', '0') or 0)
+                try:
+                    rn1_val = forecasts[t].get('RN1', '0')
+                    if rn1_val in ['강수없음', 'null', '-']: rn1 = 0.0
+                    else: rn1 = float(rn1_val)
+                except: rn1 = 0.0
                 if pty > 0 and rn1 > 0:
                     if not max_rain or rn1 > max_rain['amount']:
                         max_rain = {'amount': rn1, 'start_time': ft.strftime('%H:%M'),
