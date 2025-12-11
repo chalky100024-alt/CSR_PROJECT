@@ -116,17 +116,10 @@ def api_save_config():
     # Let's inspect the target content carefully.
     
     # Re-implementing the function body to includes updates
-    if 'location' in data: current['location'] = data['location']
-    if 'layout' in data: current['layout'] = data['layout']
-    if 'api_key_ai' in data: current['api_key_ai'] = data['api_key_ai']
-    if 'ai_provider' in data: current['ai_provider'] = data['ai_provider']
-    if 'google_project_id' in data: current['google_project_id'] = data['google_project_id']
-    if 'google_location' in data: current['google_location'] = data['google_location']
-    if 'api_key_kma' in data: current['api_key_kma'] = data['api_key_kma']
-    if 'api_key_kma' in data: current['api_key_kma'] = data['api_key_kma']
-    if 'api_key_air' in data: current['api_key_air'] = data['api_key_air']
-    if 'selected_photo' in data: current['selected_photo'] = data['selected_photo']
-    
+    # Merge update
+    for key, value in data.items():
+        current[key] = value
+
     settings.save_config(current)
     
     # Trigger Display Refresh in Background
