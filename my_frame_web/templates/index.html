@@ -293,6 +293,12 @@
                 <option value="papercut">종이 공예 (Papercut)</option>
                 <option value="noir film">느와르 영화 (Noir)</option>
             </select>
+            <!-- AI Controls -->
+            <div style="display:flex; align-items:center; margin-top:10px; gap:10px;">
+                <input type="checkbox" id="useBaseImage">
+                <label for="useBaseImage" style="display:inline; margin:0; color:#333;">선택된 사진을 변환하기 (Img2Img)</label>
+            </div>
+
             <button class="btn btn-secondary" onclick="generateAI()">
                 <span id="btnText">AI 그림 생성하기</span>
                 <div class="spinner" id="loading"></div>
@@ -528,12 +534,27 @@
 
             const prompt = document.getElementById('aiPrompt').value;
             const style = document.getElementById('aiStyle').value;
+            const useBase = document.getElementById('useBaseImage').checked;
 
             try {
-                const res = await fetch('/api/generate_ai', {
+                let url = '/api/generate_ai';
+                let body = { prompt, style };
+
+                if (useBase) {
+                    if (!currentPhoto) {
+                        alert("먼저 갤러리에서 변환할 원본 사진을 선택해주세요!");
+                        txt.style.display = 'block';
+                        spinner.style.display = 'none';
+                        return;
+                    }
+                    url = '/api/generate_ai_img2img';
+                    body.source_file = currentPhoto;
+                }
+
+                const res = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt, style })
+                    body: JSON.stringify(body)
                 });
                 const data = await res.json();
                 if (data.status === 'success') {

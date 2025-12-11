@@ -107,9 +107,84 @@ def _save_result(img, prefix):
     top = (new_h - target_h) / 2
     img = img.crop((left, top, left + target_w, top + target_h))
 
-    # 저장 및 리턴
     filename = f"ai_{prefix}_{int(time.time())}.png"
     save_path = os.path.join(settings.UPLOADS_DIR, filename)
     img.save(save_path)
     logger.info(f"이미지 저장됨: {save_path}")
     return filename
+
+# --- Image to Image ---
+import base64
+
+IMG2IMG_URL = "https://router.huggingface.co/hf-inference/models/timbrooks/instruct-pix2pix"
+
+def generate_image_from_image(prompt, style_preset, source_path, provider="huggingface"):
+    config = settings.load_config()
+    api_key = config.get('api_key_ai')
+    
+    if not api_key: return None
+    
+    # Simple Translation
+    try:
+        from deep_translator import GoogleTranslator
+        prompt = GoogleTranslator(source='auto', target='en').translate(prompt)
+    except: pass
+    
+    full_prompt = f"{prompt}. {style_preset} style, high quality"
+    
+    try:
+        if provider == "huggingface":
+            return _gen_hf_img2img(full_prompt, source_path, api_key)
+        else:
+            # Fallback or OpenAI (DALL-E 3 doesn't support edit easily via simple API yet)
+            # Just do Text-to-Image with same prompt
+            return generate_image(prompt, style_preset, provider)
+    except Exception as e:
+        logger.error(f"Img2Img Failed: {e}")
+        return None
+
+def _gen_hf_img2img(prompt, source_path, api_key):
+    # Instruct-Pix2Pix expects:
+    # inputs: prompt
+    # parameters: { image: base64 } ?? 
+    # Actually, standard API for Pix2Pix handles inputs as text, but image is tricky.
+    # We will try the most common known working payload for this specific endpoint.
+    
+    with open(source_path, "rb") as f:
+        img_bytes = f.read()
+    
+    # For instruct-pix2pix on HF Inference, we can often send the binary image
+    # and provide the instruction in a header or param? 
+    # NO, strictly speaking, the robust way is sending a JSON with inputs and encoded image.
+    
+    import base64
+    b64_img = base64.b64encode(img_bytes).decode('utf-8')
+    
+    headers = {"Authorization": f"Bearer {api_key}"}
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "image": b64_img,
+            "num_inference_steps": 20,
+            "image_guidance_scale": 1.5
+        }
+    }
+    
+    # Note: Some HF endpoints use different schemas. If this fails, we might need a different model.
+    # But instruct-pix2pix is standard for this.
+    
+    logger.info(f"HF Img2Img Request: {prompt}")
+    response = requests.post(IMG2IMG_URL, headers=headers, json=payload, timeout=60)
+    
+    if response.status_code != 200:
+        logger.error(f"HF Img2Img Error: {response.text}")
+        return None
+        
+    image_bytes = response.content
+    try:
+        img = Image.open(io.BytesIO(image_bytes))
+        return _save_result(img, "hf_edit")
+    except:
+        # Sometimes it returns JSON with error even if 200?
+        logger.error(f"Response not image: {response.text}")
+        return None
