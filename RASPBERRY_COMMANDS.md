@@ -27,6 +27,11 @@ sudo systemctl stop photoframe.service
 sudo systemctl disable photoframe.service
 sudo fuser -k 8080/tcp
 
-# 3. 서버 실행
-python app.py
+
+# (꿀팁) 웹 들어가기 귀찮을 때: 설정파일 직접 수정
+nano my_frame_web/config.json
+
+# 아래 내용 찾아서 키 넣고, Ctrl+X -> Y -> Enter 저장
+# "api_key_google": "여기에_키_붙여넣기",
+# "google_project_id": "프로젝트ID",
 ```
