@@ -189,7 +189,7 @@ def _save_result(img, prefix):
 import base64
 
 # Use INSTRUCT-PIX2PIX for real image editing
-IMG2IMG_URL = "https://router.huggingface.co/hf-inference/models/timbrooks/instruct-pix2pix"
+IMG2IMG_URL = "https://api-inference.huggingface.co/models/timbrooks/instruct-pix2pix"
 
 def generate_image_from_image(prompt, style_preset, source_path, provider="huggingface"):
     config = settings.load_config()
