@@ -22,13 +22,9 @@ ssh pi@raspberrypi.local
 
 # --- (아래부터는 라즈베리파이 안에서 실행) ---
 
-# 2. 프로젝트 폴더로 이동
-cd ~/CSR_PROJECT
-
-# 1. 최신 코드 받기
-git pull origin main
-
-# 2. 기존 포트(8080) 강제 종료 (Address already in use 해결)
+# 2. 확실하게 끄기 (자동실행 서비스 중단 + 포트 킬)
+sudo systemctl stop photoframe.service
+sudo systemctl disable photoframe.service
 sudo fuser -k 8080/tcp
 
 # 3. 서버 실행
