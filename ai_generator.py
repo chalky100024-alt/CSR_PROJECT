@@ -27,6 +27,28 @@ def _get_hf_client():
 def generate_image(prompt, style_preset, provider="huggingface"):
     config = settings.load_config()
     
+    # 0. Common Pre-processing (Translation & Style Mapping)
+    # Auto-Translate (Korean -> English)
+    try:
+        from deep_translator import GoogleTranslator
+        if prompt and any(ord(c) > 127 for c in prompt): # Simple check if translation needed
+            translated = GoogleTranslator(source='auto', target='en').translate(prompt)
+            logger.info(f"🔤 Translate: {prompt} -> {translated}")
+            prompt = translated
+    except Exception as e:
+        logger.warning(f"Translation failed: {e}")
+
+    # Style Mapping
+    if style_preset == "anime style": 
+        style_preset = "Studio Ghibli"
+    
+    # Clean up double 'style' if present in preset
+    clean_style = style_preset.replace(" style", "")
+    
+    # Common Prompt Construction
+    full_prompt = f"{prompt}, {clean_style} style, HD, high quality, 8k"
+    logger.info(f"🎨 Generate Request ({provider}): {full_prompt}")
+
     # 1. Google Provider
     if provider == "google":
         api_key = config.get('api_key_google', config.get('api_key_ai'))
@@ -34,7 +56,6 @@ def generate_image(prompt, style_preset, provider="huggingface"):
             logger.error(f"API Key for {provider} missing")
             return None
             
-        full_prompt = f"{prompt}, {style_preset} style, HD, high quality"
         try:
             return _gen_google_vertex(full_prompt, api_key)
         except Exception as e:
@@ -45,17 +66,6 @@ def generate_image(prompt, style_preset, provider="huggingface"):
     elif provider == "huggingface":
         client = _get_hf_client()
         if not client: return None
-
-        # Auto-Translate
-        try:
-            from deep_translator import GoogleTranslator
-            prompt = GoogleTranslator(source='auto', target='en').translate(prompt)
-        except: pass
-
-        if style_preset == "anime style": style_preset = "Studio Ghibli"
-
-        full_prompt = f"{prompt}, {style_preset} style, high quality, 8k"
-        logger.info(f"🎨 HF Request: {full_prompt}")
 
         try:
             image = client.text_to_image(prompt=full_prompt, model=TEXT2IMG_MODEL)
