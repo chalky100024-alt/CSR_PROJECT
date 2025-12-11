@@ -120,6 +120,8 @@ def api_save_config():
     if 'layout' in data: current['layout'] = data['layout']
     if 'api_key_ai' in data: current['api_key_ai'] = data['api_key_ai']
     if 'ai_provider' in data: current['ai_provider'] = data['ai_provider']
+    if 'google_project_id' in data: current['google_project_id'] = data['google_project_id']
+    if 'google_location' in data: current['google_location'] = data['google_location']
     if 'api_key_kma' in data: current['api_key_kma'] = data['api_key_kma']
     if 'api_key_kma' in data: current['api_key_kma'] = data['api_key_kma']
     if 'api_key_air' in data: current['api_key_air'] = data['api_key_air']

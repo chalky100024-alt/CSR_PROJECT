@@ -221,15 +221,29 @@
                     style="width:100%; padding:10px; margin-top:5px; border-radius:8px; border:1px solid #e5e5ea;">
                     <option value="huggingface">Hugging Face (무료/빠름)</option>
                     <option value="openai">OpenAI DALL-E 3 (유료/고품질)</option>
+                    <option value="google">Google Vertex AI (Imagen 3)</option>
                 </select>
             </div>
+
+            <!-- Google Specific Fields -->
+            <div id="googleFields" class="hidden"
+                style="background:#f0f0f0; padding:10px; border-radius:8px; margin-bottom:10px;">
+                <label style="font-size:12px; color:#555;">Google Project ID:</label>
+                <input type="text" id="googleProject" placeholder="예: my-project-12345" style="margin-bottom:5px;">
+                <label style="font-size:12px; color:#555;">Location (Region):</label>
+                <input type="text" id="googleLocation" placeholder="us-central1" value="us-central1">
+            </div>
+
             <div style="margin-bottom:10px;">
                 <label>API Key:</label>
-                <input type="password" id="aiApiKey" placeholder="API Key 입력 (hf_... or sk-...)">
+                <input type="password" id="aiApiKey" placeholder="API Key 입력 (hf_..., sk-..., or Google Key)">
             </div>
             <button class="btn" onclick="saveAiSettings()">AI 설정 저장</button>
-            <p style="font-size:12px; color:#888; margin-top:10px;">* Hugging Face는 무료 토큰을 발급받아 사용할 수 있습니다.<br>* OpenAI는
-                과금이 발생할 수 있습니다.</p>
+            <p style="font-size:12px; color:#888; margin-top:10px;">
+                * Hugging Face: 무료 토큰<br>
+                * OpenAI: 유료 (Credit 필요)<br>
+                * Google: Vertex AI API Key (GCP Console 설정 필요)
+            </p>
         </div>
 
         <!-- System -->
@@ -269,7 +283,14 @@
                 }
                 // AI Config Load
                 if (currentConfig.api_key_ai) document.getElementById('aiApiKey').value = currentConfig.api_key_ai;
-                if (currentConfig.ai_provider) document.getElementById('aiProvider').value = currentConfig.ai_provider;
+                if (currentConfig.ai_provider) {
+                    document.getElementById('aiProvider').value = currentConfig.ai_provider;
+                    toggleAiFields();
+                }
+                if (currentConfig.google_project_id) document.getElementById('googleProject').value = currentConfig.google_project_id;
+                if (currentConfig.google_location) document.getElementById('googleLocation').value = currentConfig.google_location;
+
+                document.getElementById('aiProvider').addEventListener('change', toggleAiFields);
 
                 // Data API Config Load
                 if (currentConfig.api_key_kma) document.getElementById('kmaKey').value = currentConfig.api_key_kma;
@@ -300,9 +321,16 @@
             const key = document.getElementById('aiApiKey').value;
             const provider = document.getElementById('aiProvider').value;
 
+            const key = document.getElementById('aiApiKey').value;
+            const provider = document.getElementById('aiProvider').value;
+            const gProject = document.getElementById('googleProject').value;
+            const gLocation = document.getElementById('googleLocation').value;
+
             const newConfig = {
                 api_key_ai: key,
-                ai_provider: provider
+                ai_provider: provider,
+                google_project_id: gProject,
+                google_location: gLocation
             };
 
             await fetch('/api/save_config', {
@@ -493,6 +521,18 @@
         }
 
     </script>
+</body>
+
+function toggleAiFields() {
+const provider = document.getElementById('aiProvider').value;
+const gFields = document.getElementById('googleFields');
+if (provider === 'google') {
+gFields.classList.remove('hidden');
+} else {
+gFields.classList.add('hidden');
+}
+}
+</script>
 </body>
 
 </html>

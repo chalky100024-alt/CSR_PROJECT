@@ -40,6 +40,8 @@ def generate_image(prompt, style_preset, provider="huggingface"):
             return _gen_huggingface(full_prompt, api_key)
         elif provider == "openai":
             return _gen_dalle3(full_prompt, api_key)
+        elif provider == "google":
+            return _gen_google_vertex(full_prompt, api_key)
     except Exception as e:
         logger.error(f"AI 생성 실패: {e}")
         return None
@@ -83,6 +85,67 @@ def _gen_dalle3(prompt, api_key):
     img_data = requests.get(img_url).content
     img = Image.open(io.BytesIO(img_data))
     return _save_result(img, "dalle")
+
+def _gen_google_vertex(prompt, api_key):
+    # Google Vertex AI (Imagen 3) via REST API with API Key
+    # URL: https://{LOCATION}-aiplatform.googleapis.com/v1/projects/{PROJECT}/locations/{LOCATION}/publishers/google/models/{MODEL}:predict?key={KEY}
+    
+    config = settings.load_config()
+    project_id = config.get('google_project_id')
+    location = config.get('google_location', 'us-central1')
+    
+    if not project_id:
+        logger.error("Google Project ID is missing")
+        return None
+
+    # Model: imagen-3.0-generate-001 (or similar)
+    model_id = "image-generation-001" # Standard Imagen 2/3 endpoint often uses this generic tag or specific version
+    # Let's try the specific one user might expect or standard "image-generation-001" which usually points to latest stable
+    # User mentioned: gemini-3-pro-image-preview? 
+    # Let's start with "imagen-3.0-generate-001" as it is the official Imagen 3 model name.
+    model_id = "imagen-3.0-generate-001"
+
+    url = f"https://{location}-aiplatform.googleapis.com/v1/projects/{project_id}/locations/{location}/publishers/google/models/{model_id}:predict"
+    
+    headers = {
+        "Content-Type": "application/json"
+    }
+    # Important: When using API Key, it is passed as query param, NOT header
+    params = {"key": api_key}
+    
+    payload = {
+        "instances": [
+            {"prompt": prompt}
+        ],
+        "parameters": {
+            "sampleCount": 1,
+            "aspectRatio": "5:3" # 15:9 is closest to 800:480? Or just let it be square and crop. 5:3 is supported by Imagen 3? 
+            # Imagen 3 supports: "1:1", "3:4", "4:3", "9:16", "16:9". 
+            # We want 16:9 (close to 5:3)
+        }
+    }
+    
+    # Add aspect ratio parameter correct format
+    payload["parameters"]["aspectRatio"] = "16:9" 
+    
+    logger.info(f"Google Vertex Request: {prompt}")
+    response = requests.post(url, headers=headers, params=params, json=payload, timeout=60)
+    
+    if response.status_code != 200:
+        logger.error(f"Google Vertex Error: {response.text}")
+        return None
+        
+    try:
+        # Vertex Response: { "predictions": [ "base64_string_..." ] }
+        res_json = response.json()
+        b64_img = res_json['predictions'][0]['bytesBase64Encoded']
+        
+        img_data = base64.b64decode(b64_img)
+        img = Image.open(io.BytesIO(img_data))
+        return _save_result(img, "google")
+    except Exception as e:
+        logger.error(f"Google Parse Failed: {e}")
+        return None
 
 def _save_result(img, prefix):
     # Resize to 800x480 (Fill/Crop)
