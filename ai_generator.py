@@ -210,8 +210,8 @@ def generate_image_from_image(prompt, style_preset, source_path, provider="huggi
         if provider == "huggingface":
             return _gen_hf_img2img(full_prompt, source_path, api_key)
         else:
-            # Fallback to normal gen for others (Img2Img not supported for Dalle/Google yet in this code)
-            return generate_image(prompt, style_preset, provider)
+            logger.error(f"Provider '{provider}' does not support Img2Img yet.")
+            return None
     except Exception as e:
         logger.error(f"Img2Img Failed: {e}")
         return None
