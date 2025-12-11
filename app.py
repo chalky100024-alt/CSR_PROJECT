@@ -289,6 +289,31 @@ def delete_photo():
     else:
         return jsonify({'error': 'File not found'}), 404
 
+@app.route('/api/delete_photos', methods=['POST'])
+def delete_photos():
+    filenames = request.json.get('filenames', [])
+    if not filenames: return jsonify({'error': 'No filenames'}), 400
+    
+    deleted_count = 0
+    errors = []
+    
+    for filename in filenames:
+        path = os.path.join(settings.UPLOADS_DIR, filename)
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+                deleted_count += 1
+            except Exception as e:
+                errors.append(f"{filename}: {str(e)}")
+        else:
+            errors.append(f"{filename}: Not found")
+            
+    return jsonify({
+        'status': 'success', 
+        'deleted': deleted_count, 
+        'errors': errors
+    })
+
 
 
 if __name__ == '__main__':
