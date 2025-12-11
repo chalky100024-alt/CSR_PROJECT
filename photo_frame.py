@@ -31,7 +31,11 @@ class EInkPhotoFrame:
         
         self.api_key_air = self.config.get('api_key_air', "")
         self.api_key_kma = self.config.get('api_key_kma', "")
-        self.station_name = self.config.get('station_name', "고덕")
+        loc_name = self.config.get('location', {}).get('name', '')
+        if loc_name:
+            self.station_name = loc_name.split()[-1]
+        else:
+            self.station_name = self.config.get('station_name', "고덕")
         location = self.config.get('location', {})
         self.nx = int(location.get('nx', 61))
         self.ny = int(location.get('ny', 115))

@@ -20,10 +20,8 @@ def get_fine_dust_data(api_key, station_name):
     try:
         res = requests.get(url, params=params, timeout=10)
         data = res.json()
-        
-        # Verbose Logging for Debugging
-        logger.info(f"Dust API Params: {params}")
-        logger.info(f"Dust API Response: {data}")
+        logger.info(f"Dust API Params: {params}") 
+        # logger.info(f"Dust API Response: {data}") # Uncomment if needed, can be noisy
 
         items = data.get('response', {}).get('body', {}).get('items', [])
         if items:

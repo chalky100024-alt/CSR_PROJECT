@@ -471,9 +471,15 @@
         document.addEventListener('mouseup', handleUp);
 
 
-        ['widgetSize', 'fontSize', 'widgetOpacity'].forEach(id => {
-            document.getElementById(id).addEventListener('input', updatePreview);
+        // Attach Slider Events
+        const sliders = ['widgetSize', 'fontSize', 'widgetOpacity', 'sliderWx', 'sliderWy', 'sliderPx', 'sliderPy'];
+        sliders.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', updatePreview);
         });
+
+        // Initial Draw
+        updatePreview();
 
         async function saveLayout() {
             const config = {
