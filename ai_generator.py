@@ -189,7 +189,8 @@ def _save_result(img, prefix):
 import base64
 
 # Use INSTRUCT-PIX2PIX for real image editing
-IMG2IMG_URL = "https://api-inference.huggingface.co/models/timbrooks/instruct-pix2pix"
+# Switch to a Router-supported model (SD 1.5)
+IMG2IMG_URL = "https://router.huggingface.co/hf-inference/models/runwayml/stable-diffusion-v1-5"
 
 def generate_image_from_image(prompt, style_preset, source_path, provider="huggingface"):
     config = settings.load_config()
@@ -214,8 +215,8 @@ def generate_image_from_image(prompt, style_preset, source_path, provider="huggi
     if "style" in style_preset.lower() and "style" in prompt.lower():
          style_text = style_preset.replace("style", "").replace("Style", "").strip()
 
-    # Instruct Pix2Pix Prompt
-    full_prompt = f"make it into {style_preset} style, {prompt}"
+    # Standard SD Prompting (Not instruction based)
+    full_prompt = f"{prompt}, {style_preset} style, best quality, HD"
     
     try:
         if provider == "huggingface":
