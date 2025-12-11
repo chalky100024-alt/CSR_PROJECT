@@ -116,8 +116,8 @@ def _save_result(img, prefix):
 # --- Image to Image ---
 import base64
 
-# Use standard inference API URL
-IMG2IMG_URL = "https://api-inference.huggingface.co/models/timbrooks/instruct-pix2pix"
+# Updated URL based on error message, removing 'hf-inference' which caused 404 previously
+IMG2IMG_URL = "https://router.huggingface.co/models/timbrooks/instruct-pix2pix"
 
 def generate_image_from_image(prompt, style_preset, source_path, provider="huggingface"):
     config = settings.load_config()
@@ -128,17 +128,22 @@ def generate_image_from_image(prompt, style_preset, source_path, provider="huggi
     # Simple Translation
     try:
         from deep_translator import GoogleTranslator
-        prompt = GoogleTranslator(source='auto', target='en').translate(prompt)
+        if prompt and len(prompt) > 1:
+            prompt = GoogleTranslator(source='auto', target='en').translate(prompt)
     except: pass
     
-    full_prompt = f"{prompt}. {style_preset} style, high quality"
+    # Clean style preset
+    style_text = style_preset
+    if "style" in style_preset and "style" in prompt:
+         # Avoid double style
+         pass
+         
+    full_prompt = f"{prompt}. {style_text}, high quality"
     
     try:
         if provider == "huggingface":
             return _gen_hf_img2img(full_prompt, source_path, api_key)
         else:
-            # Fallback or OpenAI (DALL-E 3 doesn't support edit easily via simple API yet)
-            # Just do Text-to-Image with same prompt
             return generate_image(prompt, style_preset, provider)
     except Exception as e:
         logger.error(f"Img2Img Failed: {e}")
