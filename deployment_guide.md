@@ -120,6 +120,27 @@ python3 app.py
 
 ---
 
+## 8.5. [보안] 설정 파일(API Key) 전송
+
+GitHub에는 보안상 API Key가 포함된 `config.json`이 올라가지 않습니다.
+따라서 PC에서 작성한 키 설정 파일을 라즈베리파이로 직접 전송해야 합니다.
+
+**Mac/Linux 터미널에서 실행:**
+(프로젝트 폴더 `CSR_PROJECT` 안에서 실행하세요)
+
+```bash
+# 형식: scp [보낼파일] [유저명]@[IP주소]:[받을경로]
+scp my_frame_web/config.json admin@photoframe.local:~/CSR_PROJECT/my_frame_web/
+```
+
+*   `admin`: 라즈베리파이 사용자명 (본인이 설정한 이름)
+*   `photoframe.local`: 라즈베리파이 호스트명 (또는 IP주소)
+*   **비밀번호**를 물어보면 라즈베리파이 비밀번호를 입력하세요.
+
+전송 후 라즈베리파이에서 서버를 재시작하면 키가 적용됩니다.
+
+---
+
 ## 9. 자동 실행 등록 (Systemd Service)
 
 전원을 켰을 때 자동으로 실행되게 하려면 서비스 파일을 만듭니다.
