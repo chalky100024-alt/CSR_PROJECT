@@ -397,13 +397,12 @@
                 },
                 selected_photo: currentPhoto // Save specifically which photo is active
             };
-        };
-        await fetch('/api/save_config?refresh=true', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(config)
-        });
-        alert("설정이 저장되었습니다! 다음 부팅부터 적용됩니다.");
+            await fetch('/api/save_config?refresh=true', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+            alert("설정이 저장되었습니다! 다음 부팅부터 적용됩니다.");
         }
 
         // --- Gallery & Upload ---
