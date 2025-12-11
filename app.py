@@ -166,6 +166,15 @@ def system_action():
         os.system("sudo shutdown now")
     elif action == 'reboot':
         os.system("sudo reboot")
+    elif action == 'update':
+        # Git Pull
+        try:
+            import subprocess
+            # Ensure we are pulling from origin main
+            output = subprocess.check_output(["git", "pull", "origin", "main"], stderr=subprocess.STDOUT)
+            return jsonify({"status": "success", "message": output.decode('utf-8')})
+        except subprocess.CalledProcessError as e:
+            return jsonify({"status": "error", "message": e.output.decode('utf-8')})
     return jsonify({"status": "ok"})
     
 @app.route('/api/list_photos')
