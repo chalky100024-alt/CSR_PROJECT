@@ -1,0 +1,17 @@
+{
+    "location": {
+        "name": "경기도 성남시 분당구 정자동",
+        "nx": 62,
+        "ny": 123
+    },
+    "layout": {
+        "widget_size": 1.0,
+        "font_size": 20,
+        "opacity": 0.6,
+        "position": "top"
+    },
+    "api_key_ai": "",
+    "ai_provider": "huggingface",
+    "api_key_kma": "",
+    "api_key_air": ""
+}

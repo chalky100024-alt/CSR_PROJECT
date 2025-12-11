@@ -31,28 +31,30 @@ DEFAULT_CONFIG = {
 }
 
 def load_config():
-    default_key = "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHuKg=="
-    
     if not os.path.exists(CONFIG_PATH):
-        # Apply defaults
-        cfg = DEFAULT_CONFIG.copy()
-        cfg['api_key_kma'] = default_key
-        cfg['api_key_air'] = default_key
-        save_config(cfg)
-        return cfg
+        # Try to load template
+        template_path = os.path.join(BASE_DIR, 'my_frame_web', 'config_template.json')
+        if os.path.exists(template_path):
+            try:
+                import shutil
+                shutil.copy(template_path, CONFIG_PATH)
+            except:
+                pass
+        
+        # If still no config, return default
+        if not os.path.exists(CONFIG_PATH):
+            return DEFAULT_CONFIG
+
     try:
-        with open(CONFIG_PATH, 'r') as f:
-            cfg = json.load(f)
-            # Inject defaults if missing
-            if not cfg.get('api_key_kma'): cfg['api_key_kma'] = default_key
-            if not cfg.get('api_key_air'): cfg['api_key_air'] = default_key
-            return cfg
+        with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+            # Default Key Injection (Fallback)
+            if 'api_key_kma' not in config:
+                config['api_key_kma'] = "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHyKg=="
+                config['api_key_air'] = "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHyKg=="
+            return config
     except:
-        # Fallback with default keys
-        cfg = DEFAULT_CONFIG.copy()
-        cfg['api_key_kma'] = default_key
-        cfg['api_key_air'] = default_key
-        return cfg
+        return DEFAULT_CONFIG
 
 def save_config(config_data):
     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)

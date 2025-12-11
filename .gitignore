@@ -5,3 +5,4 @@ __pycache__/
 uploads/
 *.db
 .gemini/
+my_frame_web/config.json
