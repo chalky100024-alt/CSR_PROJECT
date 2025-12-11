@@ -23,3 +23,6 @@ typing_extensions==4.15.0
 tzdata==2025.2
 urllib3==2.6.1
 Werkzeug==3.1.4
+waveshare-epaper>=1.0.0
+gpiozero>=2.0
+lgpio>=0.2.2
