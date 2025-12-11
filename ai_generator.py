@@ -116,7 +116,8 @@ def _save_result(img, prefix):
 # --- Image to Image ---
 import base64
 
-IMG2IMG_URL = "https://router.huggingface.co/hf-inference/models/timbrooks/instruct-pix2pix"
+# Use standard inference API URL
+IMG2IMG_URL = "https://api-inference.huggingface.co/models/timbrooks/instruct-pix2pix"
 
 def generate_image_from_image(prompt, style_preset, source_path, provider="huggingface"):
     config = settings.load_config()
