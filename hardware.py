@@ -16,16 +16,17 @@ class HardwareController:
         self.init_error = None
         if IS_RPI:
             try:
-                # Try importing from pip package first
+                # Try importing from pip package (standard way)
                 from waveshare_epd import epd7in3f
                 self.epd = epd7in3f.EPD()
                 logger.info("E-Ink Driver Loaded.")
+                
+            except ImportError:
+                 self.init_error = "Missing 'waveshare-epaper'. Run: pip install -r requirements.txt"
+                 logger.warning(self.init_error)
             except Exception as e:
                 self.init_error = str(e)
-                logger.warning(f"E-Ink Driver Load Failed: {e}")
-            except Exception as e:
-                self.init_error = str(e)
-                logger.warning(f"E-Ink Driver Load Failed: {e}")
+                logger.warning(f"E-Ink Driver Init Failed: {e}")
 
     def display_image(self, pil_image):
         """이미지를 E-Ink에 전송"""
