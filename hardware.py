@@ -19,18 +19,9 @@ class HardwareController:
                 from waveshare_epd import epd7in3f
                 self.epd = epd7in3f.EPD()
                 logger.info("E-Ink Driver Loaded.")
-            except ImportError:
-                # Fallback to local lib if pip package missing
-                try:
-                    lib_path = os.path.join(os.path.dirname(__file__), 'lib')
-                    if os.path.exists(lib_path):
-                        sys.path.append(lib_path)
-                    from waveshare_epd import epd7in3f
-                    self.epd = epd7in3f.EPD()
-                    logger.info("E-Ink Driver Loaded (Local).")
-                except Exception as e:
-                     self.init_error = str(e)
-                     logger.warning(f"E-Ink Driver Load Failed: {e}")
+            except Exception as e:
+                self.init_error = str(e)
+                logger.warning(f"E-Ink Driver Load Failed: {e}")
             except Exception as e:
                 self.init_error = str(e)
                 logger.warning(f"E-Ink Driver Load Failed: {e}")
