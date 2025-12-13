@@ -276,12 +276,25 @@ class EInkPhotoFrame:
         overlay = Image.new('RGBA', (self.display_width, self.display_height), (255, 255, 255, 0))
         draw = ImageDraw.Draw(overlay)
 
-        # Config Layout Override (e.g. font size) if needed
-        # For now, default to user provided hardcoded sizes
-        font_sm = self.get_font(18)
-        font_md = self.get_font(20)
-        font_lg = self.get_font(23)
-        font_dt = self.get_font(12)
+        # --- [Layout Configuration] ---
+        layout_cfg = self.config.get('layout', {})
+        widget_scale = float(layout_cfg.get('widget_size', 1.0))
+        opacity_val = float(layout_cfg.get('opacity', 0.6)) # Default 0.6
+        bg_alpha = int(255 * (1.0 - opacity_val)) # Invert logic: opacity 0.3 means 30% visible? 
+        # Usually "opacity" in UI means "transparency of background" or "alpha value".
+        # Let's assume opacity 1.0 = Fully Opaque, 0.0 = Fully Transparent.
+        bg_alpha = int(255 * opacity_val) 
+
+        # Base font sizes scaled by widget_size
+        base_lg = int(23 * widget_scale)
+        base_md = int(20 * widget_scale)
+        base_sm = int(18 * widget_scale)
+        base_dt = int(12 * widget_scale)
+
+        font_lg = self.get_font(base_lg)
+        font_md = self.get_font(base_md)
+        font_sm = self.get_font(base_sm)
+        font_dt = self.get_font(base_dt)
 
         lines = []
         w_icon = None
@@ -291,8 +304,15 @@ class EInkPhotoFrame:
             desc = weather_data.get('weather_description', '정보없음')
             if desc in self.weather_icons:
                 w_icon = self.weather_icons[desc]
+                # Scale icon too
+                target_icon_size = int(45 * widget_scale)
+                if w_icon.size[0] != target_icon_size:
+                     w_icon = w_icon.resize((target_icon_size, target_icon_size), Image.Resampling.LANCZOS)
             else:
                 w_icon = self.weather_icons.get('정보없음')
+                if w_icon:
+                    target_icon_size = int(45 * widget_scale)
+                    w_icon = w_icon.resize((target_icon_size, target_icon_size), Image.Resampling.LANCZOS)
 
             lines.append(f"{weather_data['temp']:.1f}°C ({desc})")
 
@@ -305,6 +325,9 @@ class EInkPhotoFrame:
         else:
             lines.append("날씨 정보 없음")
             w_icon = self.weather_icons.get('정보없음')
+            if w_icon:
+                target_icon_size = int(45 * widget_scale)
+                w_icon = w_icon.resize((target_icon_size, target_icon_size), Image.Resampling.LANCZOS)
 
         # 2. 미세먼지 라인 구성
         # Color state
@@ -320,55 +343,56 @@ class EInkPhotoFrame:
         lines.append(datetime.now().strftime('%m/%d %H시 기준'))
 
         # --- [레이아웃 계산] ---
-        # 텍스트 박스 크기 계산
+        pad = int(5 * widget_scale)
         line_heights = [font_lg.getmetrics()[0] + font_lg.getmetrics()[1] for _ in lines]
         
-        # Approximate height calculation if getmetrics is strictly ascent/descent
-        # Adding some padding
-        total_h = sum(line_heights) + (5 * len(lines)) + 30 # Extra padding
+        total_h = sum(line_heights) + (pad * len(lines)) + int(30 * widget_scale)
         
         try:
-            max_w = max([draw.textlength(l, font_lg) for l in lines]) + (w_icon.width if w_icon else 0) + 20
+            icon_w = w_icon.width if w_icon else 0
+            max_text_w = max([draw.textlength(l, font_lg) for l in lines]) 
+            max_w = max_text_w + icon_w + int(20 * widget_scale)
         except:
-             max_w = 300 # Fallback
+             max_w = int(300 * widget_scale)
 
-        box_w, box_h = max_w + 30, total_h + 20
-        margin = 15
+        box_w, box_h = max_w + int(30 * widget_scale), total_h + int(20 * widget_scale)
+        margin = int(15 * widget_scale)
 
-        # 설정에 따른 위치 변경
-        # We use 'layout' dict from config (project standard) or flat keys (user standard)
-        # Project config uses: config['layout']['position']
-        # User code uses: config['layout_type'] (type_A/B)
+        # Position Logic
+        pos = layout_cfg.get('position', 'top')
+        layout_type = layout_cfg.get('type', 'type_A')
         
-        # Adapter:
-        layout_cfg = self.config.get('layout', {})
-        if isinstance(layout_cfg, dict):
-            pos = layout_cfg.get('position', 'top')
-        else:
-            pos = 'top'
-
+        # Default X (Right Aligned)
         box_x = self.display_width - box_w - margin
 
-        if pos == 'bottom' or self.config.get('layout_type') == 'type_B':
+        # Y Position
+        if layout_type == 'custom':
+            # Use specific x/y if available, else default
+            try:
+                box_x = int(layout_cfg.get('x', box_x))
+                box_y = int(layout_cfg.get('y', margin))
+            except:
+                box_y = margin
+        elif pos == 'bottom' or layout_type == 'type_B':
             box_y = self.display_height - box_h - margin
         else:
             box_y = margin
 
         # 박스 그리기
-        draw.rounded_rectangle([box_x, box_y, box_x + box_w, box_y + box_h], radius=10, fill=(255, 255, 255, 160),
+        draw.rounded_rectangle([box_x, box_y, box_x + box_w, box_y + box_h], radius=10, fill=(255, 255, 255, bg_alpha),
                                outline=(0, 0, 0), width=2)
 
         # 텍스트 그리기
-        cy = box_y + 15
-        cx = box_x + 15
+        cy = box_y + int(15 * widget_scale)
+        cx = box_x + int(15 * widget_scale)
 
         # 첫째줄 (날씨)
         if w_icon:
             overlay.paste(w_icon, (int(cx), int(cy)), w_icon)
-            cx += w_icon.width + 5
+            cx += w_icon.width + int(5 * widget_scale)
         draw.text((cx, cy), lines[0], font=font_lg, fill=(0, 0, 0))
-        cy += line_heights[0] + 5 # Move down
-        cx = box_x + 15
+        cy += line_heights[0] + pad # Move down
+        cx = box_x + int(15 * widget_scale)
 
         # 나머지 줄
         for i, line in enumerate(lines[1:]):
@@ -382,7 +406,7 @@ class EInkPhotoFrame:
                 draw.text((cx + draw.textlength(sym, f) + 5, cy), txt, font=f, fill=(0, 0, 0))
             else:
                 draw.text((cx, cy), line, font=f, fill=(0, 0, 0))
-            cy += line_heights[i + 1] + 5
+            cy += line_heights[i + 1] + pad
 
         return overlay
 
