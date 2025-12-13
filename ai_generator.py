@@ -92,63 +92,60 @@ def generate_image(prompt, style_preset, provider="huggingface"):
 # --- Helper Functions ---
 
 def _gen_gemini_flash(prompt, api_key):
-    # Implemented based on User provided docs: https://ai.google.dev/gemini-api/docs/image-generation
-    # The Gemini API uses the 'imagen-3.0-generate-001' model for image generation.
-    model_id = "imagen-3.0-generate-001"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:predict"
+    # Attempt 1: Nano Banana (Gemini 2.5 Flash Image) - User Preference
+    # Ref: User mentioned using Vertex Key. If 401, we try standard headers.
+    models_to_try = [
+        "gemini-2.5-flash-image", 
+        "gemini-2.0-flash-exp" # Fallback to latest experimental flash
+    ]
     
-    headers = { "Content-Type": "application/json" }
-    params = {"key": api_key}
-    
-    # Payload format as per documentation (Standard Imagen/Vertex format)
-    payload = {
-        "instances": [
-            { "prompt": prompt }
-        ],
-        "parameters": {
-            "sampleCount": 1,
-            # 'aspectRatio' is supported. 
-            # 16:9 is closest to 800x480 (5:3)
-            "aspectRatio": "16:9" 
-        }
-    }
-    
-    logger.info(f"⚡️ Calling Gemini Image API ({model_id})...")
-    logger.debug(f"URL: {url}")
-    
-    response = requests.post(url, headers=headers, params=params, json=payload, timeout=60)
-    
-    if response.status_code != 200:
-        logger.error(f"Gemini/Imagen Error: {response.text}")
-        return None
+    for model_id in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
         
-    try:
-        res_json = response.json()
-        # Parse Response: predictions[0].bytesBase64Encoded
-        predictions = res_json.get('predictions', [])
-        if not predictions:
-            logger.error(f"No predictions in response: {res_json}")
-            return None
+        # Headers: Explicitly include x-goog-api-key for robustness (some proxies/vertex-like behaviors require it)
+        headers = { 
+            "Content-Type": "application/json",
+            "x-goog-api-key": api_key
+        }
+        params = {"key": api_key}
+        
+        # Payload: Standard text-to-image prompt
+        payload = {
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }],
+            # We explicitly ask for IMAGE via modalities if supported, 
+            # but for 2.5/2.0 it might be implicit or via tools.
+            # Start simple to minimize 400 Bad Request
+        }
+        
+        logger.info(f"⚡️ Calling {model_id}...")
+        try:
+            response = requests.post(url, headers=headers, params=params, json=payload, timeout=60)
             
-        # Check keys (bytesBase64Encoded or bytes_base64_encoded)
-        b64_img = predictions[0].get('bytesBase64Encoded')
-        if not b64_img:
-             b64_img = predictions[0].get('bytes_base64_encoded')
-             
-        if b64_img:
-            img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
-            return _save_result(img, "gemini_imagen3")
+            if response.status_code == 200:
+                res_json = response.json()
+                candidates = res_json.get('candidates', [])
+                if candidates:
+                    parts = candidates[0].get('content', {}).get('parts', [])
+                    for part in parts:
+                        if 'inlineData' in part:
+                            b64_img = part['inlineData']['data']
+                            img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
+                            return _save_result(img, "gemini_flash")
                 
-        logger.error("No image data found in prediction")
-        return None
-
-    except Exception as e:
-        logger.error(f"Parse Error: {e}")
-        return None
-
-    except Exception as e:
-        logger.error(f"Gemini Parse Error: {e}")
-        return None
+                logger.warning(f"{model_id} worked but no image data found: {res_json}")
+                # Continue config/prompt refinement if needed
+                
+            else:
+                logger.warning(f"{model_id} failed: {response.status_code} - {response.text}")
+                
+        except Exception as e:
+            logger.error(f"{model_id} Exception: {e}")
+            
+    # If all fail, return None (User explicitly rejected Imagen 3.0 fallback)
+    logger.error("❌ All Gemini Flash attempts failed. Recommend checking API Key permissions for 'Generative Language API'.")
+    return None
 
 def _gen_dalle3(prompt, api_key):
     # DALL-E 3 (Optional Legacy)
