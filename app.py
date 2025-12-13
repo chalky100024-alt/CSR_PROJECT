@@ -124,6 +124,7 @@ def get_config():
 @app.route('/api/save_config', methods=['POST'])
 def api_save_config():
     data = request.json
+    print(f"DEBUG: save_config received (Raw): {data}") # Explicit Debug Log
     current = settings.load_config()
     # ... (existing merge logic) ...
     if 'location' in data:
