@@ -37,7 +37,13 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
     };
 
     const handleSaveAndTransfer = async () => {
-        await saveConfig(config, true);
+        // Create final config merging current local state with the authoritative selectedPhoto
+        const finalConfig = {
+            ...config,
+            selected_photo: selectedPhoto || config.selected_photo
+        };
+
+        await saveConfig(finalConfig, true);
         alert(t('saveTransfer') + " OK!");
     };
 
