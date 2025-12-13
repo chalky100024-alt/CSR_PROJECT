@@ -162,6 +162,29 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
                         min={0.0} max={1.0} step={0.1}
                         label={(v) => `${Math.round(v * 100)}%`}
                     />
+
+                    <Text size="sm" fw={500} mt="xs">Horizontal Position (X)</Text>
+                    <Slider
+                        value={config.layout.x ?? 550} // Default approx
+                        onChange={(v) => {
+                            // Force type to custom when moving slider
+                            setConfig({ ...config, layout: { ...config.layout, x: v, type: 'custom' } });
+                        }}
+                        onChangeEnd={(v) => {
+                            // Update both X and Type
+                            const newLayout = { ...config.layout, x: v, type: 'custom' };
+                            setConfig({ ...config, layout: newLayout });
+                            saveConfig({ layout: newLayout }, false).then(() => {
+                                // Force refresh logic duplicated from updateLayout
+                                let url = `${getPreviewUrl()}&t=${Date.now()}`;
+                                const currentPhoto = selectedPhoto || config.selected_photo;
+                                if (currentPhoto) url += `&min_filename=${encodeURIComponent(currentPhoto)}`;
+                                setImgUrl(url);
+                            });
+                        }}
+                        min={0} max={800} step={10}
+                        label={(v) => `${v}px`}
+                    />
                 </Stack>
             </Collapse>
         </Card>
