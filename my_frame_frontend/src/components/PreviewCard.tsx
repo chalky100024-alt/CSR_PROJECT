@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Image, Text, Group, Button, Slider, Stack, Collapse, Badge } from '@mantine/core';
+import { Card, Image, Text, Group, Button, Slider, Stack, Collapse, Badge, AspectRatio } from '@mantine/core';
 import { IconDeviceFloppy } from '@tabler/icons-react';
 import { getPreviewUrl, saveConfig, getConfig } from '../api';
 import { useLanguage } from '../context/LanguageContext';
@@ -84,28 +84,37 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
                 </Group>
             </Card.Section>
 
-            <Card.Section mt="md" mb="md" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', position: 'relative' }}>
-                <div style={{
-                    position: 'relative',
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
-                    background: 'white',
-                    width: '100%',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center'
-                }}>
-                    <Image
-                        src={imgUrl}
-                        alt="E-Paper Preview"
-                        fit="contain"
-                        w="100%"
-                        h="auto"
-                        style={{ maxHeight: '400px', maxWidth: '100%', display: 'block', margin: '0 auto' }}
-                        fallbackSrc="https://placehold.co/800x480?text=Loading+Preview"
-                    />
-                </div>
+            <Card.Section p="md" style={{ background: '#f8f9fa' }}>
+                <Stack align="center" justify="center">
+                    <div style={{ width: '100%', maxWidth: '600px', margin: '0 auto' }}>
+                        <Card shadow="sm" radius="md" p={0} withBorder style={{ overflow: 'hidden' }}>
+                            <AspectRatio ratio={800 / 480}>
+                                <div style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    background: '#e0e0e0',
+                                    backgroundImage: 'radial-gradient(#ccc 1px, transparent 1px)',
+                                    backgroundSize: '10px 10px'
+                                }}>
+                                    <Image
+                                        src={imgUrl}
+                                        alt="E-Paper Preview"
+                                        fit="contain"
+                                        w="100%"
+                                        h="100%"
+                                        fallbackSrc="https://placehold.co/800x480?text=Loading+Preview"
+                                    />
+                                </div>
+                            </AspectRatio>
+                        </Card>
+                        <Text size="xs" c="dimmed" ta="center" mt="xs">
+                            Preview (800x480)
+                        </Text>
+                    </div>
+                </Stack>
             </Card.Section>
 
             <Card.Section inheritPadding pb="md">
