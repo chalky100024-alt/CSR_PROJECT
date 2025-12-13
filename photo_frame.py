@@ -398,7 +398,7 @@ class EInkPhotoFrame:
         # FOR TESTING ONLY: FORCE RAIN ALERT
         # weather_data['rain_forecast'] = {'start_time': '15:00', 'type_code': 1}
         # Actually let's just use a local override flag for clarity
-        force_rain_test = True
+        force_rain_test = False
         
         rain_info = weather_data.get('rain_forecast')
         

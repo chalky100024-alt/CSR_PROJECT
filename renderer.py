@@ -300,7 +300,7 @@ def create_rain_widget(weather_data):
     Creates a dedicated bottom widget for rain alerts.
     """
     # FOR TESTING ONLY: FORCE RAIN ALERT
-    force_rain_test = True
+    force_rain_test = False
     
     rain_info = weather_data.get('rain_forecast')
     

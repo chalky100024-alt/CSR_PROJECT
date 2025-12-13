@@ -42,6 +42,8 @@ def generate_image(prompt, style_preset, provider="huggingface"):
     # Style Mapping
     if style_preset == "anime style": 
         style_preset = "Studio Ghibli"
+    elif style_preset == "lego":
+        style_preset = "Lego Brick"
     
     # Clean up double 'style' if present in preset
     clean_style = style_preset.replace(" style", "")
@@ -91,7 +93,8 @@ def generate_image(prompt, style_preset, provider="huggingface"):
 def _gen_gemini_flash(prompt, api_key):
     # Google Gemini 2.5 Flash (Nano Banana) implementation
     model_id = "gemini-2.5-flash-image"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
+    # Use v1alpha for experimental/preview models if v1beta fails with Auth error
+    url = f"https://generativelanguage.googleapis.com/v1alpha/models/{model_id}:generateContent"
     
     headers = { "Content-Type": "application/json" }
     params = {"key": api_key}
