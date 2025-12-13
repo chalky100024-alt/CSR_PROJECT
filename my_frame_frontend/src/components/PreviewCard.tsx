@@ -37,11 +37,21 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
     };
 
     const handleSaveAndTransfer = async () => {
-        // Create final config merging current local state with the authoritative selectedPhoto
+        console.log("saveTransfer clicked. selectedPhoto prop:", selectedPhoto);
+        console.log("saveTransfer config state:", config);
+
+        // Explicitly choose photo
+        const photoToSave = selectedPhoto || config.selected_photo;
+
+        // Create final config
         const finalConfig = {
             ...config,
-            selected_photo: selectedPhoto || config.selected_photo
+            selected_photo: photoToSave
         };
+
+        // Debug Alert for User
+        const msg = `Saving Layout & Transferring:\nPhoto: ${photoToSave}\nWidget Size: ${config.layout.widget_size}`;
+        if (!confirm(msg)) return; // Allow user to cancel if wrong
 
         await saveConfig(finalConfig, true);
         alert(t('saveTransfer') + " OK!");
