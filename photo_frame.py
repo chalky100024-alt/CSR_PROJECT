@@ -43,8 +43,21 @@ try:
     from waveshare_epd import epd7in3f
     HAS_EPD = True
 except ImportError:
-    logger.warning("Waveshare EPD 라이브러리 없음. 미리보기 모드로 동작합니다.")
     HAS_EPD = False
+
+def _safe_float(val):
+    """Safely convert string to float, stripping units if present."""
+    if not val: return 0.0
+    try:
+        # Strip common units (mm, C, %, etc) - simple numeric extraction
+        import re
+        # Find first potential float number in string
+        match = re.search(r"[-+]?\d*\.\d+|\d+", str(val))
+        if match:
+            return float(match.group())
+        return float(val)
+    except:
+        return 0.0
 
 class EInkPhotoFrame:
     def __init__(self):
@@ -178,9 +191,9 @@ class EInkPhotoFrame:
                 cat = item.find("category").text
                 val = item.find("obsrValue").text
                 if cat == 'T1H':
-                    weather_info['temp'] = float(val)
+                    weather_info['temp'] = _safe_float(val)
                 elif cat == 'RN1':
-                    weather_info['current_rain_amount'] = float(val)
+                    weather_info['current_rain_amount'] = _safe_float(val)
 
             # 2. 초단기예보
             bd, bt = self.get_kma_base_time('ultrasrt_fcst')
@@ -216,7 +229,7 @@ class EInkPhotoFrame:
                 ft = datetime.strptime(t, '%Y%m%d%H%M')
                 if now <= ft <= now + timedelta(hours=6):
                     pty = int(forecasts[t].get('PTY', '0'))
-                    rn1 = float(forecasts[t].get('RN1', '0') or 0)
+                    rn1 = _safe_float(forecasts[t].get('RN1', '0'))
                     if pty > 0 and rn1 > 0:
                         if not max_rain or rn1 > max_rain['amount']:
                             max_rain = {'amount': rn1, 'start_time': ft.strftime('%H:%M'),
