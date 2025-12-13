@@ -16,7 +16,7 @@ DEFAULT_CONFIG = {
     "api_key_air": "",      # 에어코리아 키
     "api_key_ai": "",       # Deprecated (Shared)
     "api_key_google": "",   # Google Vertex AI Key
-    "api_key_hf": "hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", # User's HF Key (Hardcoded request)
+    "api_key_hf": "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", # User's HF Key (Restored)
     "ai_provider": "huggingface", # or 'google'
     "layout": {
         "type": "type_A",

@@ -61,89 +61,87 @@ class EInkPhotoFrame:
             logger.info("Starting Display Refresh...")
             
             # Reload config to get latest updates
-        self.config = settings.load_config()
-        
-        # 1. Photos
-        if not os.path.exists(settings.UPLOADS_DIR):
-            os.makedirs(settings.UPLOADS_DIR)
-        
-        photos = [os.path.join(settings.UPLOADS_DIR, f) for f in os.listdir(settings.UPLOADS_DIR) 
-                  if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
-        
-        if not photos:
-            logger.warning("No photos found.")
-            return False
+            self.config = settings.load_config()
             
-        # Check if a specific photo is fixed in config
-        # Check if a specific photo is fixed in config
-        pinned_photo = self.config.get('selected_photo')
-        selected_photo = None
-        
-        if pinned_photo:
-            full_path = os.path.join(settings.UPLOADS_DIR, pinned_photo)
-            if os.path.exists(full_path):
-                selected_photo = full_path
-                logger.info(f"Selected pinned photo: {pinned_photo}")
-            else:
-                logger.warning(f"Pinned photo not found: {full_path}")
-        
-        if not selected_photo:
-            # Fallback: Sort by modification time (Newest first)
-            photos.sort(key=lambda x: os.path.getmtime(x), reverse=True)
-            selected_photo = photos[0]
-            logger.info(f"Fallback to latest photo: {os.path.basename(selected_photo)}")
-        
-        # 2. Fetch Data (Blocking with Timeout)
-        # User requested to ensure data is received before displaying
-        w_data = None
-        d_data = None
-        
-        max_retries = 10 # 10 * 2sec = 20 seconds max wait
-        for i in range(max_retries):
-            logger.info(f"Fetching data attempt {i+1}/{max_retries}...")
+            # 1. Photos
+            if not os.path.exists(settings.UPLOADS_DIR):
+                os.makedirs(settings.UPLOADS_DIR)
             
-            if w_data is None: 
-                w_data = data_api.get_weather_data(self.api_key_kma, self.nx, self.ny)
+            photos = [os.path.join(settings.UPLOADS_DIR, f) for f in os.listdir(settings.UPLOADS_DIR) 
+                    if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
             
-            if d_data is None: 
-                d_data = data_api.get_fine_dust_data(self.api_key_air, self.station_name)
-            
-            # If we have both (or at least one if the other is failing hard?), break
-            # For now, strict: wait for both unless retries exhausted
-            if w_data and d_data: 
-                logger.info("Data fetch complete.")
-                break
-                
-            time.sleep(2)
-            
-        if not w_data: logger.warning("Weather data fetch failed after retries.")
-        if not d_data: logger.warning("Dust data fetch failed after retries.")
-        
-        # 3. Render
-        layout = self.config.get('layout', {})
-        location_name = self.config.get('location', {}).get('name', '')
-        final_img, _, _, _, _ = renderer.create_composed_image(selected_photo, w_data, d_data, layout, location_name)
-        
-        # 4. Dithering & Display
-        # 4. Dithering & Display
-        # Use hardware controller's EPD instance
-        if self.hw.epd:
-            logger.info("Initializing EPD and displaying...")
-            try:
-                self.hw.epd.init()
-                # 7-Color Dithering
-                final_quantized = final_img.quantize(palette=self.get_7color_palette(), method=Image.FLOYDSTEINBERG)
-                self.hw.epd.display(self.hw.epd.getbuffer(final_quantized))
-                self.hw.epd.sleep()
-                logger.info("Display update successful.")
-        except Exception as e:
-                logger.error(f"EPD Error: {e}")
+            if not photos:
+                logger.warning("No photos found.")
                 return False
-        else:
-            self.hw.display_image(final_img) # Mock/PC fallback
-            logger.info("Mock Display Update.")
+                
+            # Check if a specific photo is fixed in config
+            pinned_photo = self.config.get('selected_photo')
+            selected_photo = None
             
-        return True
+            if pinned_photo:
+                full_path = os.path.join(settings.UPLOADS_DIR, pinned_photo)
+                if os.path.exists(full_path):
+                    selected_photo = full_path
+                    logger.info(f"Selected pinned photo: {pinned_photo}")
+                else:
+                    logger.warning(f"Pinned photo not found: {full_path}")
+            
+            if not selected_photo:
+                # Fallback: Sort by modification time (Newest first)
+                photos.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+                selected_photo = photos[0]
+                logger.info(f"Fallback to latest photo: {os.path.basename(selected_photo)}")
+            
+            # 2. Fetch Data (Blocking with Timeout)
+            # User requested to ensure data is received before displaying
+            w_data = None
+            d_data = None
+            
+            max_retries = 10 # 10 * 2sec = 20 seconds max wait
+            for i in range(max_retries):
+                logger.info(f"Fetching data attempt {i+1}/{max_retries}...")
+                
+                if w_data is None: 
+                    w_data = data_api.get_weather_data(self.api_key_kma, self.nx, self.ny)
+                
+                if d_data is None: 
+                    d_data = data_api.get_fine_dust_data(self.api_key_air, self.station_name)
+                
+                # If we have both (or at least one if the other is failing hard?), break
+                # For now, strict: wait for both unless retries exhausted
+                if w_data and d_data: 
+                    logger.info("Data fetch complete.")
+                    break
+                    
+                time.sleep(2)
+                
+            if not w_data: logger.warning("Weather data fetch failed after retries.")
+            if not d_data: logger.warning("Dust data fetch failed after retries.")
+            
+            # 3. Render
+            layout = self.config.get('layout', {})
+            location_name = self.config.get('location', {}).get('name', '')
+            final_img, _, _, _, _ = renderer.create_composed_image(selected_photo, w_data, d_data, layout, location_name)
+            
+            # 4. Dithering & Display
+            # Use hardware controller's EPD instance
+            if self.hw.epd:
+                logger.info("Initializing EPD and displaying...")
+                try:
+                    self.hw.epd.init()
+                    # 7-Color Dithering
+                    final_quantized = final_img.quantize(palette=self.get_7color_palette(), method=Image.FLOYDSTEINBERG)
+                    self.hw.epd.display(self.hw.epd.getbuffer(final_quantized))
+                    self.hw.epd.sleep()
+                    logger.info("Display update successful.")
+                except Exception as e:
+                    logger.error(f"EPD Error: {e}")
+                    return False
+            else:
+                self.hw.display_image(final_img) # Mock/PC fallback
+                logger.info("Mock Display Update.")
+                
+            return True
     
     finally:
         self._lock.release()
