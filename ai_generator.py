@@ -91,32 +91,55 @@ def generate_image(prompt, style_preset, provider="huggingface"):
 
 # --- Helper Functions ---
 
-def _gen_gemini_flash(prompt, api_key):
-    # Strict Usage: Gemini 2.5 Flash Image (Nano Banana) via AI Studio
-    # Endpoint: generativelanguage.googleapis.com (API Key Auth)
-    model_id = "gemini-2.5-flash-image"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
+def _get_gcloud_token():
+    """FETCH ACCESS TOKEN VIA GCLOUD CLI (Fallback for missing google-auth lib)"""
+    import subprocess
+    try:
+        # 1. Get Token
+        token = subprocess.check_output("gcloud auth print-access-token", shell=True).decode('utf-8').strip()
+        
+        # 2. Get Project ID (if not in config)
+        project_id = settings.load_config().get('google_project_id')
+        if not project_id:
+            project_id = subprocess.check_output("gcloud config get-value project", shell=True).decode('utf-8').strip()
+            
+        return token, project_id
+    except Exception as e:
+        logger.error(f"Gcloud Auth Failed: {e}")
+        return None, None
+
+def _gen_gemini_flash(prompt, _unused_api_key):
+    # Strict Usage: Vertex AI (OAuth2)
+    # Model: gemini-2.5-flash-image (Nano Banana)
     
-    # Headers for AI Studio (API Key via x-goog-api-key)
+    token, project_id = _get_gcloud_token()
+    if not token or not project_id:
+        logger.error("❌ Vertex AI Auth Failed. Run 'gcloud auth login' on server.")
+        return None
+
+    location = "us-central1"
+    model_id = "gemini-2.5-flash-image"
+    
+    # Vertex AI Endpoint
+    url = f"https://{location}-aiplatform.googleapis.com/v1/projects/{project_id}/locations/{location}/publishers/google/models/{model_id}:generateContent"
+    
     headers = { 
         "Content-Type": "application/json",
-        "x-goog-api-key": api_key
+        "Authorization": f"Bearer {token}" # OAuth2 Token
     }
-    # Also pass key as param for safety with some client libraries/proxies
-    params = {"key": api_key}
     
-    # Payload: Standard text-to-image prompt
+    # Payload: Same as AI Studio
     payload = {
         "contents": [{
             "parts": [{"text": prompt}]
         }]
     }
     
-    logger.info(f"⚡️ Calling {model_id} (Strict Mode)...")
+    logger.info(f"⚡️ Calling Vertex AI ({model_id})...")
     logger.debug(f"URL: {url}")
 
     try:
-        response = requests.post(url, headers=headers, params=params, json=payload, timeout=60)
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
         
         if response.status_code == 200:
             res_json = response.json()
@@ -127,17 +150,17 @@ def _gen_gemini_flash(prompt, api_key):
                     if 'inlineData' in part:
                         b64_img = part['inlineData']['data']
                         img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
-                        return _save_result(img, "gemini_flash")
+                        return _save_result(img, "gemini_vertex")
             
             logger.error(f"Generate success but no image data: {res_json}")
             return None
             
         else:
-            logger.error(f"{model_id} Failed: {response.status_code} - {response.text}")
+            logger.error(f"Vertex AI Failed: {response.status_code} - {response.text}")
             return None
             
     except Exception as e:
-        logger.error(f"{model_id} Exception: {e}")
+        logger.error(f"Vertex AI Exception: {e}")
         return None
 
 def _gen_dalle3(prompt, api_key):
