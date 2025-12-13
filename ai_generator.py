@@ -92,60 +92,51 @@ def generate_image(prompt, style_preset, provider="huggingface"):
 # --- Helper Functions ---
 
 def _gen_gemini_flash(prompt, api_key):
-    # Attempt 1: Nano Banana (Gemini 2.5 Flash Image) - User Preference
-    # Ref: User mentioned using Vertex Key. If 401, we try standard headers.
-    models_to_try = [
-        "gemini-2.5-flash-image", 
-        "gemini-2.0-flash-exp" # Fallback to latest experimental flash
-    ]
+    # Strict Usage: Nano Banana (Gemini 2.5 Flash Image) ONLY
+    model_id = "gemini-2.5-flash-image"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
     
-    for model_id in models_to_try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
+    # Headers: Explicitly include x-goog-api-key for robustness
+    headers = { 
+        "Content-Type": "application/json",
+        "x-goog-api-key": api_key
+    }
+    params = {"key": api_key}
+    
+    # Payload: Standard text-to-image prompt
+    payload = {
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }]
+    }
+    
+    logger.info(f"⚡️ Calling {model_id} (Strict Mode)...")
+    logger.debug(f"URL: {url}")
+
+    try:
+        response = requests.post(url, headers=headers, params=params, json=payload, timeout=60)
         
-        # Headers: Explicitly include x-goog-api-key for robustness (some proxies/vertex-like behaviors require it)
-        headers = { 
-            "Content-Type": "application/json",
-            "x-goog-api-key": api_key
-        }
-        params = {"key": api_key}
-        
-        # Payload: Standard text-to-image prompt
-        payload = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }],
-            # We explicitly ask for IMAGE via modalities if supported, 
-            # but for 2.5/2.0 it might be implicit or via tools.
-            # Start simple to minimize 400 Bad Request
-        }
-        
-        logger.info(f"⚡️ Calling {model_id}...")
-        try:
-            response = requests.post(url, headers=headers, params=params, json=payload, timeout=60)
+        if response.status_code == 200:
+            res_json = response.json()
+            candidates = res_json.get('candidates', [])
+            if candidates:
+                parts = candidates[0].get('content', {}).get('parts', [])
+                for part in parts:
+                    if 'inlineData' in part:
+                        b64_img = part['inlineData']['data']
+                        img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
+                        return _save_result(img, "gemini_flash")
             
-            if response.status_code == 200:
-                res_json = response.json()
-                candidates = res_json.get('candidates', [])
-                if candidates:
-                    parts = candidates[0].get('content', {}).get('parts', [])
-                    for part in parts:
-                        if 'inlineData' in part:
-                            b64_img = part['inlineData']['data']
-                            img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
-                            return _save_result(img, "gemini_flash")
-                
-                logger.warning(f"{model_id} worked but no image data found: {res_json}")
-                # Continue config/prompt refinement if needed
-                
-            else:
-                logger.warning(f"{model_id} failed: {response.status_code} - {response.text}")
-                
-        except Exception as e:
-            logger.error(f"{model_id} Exception: {e}")
+            logger.error(f"Generate success but no image data: {res_json}")
+            return None
             
-    # If all fail, return None (User explicitly rejected Imagen 3.0 fallback)
-    logger.error("❌ All Gemini Flash attempts failed. Recommend checking API Key permissions for 'Generative Language API'.")
-    return None
+        else:
+            logger.error(f"{model_id} Failed: {response.status_code} - {response.text}")
+            return None
+            
+    except Exception as e:
+        logger.error(f"{model_id} Exception: {e}")
+        return None
 
 def _gen_dalle3(prompt, api_key):
     # DALL-E 3 (Optional Legacy)

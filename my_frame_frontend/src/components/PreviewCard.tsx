@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, Image, Text, Group, Button, Slider, Stack, Collapse, Badge } from '@mantine/core';
-import { IconRefresh, IconDeviceFloppy } from '@tabler/icons-react';
+import { IconDeviceFloppy } from '@tabler/icons-react';
 import { getPreviewUrl, saveConfig, getConfig } from '../api';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -58,11 +58,7 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
         // Confirm completely removed
         await saveConfig(finalConfig, true);
     };
-    const handleRefresh = () => {
-        setImgUrl(getPreviewUrl() + '&t=' + Date.now());
-    };
 
-    const loading = false; // Placeholder if not strictly tracked, or use derived state
     const transferring = false; // Placeholder
 
     return (
@@ -95,46 +91,36 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
                     overflow: 'hidden',
                     boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
                     background: 'white',
+                    width: '100%',
                     display: 'flex',
                     justifyContent: 'center',
-                    alignItems: 'center',
-                    maxWidth: '100%'
+                    alignItems: 'center'
                 }}>
                     <Image
                         src={imgUrl}
                         alt="E-Paper Preview"
                         fit="contain"
-                        w="auto" // Let image determine width up to 100%
+                        w="100%"
                         h="auto"
-                        style={{ maxHeight: '400px', maxWidth: '100%', display: 'block' }}
+                        style={{ maxHeight: '400px', maxWidth: '100%', display: 'block', margin: '0 auto' }}
                         fallbackSrc="https://placehold.co/800x480?text=Loading+Preview"
                     />
                 </div>
             </Card.Section>
 
             <Card.Section inheritPadding pb="md">
-                <Group grow>
-                    <Button
-                        variant="light"
-                        color="blue"
-                        radius="md"
-                        onClick={handleRefresh}
-                        loading={loading}
-                        leftSection={<IconRefresh size={18} />}
-                    >
-                        {t('refresh')}
-                    </Button>
-                    <Button
-                        variant="filled"
-                        color="blue"
-                        radius="md"
-                        onClick={handleSaveAndTransfer}
-                        loading={transferring}
-                        leftSection={<IconDeviceFloppy size={18} />}
-                    >
-                        {t('saveTransfer')}
-                    </Button>
-                </Group>
+                <Button
+                    variant="filled"
+                    color="blue"
+                    radius="md"
+                    fullWidth
+                    size="md"
+                    onClick={handleSaveAndTransfer}
+                    loading={transferring}
+                    leftSection={<IconDeviceFloppy size={20} />}
+                >
+                    {t('saveTransfer')}
+                </Button>
             </Card.Section>
 
             {/* Hidden Controls Toggle for Advanced Settings (optional) */}
