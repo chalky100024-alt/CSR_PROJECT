@@ -127,7 +127,7 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
 
     # Fonts
     s = widget_scale * font_scale
-    font_xl = get_font(int(34 * s)) # User Req: Reduce Font Size (45->34)
+    font_xl = get_font(int(45 * s)) 
     font_lg = get_font(int(22 * s)) 
     font_md = get_font(int(16 * s)) 
     font_sm = get_font(int(13 * s)) 
@@ -182,9 +182,7 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
         color_pm25 = c25
 
     # Time
-    now = datetime.now()
-    # User Req: "12/18 05시 기준" format
-    time_str = now.strftime('%m/%d %H시 기준')
+    time_str = datetime.now().strftime('%m/%d %H:%M')
 
     # --- Layout Calculation ---
     current_y = padding
@@ -212,31 +210,24 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
     box_h = int(current_y) # Dynamic Height
     box_w = card_w
 
-    # Position (Right-Top Anchor Logic)
-    # User Req: Top-Right fixed, 20px padding (fixed), Expand Left/Down
-    
+    # Position
     pos_x = layout_config.get('x')
     pos_y = layout_config.get('y')
     layout_type = layout_config.get('type', 'type_A')
     
-    # Defaults
-    margin = 20 # Fixed 20px
-    
-    # Calculate Anchor Point (Top-Right)
-    # box_x is calculated so that (box_x + box_w) is at (DISPLAY_WIDTH - margin)
-    box_x = DISPLAY_WIDTH - box_w - margin
-    box_y = margin
+    box_x = DISPLAY_WIDTH - box_w - int(20 * widget_scale)
+    box_y = int(20 * widget_scale)
 
     if layout_type == 'custom':
         if pos_x is not None: box_x = int(float(pos_x))
         if pos_y is not None: box_y = int(float(pos_y))
     elif layout_config.get('position') == 'bottom' or layout_type == 'type_B':
-        box_y = DISPLAY_HEIGHT - box_h - margin
+        box_y = DISPLAY_HEIGHT - box_h - int(20 * widget_scale)
 
     # Overflow Protection
-    if box_x + box_w > DISPLAY_WIDTH: box_x = DISPLAY_WIDTH - box_w
+    if box_x + box_w > DISPLAY_WIDTH: box_x = DISPLAY_WIDTH - box_w - 5
     if box_x < 0: box_x = 0
-    if box_y + box_h > DISPLAY_HEIGHT: box_y = DISPLAY_HEIGHT - box_h
+    if box_y + box_h > DISPLAY_HEIGHT: box_y = DISPLAY_HEIGHT - box_h - 5
     if box_y < 0: box_y = 0
 
     # Draw Background
