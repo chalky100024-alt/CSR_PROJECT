@@ -126,7 +126,7 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
     font_sm = get_font(int(base_font_size * 0.9 * scale))
     font_md = get_font(int(base_font_size * 1.0 * scale))
     font_lg = get_font(int(base_font_size * 1.15 * scale))
-    font_dt = get_font(int(base_font_size * 0.6 * scale))
+    font_dt = get_font(int(base_font_size * 0.75 * scale))
 
     # Load Icons (Assuming icons dir is relative to project root)
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -202,9 +202,9 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
         # Height accumulation
         total_h += f.getbbox("Tg")[3] + line_spacing 
 
-    box_w = max_w + int(20 * scale)
-    box_h = total_h + int(20 * scale)
-    margin = int(15 * scale)
+    box_w = max_w + int(30 * scale)
+    box_h = total_h + int(30 * scale)
+    margin = int(20 * scale)
 
     # Position Calculation
     pos_x = layout_config.get('x')

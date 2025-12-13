@@ -32,6 +32,8 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
         const newLayout = { ...config.layout, [key]: val };
         setConfig({ ...config, layout: newLayout });
         await saveConfig({ layout: newLayout }, false);
+        // Force refresh preview image with new timestamp
+        setImgUrl(`${getPreviewUrl()}&t=${Date.now()}`);
     };
 
     const handleSaveAndTransfer = async () => {
@@ -57,7 +59,10 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
                     <Text size="sm" fw={500}>{t('widgetSize')}</Text>
                     <Slider
                         value={config.layout.widget_size}
-                        onChange={(v) => updateLayout('widget_size', v)}
+                        onChange={(v) => {
+                            setConfig({ ...config, layout: { ...config.layout, widget_size: v } });
+                        }}
+                        onChangeEnd={(v) => updateLayout('widget_size', v)}
                         min={0.5} max={2.0} step={0.1}
                         label={(v) => `${v}x`}
                     />
@@ -65,7 +70,10 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
                     <Text size="sm" fw={500} mt="xs">{t('opacity')}</Text>
                     <Slider
                         value={config.layout.opacity}
-                        onChange={(v) => updateLayout('opacity', v)}
+                        onChange={(v) => {
+                            setConfig({ ...config, layout: { ...config.layout, opacity: v } });
+                        }}
+                        onChangeEnd={(v) => updateLayout('opacity', v)}
                         min={0.0} max={1.0} step={0.1}
                         label={(v) => `${Math.round(v * 100)}%`}
                     />
