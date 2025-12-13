@@ -91,30 +91,61 @@ def generate_image(prompt, style_preset, provider="huggingface"):
 
 # --- Helper Functions ---
 
+def _get_token_from_service_account():
+    """FETCH ACCESS TOKEN VIA SERVICE ACCOUNT JSON (Robust for Pi/Server)"""
+    try:
+        import google.auth
+        from google.oauth2 import service_account
+        from google.auth.transport.requests import Request as GoogleAuthRequest
+
+        config = settings.load_config()
+        sa_json_str = config.get('api_key_google') # In settings, this field holds the JSON string
+        
+        if not sa_json_str or "private_key" not in sa_json_str:
+            # Fallback to gcloud if no JSON provided (local dev)
+            return _get_gcloud_token()
+            
+        # Parse JSON
+        import json
+        sa_info = json.loads(sa_json_str)
+        
+        # Create Credentials
+        creds = service_account.Credentials.from_service_account_info(
+            sa_info,
+            scopes=['https://www.googleapis.com/auth/cloud-platform']
+        )
+        
+        # Refresh Token
+        creds.refresh(GoogleAuthRequest())
+        return creds.token, sa_info.get('project_id')
+
+    except ImportError:
+        logger.error("❌ 'google-auth' library missing. Run: pip install google-auth requests")
+        return _get_gcloud_token() # Fallback
+    except Exception as e:
+        logger.error(f"Service Account Auth Failed: {e}")
+        return None, None
+
 def _get_gcloud_token():
-    """FETCH ACCESS TOKEN VIA GCLOUD CLI (Fallback for missing google-auth lib)"""
+    """Fallback: FETCH ACCESS TOKEN VIA GCLOUD CLI"""
     import subprocess
     try:
-        # 1. Get Token
         token = subprocess.check_output("gcloud auth print-access-token", shell=True).decode('utf-8').strip()
-        
-        # 2. Get Project ID (if not in config)
         project_id = settings.load_config().get('google_project_id')
         if not project_id:
             project_id = subprocess.check_output("gcloud config get-value project", shell=True).decode('utf-8').strip()
-            
         return token, project_id
-    except Exception as e:
-        logger.error(f"Gcloud Auth Failed: {e}")
+    except:
         return None, None
 
 def _gen_gemini_flash(prompt, _unused_api_key):
     # Strict Usage: Vertex AI (OAuth2)
     # Model: gemini-2.5-flash-image (Nano Banana)
     
-    token, project_id = _get_gcloud_token()
+    token, project_id = _get_token_from_service_account()
+    
     if not token or not project_id:
-        logger.error("❌ Vertex AI Auth Failed. Run 'gcloud auth login' on server.")
+        logger.error("❌ Auth Failed. Please set Service Account JSON in Settings or run gcloud login.")
         return None
 
     location = "us-central1"
