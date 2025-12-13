@@ -446,8 +446,11 @@ class EInkPhotoFrame:
         
         if pinned_photo:
             full_path = os.path.join(self.photos_dir, pinned_photo)
+            logger.info(f"Checking pinned photo path: {full_path}")
             if os.path.exists(full_path):
                 selected_photo = full_path
+            else:
+                logger.warning(f"Pinned photo not found at: {full_path}")
                 
         if not selected_photo:
             photos = self.get_photo_list()
@@ -460,6 +463,7 @@ class EInkPhotoFrame:
                 selected_photo = random.choice(photos)
         
         if selected_photo:
+            logger.info(f"Final selected photo: {selected_photo}")
             self.display_image(selected_photo)
         else:
             logger.warning("No photos to display.")
