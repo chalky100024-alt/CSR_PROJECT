@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Image, Text, Group, Button, Slider, Stack, Collapse } from '@mantine/core';
-import { IconSettings } from '@tabler/icons-react';
+import { Card, Image, Text, Group, Button, Slider, Stack, Collapse, Badge, Loader } from '@mantine/core';
+import { IconSettings, IconRefresh, IconDeviceFloppy } from '@tabler/icons-react';
 import { getPreviewUrl, saveConfig, getConfig } from '../api';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -62,30 +62,86 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
         await saveConfig(finalConfig, true);
         alert(t('saveTransfer') + " OK!");
     };
+    const handleRefresh = () => {
+        setImgUrl(getPreviewUrl() + '&t=' + Date.now());
+    };
+
+    const loading = false; // Placeholder if not strictly tracked, or use derived state
+    const transferring = false; // Placeholder
 
     return (
-        <Card shadow="sm" radius="md" withBorder>
-            <Group justify="space-between" mb="xs">
-                <Text fw={700} size="lg" c="blue">{t('previewTitle')}</Text>
-                <Button variant="subtle" size="xs" leftSection={<IconSettings size={14} />} onClick={() => setOpenControls(!openControls)}>
-                    {t('previewEdit')}
+        <Card
+            shadow="lg"
+            padding="xl"
+            radius="xl"
+            withBorder
+            style={{
+                height: '100%',
+                background: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(20px)',
+                display: 'flex',
+                flexDirection: 'column'
+            }}
+        >
+            <Card.Section withBorder inheritPadding py="xs" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                <Group justify="space-between">
+                    <Text fw={600} size="lg" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}>
+                        {t('previewTitle')}
+                    </Text>
+                    <Badge color="green" variant="light">Active</Badge>
+                </Group>
+            </Card.Section>
+
+            <Card.Section mt="md" mb="md" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', position: 'relative' }}>
+                <div style={{
+                    position: 'relative',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+                    background: 'white'
+                }}>
+                    <Image
+                        src={imgUrl}
+                        alt="E-Paper Preview"
+                        fit="contain"
+                        w="auto"
+                        h={300} // Fixed height for consistency
+                        fallbackSrc="https://placehold.co/800x480?text=Loading+Preview"
+                    />
+                </div>
+            </Card.Section>
+
+            <Card.Section inheritPadding pb="md">
+                <Group grow>
+                    <Button
+                        variant="light"
+                        color="blue"
+                        radius="md"
+                        onClick={handleRefresh}
+                        loading={loading}
+                        leftSection={<IconRefresh size={18} />}
+                    >
+                        {t('refresh')}
+                    </Button>
+                    <Button
+                        variant="filled"
+                        color="blue"
+                        radius="md"
+                        onClick={handleSaveAndTransfer}
+                        loading={transferring}
+                        leftSection={<IconDeviceFloppy size={18} />}
+                    >
+                        {t('saveTransfer')}
+                    </Button>
+                </Group>
+            </Card.Section>
+
+            {/* Hidden Controls Toggle for Advanced Settings (optional) */}
+            <Group justify="center" mt="xs">
+                <Button variant="subtle" size="xs" color="gray" onClick={() => setOpenControls(!openControls)}>
+                    {openControls ? "Hide Options" : "Show Options"}
                 </Button>
             </Group>
-
-            <div style={{
-                background: '#eee',
-                borderRadius: 8,
-                overflow: 'hidden',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                aspectRatio: '800/480',
-                width: '100%',
-                maxWidth: 800,
-                margin: '0 auto'
-            }}>
-                <Image src={imgUrl} w="100%" h="100%" fit="contain" />
-            </div>
 
             <Collapse in={openControls}>
                 <Stack mt="md" gap="xs">
@@ -99,7 +155,6 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
                         min={0.5} max={2.0} step={0.1}
                         label={(v) => `${v}x`}
                     />
-
                     <Text size="sm" fw={500} mt="xs">{t('opacity')}</Text>
                     <Slider
                         value={config.layout.opacity}
@@ -112,10 +167,6 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
                     />
                 </Stack>
             </Collapse>
-
-            <Button fullWidth mt="md" onClick={handleSaveAndTransfer} variant="filled">
-                {t('saveTransfer')}
-            </Button>
         </Card>
     );
 }
