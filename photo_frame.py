@@ -143,8 +143,8 @@ class EInkPhotoFrame:
                 
             return True
     
-    finally:
-        self._lock.release()
+        finally:
+            self._lock.release()
 
     def run(self):
         # ... Legacy run behavior if needed for standalone execution ...
