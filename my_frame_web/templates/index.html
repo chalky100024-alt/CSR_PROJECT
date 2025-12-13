@@ -1,14 +1,24 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>my_frame_frontend</title>
-    <script type="module" crossorigin src="/assets/index-DD5Nbu6B.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CYcXCw89.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>my_frame_frontend</title>
+  <script type="module" crossorigin src="/assets/index-DD5Nbu6B.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CYcXCw89.css">
+  <style>
+    /* Targeted fix for Preview Alignment */
+    img[src*="/api/preview"] {
+      display: block;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+</body>
+
 </html>
