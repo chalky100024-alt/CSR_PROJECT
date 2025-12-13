@@ -28,3 +28,4 @@ gpiozero>=2.0
 lgpio>=0.2.2
 pillow-heif>=0.10.0
 flask-cors>=4.0.0
+huggingface_hub>=0.23.0
