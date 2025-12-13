@@ -27,3 +27,4 @@ waveshare-epaper>=1.0.0
 gpiozero>=2.0
 lgpio>=0.2.2
 pillow-heif>=0.10.0
+flask-cors>=4.0.0
