@@ -92,8 +92,8 @@ def generate_image(prompt, style_preset, provider="huggingface"):
 # --- Helper Functions ---
 
 def _gen_gemini_flash(prompt, api_key):
-    # Strict Usage: Nano Banana (Gemini 2.5 Flash Image) ONLY
-    model_id = "gemini-2.5-flash-image"
+    # Strict Usage: Imagen 3 (imagen-3.0-generate-001)
+    model_id = "imagen-3.0-generate-001"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
     
     # Headers: Explicitly include x-goog-api-key for robustness

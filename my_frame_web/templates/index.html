@@ -12,11 +12,11 @@
     /* Targeted fix for Preview Alignment */
     /* Use :has to target the parent container of the preview image */
     div:has(> img[src*="/api/preview"]) {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      width: 100%;
-      text-align: center;
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+      width: 100% !important;
+      text-align: center !important;
     }
 
     img[src*="/api/preview"] {
