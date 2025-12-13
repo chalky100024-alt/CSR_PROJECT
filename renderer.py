@@ -133,6 +133,11 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
     font_md = get_font(int(18 * widget_scale)) 
     font_sm = get_font(int(14 * widget_scale)) 
 
+    # Load Icons
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    icon_dir = os.path.join(base_dir, 'icons')
+    weather_icons = _load_weather_icons(icon_dir)
+
     # Data Preparation
     temp_str = "--°"
     desc_str = ""
@@ -208,7 +213,7 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
         if pos_x is not None: box_x = int(float(pos_x))
         if pos_y is not None: box_y = int(float(pos_y))
     elif layout_config.get('position') == 'bottom' or layout_type == 'type_B':
-         box_y = DISPLAY_HEIGHT - box_h - int(20 * widget_scale)
+        box_y = DISPLAY_HEIGHT - box_h - int(20 * widget_scale)
 
     # Overflow Protection
     if box_x + box_w > DISPLAY_WIDTH: box_x = DISPLAY_WIDTH - box_w - 5
