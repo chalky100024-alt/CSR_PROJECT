@@ -104,16 +104,18 @@ def _gen_gemini_flash(prompt, api_key):
     }
     params = {"key": api_key}
     
+    # Debug API Key (Masked)
+    if api_key:
+        logger.info(f"🔑 API Key used: {api_key[:5]}...{api_key[-3:]}")
+    else:
+        logger.error("❌ No API Key found!")
+
     # Gemini Flash Payload structure
-    # Reverting to the standard generateContent payload.
-    # We will include response_modalities because that's standard for image-generation models in Gemini family.
+    # Simplify payload to minimal working example to avoid 401 on advanced features
     payload = {
         "contents": [{
             "parts": [{"text": prompt}]
-        }],
-        "generationConfig": {
-            "response_modalities": ["IMAGE"]
-        }
+        }]
     }
     
     logger.info(f"⚡️ Calling Gemini Flash ({model_id})...")
@@ -131,7 +133,10 @@ def _gen_gemini_flash(prompt, api_key):
         # Parse Gemini Response: candidates[0].content.parts[0].inlineData.data
         candidates = res_json.get('candidates', [])
         if not candidates:
-            logger.error("No candidates in response")
+            # Check for prompt feedback block if blocked
+            if 'promptFeedback' in res_json:
+                logger.warning(f"Prompt Feedback: {res_json['promptFeedback']}")
+            logger.error(f"No candidates in response. Full: {res_json}")
             return None
             
         parts = candidates[0].get('content', {}).get('parts', [])

@@ -94,15 +94,19 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
                     borderRadius: '12px',
                     overflow: 'hidden',
                     boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
-                    background: 'white'
+                    background: 'white',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    maxWidth: '100%'
                 }}>
                     <Image
                         src={imgUrl}
                         alt="E-Paper Preview"
                         fit="contain"
-                        w="100%"
+                        w="auto" // Let image determine width up to 100%
                         h="auto"
-                        style={{ maxHeight: '400px' }}
+                        style={{ maxHeight: '400px', maxWidth: '100%', display: 'block' }}
                         fallbackSrc="https://placehold.co/800x480?text=Loading+Preview"
                     />
                 </div>
