@@ -147,6 +147,20 @@ def api_save_config():
     for key, value in data.items():
         current[key] = value
 
+    # [Auto-Update Station Name]
+    # User Request: "If I change region, station should update automatically"
+    # Logic: Extract the last part of location name (Dong/Eup/Myeon) and use as station_name
+    if 'location' in data and 'name' in data['location']:
+        loc_name = data['location']['name']
+        try:
+            # Format: "Jeonggi-do Pyeongtaek-si Godeok-dong" -> "Godeok-dong"
+            # This is a heuristic. AirKorea usually matches Dong/Eup/Myeon names.
+            possible_station = loc_name.split()[-1]
+            current['station_name'] = possible_station
+            print(f"Auto-updated station_name to: {possible_station}")
+        except:
+            pass
+
     settings.save_config(current)
     
     # Trigger Display Refresh in Background ONLY if requested
