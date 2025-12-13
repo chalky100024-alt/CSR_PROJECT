@@ -100,9 +100,12 @@ class EInkPhotoFrame:
         elif HAS_EPD:
             try:
                 self.epd = epd7in3f.EPD()
-                logger.info("E-Ink 객체 생성 성공")
+                logger.info("✅ Waveshare EPD 객체 생성 성공 (7.3인치 F타입)")
             except Exception as e:
-                logger.error(f"E-Ink 객체 생성 실패: {e}")
+                logger.error(f"❌ E-Ink 객체 생성 실패: {e}")
+                self.epd = None
+        else:
+            logger.warning("⚠️ Waveshare 라이브러리를 찾을 수 없어 미리보기 모드로 전환합니다.")
 
     def get_7color_palette(self):
         standard_7_colors = [0, 0, 0, 255, 255, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 165, 0]

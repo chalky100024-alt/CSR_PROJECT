@@ -122,11 +122,16 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
         scale = 1.0
         opacity = 0.6
     
-    # Apply scale to font size
-    font_sm = get_font(int(base_font_size * 0.9 * scale))
-    font_md = get_font(int(base_font_size * 1.0 * scale))
-    font_lg = get_font(int(base_font_size * 1.15 * scale))
-    font_dt = get_font(int(base_font_size * 0.75 * scale))
+    # Calculate Alpha
+    # Opacity 1.0 = Opaque (255), 0.0 = Transparent (0)
+    bg_alpha = int(255 * opacity)
+
+    # Apply scale to font size - Match photo_frame.py logic
+    # Base sizes: 23, 20, 18, 12
+    font_lg = get_font(int(23 * scale))
+    font_md = get_font(int(20 * scale))
+    font_sm = get_font(int(18 * scale))
+    font_dt = get_font(int(12 * scale))
 
     # Load Icons (Assuming icons dir is relative to project root)
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -143,8 +148,8 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
         
         # Resize Icon based on scale
         if w_icon:
-            # Resize Icon based on font size (e.g. 1.2x font height)
-            icon_sz = int(base_font_size * 1.5 * scale)
+            # Resize Icon 
+            icon_sz = int(45 * scale)
             w_icon = w_icon.resize((icon_sz, icon_sz), Image.Resampling.LANCZOS)
 
         lines.append(f"{weather_data['temp']:.1f}°C ({desc})")
@@ -159,7 +164,7 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
         lines.append("날씨 정보 없음")
         w_icon = weather_icons.get('정보없음')
         if w_icon:
-             icon_sz = int(base_font_size * 1.5 * scale)
+             icon_sz = int(45 * scale)
              w_icon = w_icon.resize((icon_sz, icon_sz), Image.Resampling.LANCZOS)
 
     # 2. Dust Line
@@ -167,120 +172,82 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
     if dust_data:
         grade, sym, color = get_dust_grade_info(dust_data.get('pm10'), dust_data.get('pm25'))
         # Line 1: Grade symbol & text
-        lines.append(f"{sym} {grade}")
-        # Line 2: Details
-        lines.append(f"미세먼지 {dust_data['pm10']} | 초미세먼지 {dust_data['pm25']}")
+        lines.append(f"{sym} {grade} (PM10:{dust_data['pm10']}|PM2.5:{dust_data['pm25']})")
         dust_color = color
     else:
         lines.append("미세먼지 정보 없음")
 
     # Time & Location Line
     time_str = datetime.now().strftime('%m/%d %H시 기준')
-    if location_name:
-         # Clean up location name (e.g., "Gyeonggi-do Pyeongtaek-si Godeok-myeon" -> "Godeok-myeon")
-         short_loc = location_name.split()[-1]
-         lines.append(f"{time_str} | {short_loc}")
-    else:
-         lines.append(time_str)
+    lines.append(time_str)
 
     # Dimensions
-    line_spacing = int(5 * scale)
+    pad = int(5 * scale)
     line_heights = [font_lg.getmetrics()[0] + font_lg.getmetrics()[1] for _ in lines]
     
     # Calculate Max Width
-    max_w = 0
-    font_list = [font_lg] + [font_dt if i == len(lines)-2 else font_md for i in range(len(lines)-1)]
-    
-    # We need to simulate the layout to get box size
-    total_h = 0
-    for i, line in enumerate(lines):
-        f = font_list[i]
-        length = draw.textlength(line, f)
-        if i == 0 and w_icon:
-            length += w_icon.width + 5
-        max_w = max(max_w, length)
-        # Height accumulation
-        total_h += f.getbbox("Tg")[3] + line_spacing 
+    try:
+        max_text_w = max([draw.textlength(l, font_lg) for l in lines]) 
+        icon_w = w_icon.width if w_icon else 0
+        max_w = max_text_w + icon_w + int(20 * scale)
+    except:
+        max_w = int(300 * scale)
+
+    # Height accumulation
+    total_h = sum(line_heights) + (pad * len(lines)) + int(30 * scale)
 
     box_w = max_w + int(30 * scale)
-    box_h = total_h + int(30 * scale)
-    margin = int(20 * scale)
+    box_h = total_h + int(20 * scale)
+    margin = int(15 * scale)
 
     # Position Calculation
     pos_x = layout_config.get('x')
     pos_y = layout_config.get('y')
+    layout_type = layout_config.get('type')
 
-    if pos_x is not None and pos_y is not None:
-        try:
-            box_x = int(float(pos_x))
-            box_y = int(float(pos_y))
-            # Boundary check
-            box_x = max(0, min(box_x, DISPLAY_WIDTH - box_w))
-            box_y = max(0, min(box_y, DISPLAY_HEIGHT - box_h))
-        except:
-            box_x = DISPLAY_WIDTH - box_w - margin
-            box_y = margin
-    else:
-        pos = layout_config.get('position', 'top')
-        box_x = DISPLAY_WIDTH - box_w - margin
-        if pos == 'bottom':
-            box_y = DISPLAY_HEIGHT - box_h - margin
-        else:
-            box_y = margin
+    # Default X (Right Aligned)
+    box_x = DISPLAY_WIDTH - box_w - margin
+    # Default Y
+    box_y = margin
+
+    if layout_type == 'custom':
+        if pos_x is not None: box_x = int(float(pos_x))
+        if pos_y is not None: box_y = int(float(pos_y))
+    elif layout_config.get('position') == 'bottom' or layout_type == 'type_B':
+        box_y = DISPLAY_HEIGHT - box_h - margin
 
     # Draw Box
-    bg_alpha = int(255 * opacity)
-    draw.rounded_rectangle([box_x, box_y, box_x + box_w, box_y + box_h], radius=int(12*scale), fill=(255, 255, 255, bg_alpha),
-                           outline=(200, 200, 200), width=1)
+    draw.rounded_rectangle([box_x, box_y, box_x + box_w, box_y + box_h], radius=int(10*scale), fill=(255, 255, 255, bg_alpha),
+                           outline=(0, 0, 0), width=2)
 
     # Draw Text
-    cy = box_y + int(10 * scale)
-    cx = box_x + int(10 * scale)
+    cy = box_y + int(15 * scale)
+    cx = box_x + int(15 * scale)
 
     # Line 1: Weather
     if w_icon:
-        # Center icon vertically relative to text
-        # icon_y = cy + (line_heights[0] - w_icon.height) // 2 
-        # For simple alignment, use cy
         overlay.paste(w_icon, (int(cx), int(cy)), w_icon)
-        cx += w_icon.width + 5
+        cx += w_icon.width + int(5 * scale)
     draw.text((cx, cy), lines[0], font=font_lg, fill=(0, 0, 0))
     
     # Use proper spacing for next line
-    cy += font_lg.getbbox("Tg")[3] + line_spacing
-    cx = box_x + int(10 * scale)
+    cy += line_heights[0] + pad
+    cx = box_x + int(15 * scale)
 
     # Remaining Lines
     for i, line in enumerate(lines[1:]):
-        # Determine font logic matching calculation
-        # Calculation logic: font_list = [font_lg] + ...
-        # lines[1] is index 1 in lines, so font_list[1]
-        
-        # font_list logic recap:
-        # font_list = [font_lg] + [font_dt if j == len(lines)-2 else font_md for j in range(len(lines)-1)]
-        # For i in enumerate(lines[1:]): i starts at 0.
-        # This corresponds to lines[i+1].
-        # Font index is i+1.
-        
-        # Simple Logic:
-        # if this is the last line: font_dt
-        # else: font_md
-        
-        is_last = (i == len(lines) - 2) # lines[1:] has length len-1. if i == (len-1)-1... wait.
-        # len(lines) = 5. lines[1:] len = 4. range 0,1,2,3.
-        # Last index is 3.
-        # Condition should be: if this is the actual last line.
-        
-        f = font_dt if i == len(lines) - 2 else font_md
+        f = font_dt if i == len(lines) - 2 else font_md # Last line is date (small)
         
         if "●" in line:
-            sym, txt = line.split(' ', 1)
+            parts = line.split(' ', 1)
+            sym = parts[0]
+            txt = parts[1] if len(parts) > 1 else ""
             draw.text((cx, cy), sym, font=f, fill=dust_color)
             draw.text((cx + draw.textlength(sym, f) + 5, cy), txt, font=f, fill=(0, 0, 0))
         else:
             draw.text((cx, cy), line, font=f, fill=(0, 0, 0))
             
-        cy += f.getbbox("Tg")[3] + line_spacing
+        cy += line_heights[i+1] + pad
 
     final_image = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
     return final_image, box_x, box_y, box_w, box_h
