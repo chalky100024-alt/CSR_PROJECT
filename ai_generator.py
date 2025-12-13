@@ -92,51 +92,60 @@ def generate_image(prompt, style_preset, provider="huggingface"):
 # --- Helper Functions ---
 
 def _gen_gemini_flash(prompt, api_key):
-    # Fallback to Imagen 3.0 (Stable) via AI Studio 'predict' endpoint
-    # Note: 'gemini-2.5-flash-image' seems restricted/alpha.
-    model_id = "imagen-3.0-generate-001" 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:predict"
+    # Google Gemini 2.5 Flash (Nano Banana) implementation - RESTORED
+    # User confirms this WAS working.
+    model_id = "gemini-2.5-flash-image"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
     
-    headers = { "Content-Type": "application/json" }
+    # Auth: Try passing key in both Params (standard) and Header (sometimes required)
+    headers = { 
+        "Content-Type": "application/json",
+        "x-goog-api-key": api_key 
+    }
     params = {"key": api_key}
     
-    # Imagen 3.0 Payload (Standard AI Studio / Vertex format)
+    # Gemini Flash Payload structure
+    # Reverting to the standard generateContent payload.
+    # We will include response_modalities because that's standard for image-generation models in Gemini family.
     payload = {
-        "instances": [
-            { "prompt": prompt }
-        ],
-        "parameters": {
-            "aspectRatio": "16:9", # or 4:3, adjust as needed. 800x480 is ~5:3
-            "sampleCount": 1
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }],
+        "generationConfig": {
+            "response_modalities": ["IMAGE"]
         }
     }
     
-    logger.info(f"⚡️ Calling Imagen 3.0 ({model_id})...")
+    logger.info(f"⚡️ Calling Gemini Flash ({model_id})...")
+    # Log the URL for debug
+    logger.debug(f"URL: {url}")
+    
     response = requests.post(url, headers=headers, params=params, json=payload, timeout=60)
     
     if response.status_code != 200:
-        logger.error(f"Imagen Error: {response.text}")
-        # If 404/400, try Gemini 1.5 Pro as last resort prompt generator? no.
+        logger.error(f"Gemini Error: {response.text}")
         return None
         
     try:
         res_json = response.json()
-        # Parse Imagen Response: predictions[0].bytesBase64Encoded
-        predictions = res_json.get('predictions', [])
-        if not predictions:
-            logger.error("No predictions in response")
+        # Parse Gemini Response: candidates[0].content.parts[0].inlineData.data
+        candidates = res_json.get('candidates', [])
+        if not candidates:
+            logger.error("No candidates in response")
             return None
             
-        b64_img = predictions[0].get('bytesBase64Encoded')
-        if not b64_img:
-             # Fallback check
-             b64_img = predictions[0].get('bytes_base64_encoded')
-             
-        if b64_img:
-            img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
-            return _save_result(img, "imagen3")
+        parts = candidates[0].get('content', {}).get('parts', [])
+        for part in parts:
+            if 'inlineData' in part:
+                b64_img = part['inlineData']['data']
+                img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
+                return _save_result(img, "gemini")
                 
-        logger.error("No image data found in prediction")
+        logger.error("No image data found in response parts")
+        return None
+
+    except Exception as e:
+        logger.error(f"Gemini Parse Error: {e}")
         return None
 
     except Exception as e:
