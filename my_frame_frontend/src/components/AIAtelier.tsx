@@ -1,98 +1,95 @@
 import { useState, useEffect } from 'react';
-import { Card, Text, Select, TextInput, Button, Group, Image, Stack, Loader } from '@mantine/core';
+import { Card, Text, Select, TextInput, Button, Group, Image, Stack } from '@mantine/core';
 import { IconWand } from '@tabler/icons-react';
 import { generateAI, getPhotoUrl, getConfig, saveConfig } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 interface AIAtelierProps {
-    onImageGenerated: () => void; // call to reload gallery
+    onImageGenerated: () => void;
 }
 
 export function AIAtelier({ onImageGenerated }: AIAtelierProps) {
+    const { t } = useLanguage();
     const [prompt, setPrompt] = useState('');
     const [style, setStyle] = useState('anime style');
     const [provider, setProvider] = useState('huggingface');
-    const [generating, setGenerating] = useState(false);
+    const [loading, setLoading] = useState(false);
     const [lastImage, setLastImage] = useState<string | null>(null);
 
     useEffect(() => {
-        // Load saved provider
         getConfig().then(cfg => {
             if (cfg.ai_provider) setProvider(cfg.ai_provider);
         });
     }, []);
 
-    const handleProviderChange = (val: string | null) => {
-        if (!val) return;
+    const handleChangeProvider = async (val: string) => {
         setProvider(val);
-        saveConfig({ ai_provider: val }); // Auto-save preference
+        await saveConfig({ ai_provider: val });
     };
 
     const handleGenerate = async () => {
-        if (!prompt) return;
-        setGenerating(true);
+        setLoading(true);
         try {
             const res = await generateAI(prompt, style);
-            if (res.status === 'success' && res.image) {
-                setLastImage(res.image);
+            if (res.status === 'success') {
+                if (res.image) setLastImage(res.image);
                 onImageGenerated();
+            } else {
+                alert("Generation failed");
             }
         } catch (e) {
-            alert("Generation failed");
+            alert("Error generating image");
         } finally {
-            setGenerating(false);
+            setLoading(false);
         }
     };
 
     return (
         <Card shadow="sm" radius="md" withBorder>
-            <Stack gap="md">
-                <Group justify="space-between">
-                    <Text fw={700} size="lg">AI Atelier 🎨</Text>
-                    <Select
-                        data={[
-                            { value: 'huggingface', label: 'HuggingFace (Free)' },
-                            { value: 'google', label: 'Google Vertex AI' }
-                        ]}
-                        value={provider}
-                        onChange={handleProviderChange}
-                        size="xs"
-                        w={150}
-                        allowDeselect={false}
-                    />
+            <Group justify="space-between" mb="sm">
+                <Group>
+                    <IconWand size={20} color="purple" />
+                    <Text fw={700} size="lg">{t('aiTitle')}</Text>
                 </Group>
+                <Select
+                    size="xs"
+                    value={provider}
+                    onChange={(v) => handleChangeProvider(v as string)}
+                    data={[
+                        { value: 'huggingface', label: 'HuggingFace (Free)' },
+                        { value: 'google', label: 'Google Vertex AI (High Quality)' },
+                    ]}
+                    allowDeselect={false}
+                />
+            </Group>
 
+            <Stack>
                 <TextInput
-                    placeholder="E.g. A cat sitting on a windowsill"
-                    label="Prompt"
+                    placeholder={t('aiPromptPlaceholder')}
                     value={prompt}
                     onChange={(e) => setPrompt(e.currentTarget.value)}
                 />
 
                 <Select
-                    label="Art Style"
                     value={style}
-                    onChange={(v) => setStyle(v || 'anime style')}
+                    onChange={(v) => setStyle(v as string)}
                     data={[
-                        { value: 'anime style', label: 'Ghibli Anime' },
+                        { value: 'anime style', label: 'Studio Ghibli' },
                         { value: 'photorealistic', label: 'Photorealistic' },
-                        { value: 'oil painting', label: 'Oil Painting' },
+                        { value: 'oil painting', label: 'Van Gogh Oil' },
                         { value: 'watercolor', label: 'Watercolor' },
-                        { value: 'cyberpunk', label: 'Cyberpunk' },
-                        { value: 'pixel art', label: 'Pixel Art' },
-                        { value: 'lego', label: 'Lego' },
+                        { value: 'lego', label: 'Lego' }
                     ]}
                 />
 
                 <Button
-                    onClick={handleGenerate}
-                    loading={generating}
-                    disabled={!prompt}
                     fullWidth
                     variant="gradient"
                     gradient={{ from: 'indigo', to: 'cyan' }}
-                    leftSection={<IconWand size={16} />}
+                    onClick={handleGenerate}
+                    loading={loading}
                 >
-                    Generate Artwork
+                    {loading ? t('generating') : t('generateBtn')}
                 </Button>
 
                 {lastImage && (

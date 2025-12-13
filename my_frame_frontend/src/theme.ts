@@ -1,4 +1,4 @@
-import { createTheme, rem } from '@mantine/core';
+import { createTheme } from '@mantine/core';
 
 export const theme = createTheme({
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
@@ -35,7 +35,7 @@ export const theme = createTheme({
                 padding: 'lg',
                 withBorder: true,
             },
-            styles: (theme) => ({
+            styles: () => ({
                 root: {
                     backgroundColor: 'rgba(255, 255, 255, 0.8)', // Semi-transparent
                     backdropFilter: 'blur(20px)', // Glassmorphism

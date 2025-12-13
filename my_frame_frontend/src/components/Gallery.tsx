@@ -1,133 +1,109 @@
-import { useState, useEffect, useRef } from 'react';
-import { SimpleGrid, Card, Image, ActionIcon, Button, Group, Text, FileButton, Transition, LoadingOverlay } from '@mantine/core';
-import { IconTrash, IconUpload, IconCheck, IconX } from '@tabler/icons-react';
+import { useState, useEffect } from 'react';
+import { SimpleGrid, Card, Image, Button, Group, Text, FileButton, LoadingOverlay } from '@mantine/core';
+import { IconTrash, IconUpload, IconCheck } from '@tabler/icons-react';
 import { fetchPhotos, deletePhotos, uploadPhoto, getPhotoUrl } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 interface GalleryProps {
-    onSelectPhoto: (photo: string) => void;
     selectedPhoto: string;
+    onSelectPhoto: (photo: string) => void;
 }
 
-export function Gallery({ onSelectPhoto, selectedPhoto }: GalleryProps) {
+export function Gallery({ selectedPhoto, onSelectPhoto }: GalleryProps) {
+    const { t } = useLanguage();
     const [photos, setPhotos] = useState<string[]>([]);
-    const [loading, setLoading] = useState(false);
-
-    // Delete Mode State
     const [deleteMode, setDeleteMode] = useState(false);
     const [selectedForDelete, setSelectedForDelete] = useState<Set<string>>(new Set());
+    const [uploading, setUploading] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     const loadPhotos = async () => {
         setLoading(true);
-        try {
-            const list = await fetchPhotos();
-            setPhotos(list);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setLoading(false);
-        }
+        const list = await fetchPhotos();
+        setPhotos(list);
+        setLoading(false);
     };
 
-    useEffect(() => {
-        loadPhotos();
-    }, []);
+    useEffect(() => { loadPhotos(); }, []);
 
     const handleUpload = async (file: File | null) => {
         if (!file) return;
-        setLoading(true);
-        try {
-            await uploadPhoto(file);
-            await loadPhotos();
-        } catch (e) {
-            alert("Upload failed");
-        } finally {
-            setLoading(false);
-        }
+        setUploading(true);
+        await uploadPhoto(file);
+        await loadPhotos();
+        setUploading(false);
     };
 
-    const toggleSelection = (photo: string) => {
-        const next = new Set(selectedForDelete);
-        if (next.has(photo)) next.delete(photo);
-        else next.add(photo);
-        setSelectedForDelete(next);
+    const toggleDeleteSelection = (photo: string) => {
+        const newSet = new Set(selectedForDelete);
+        if (newSet.has(photo)) newSet.delete(photo);
+        else newSet.add(photo);
+        setSelectedForDelete(newSet);
     };
 
-    const executeDelete = async () => {
-        if (!confirm(`Delete ${selectedForDelete.size} photos?`)) return;
-        setLoading(true);
-        try {
-            await deletePhotos(Array.from(selectedForDelete));
-            setSelectedForDelete(new Set());
-            setDeleteMode(false);
-            await loadPhotos();
-        } catch (e) {
-            alert("Delete failed");
-        } finally {
-            setLoading(false);
-        }
+    const handleDelete = async () => {
+        if (selectedForDelete.size === 0) return;
+        if (!confirm('Are you sure?')) return;
+
+        await deletePhotos(Array.from(selectedForDelete));
+        setDeleteMode(false);
+        setSelectedForDelete(new Set());
+        loadPhotos();
     };
 
     return (
         <Card shadow="sm" radius="md" withBorder>
-            <LoadingOverlay visible={loading} />
-
+            <LoadingOverlay visible={loading || uploading} zIndex={1000} overlayProps={{ radius: "sm", blur: 2 }} />
             <Group justify="space-between" mb="md">
-                <Text fw={700} size="lg">My Photos</Text>
-                <Group gap="xs">
-                    {!deleteMode ? (
-                        <>
-                            <FileButton onChange={handleUpload} accept="image/png,image/jpeg">
-                                {(props) => <Button {...props} variant="light" leftSection={<IconUpload size={16} />}>Upload</Button>}
-                            </FileButton>
-                            <Button variant="subtle" color="red" leftSection={<IconTrash size={16} />} onClick={() => setDeleteMode(true)}>
-                                Select
-                            </Button>
-                        </>
-                    ) : (
-                        <>
-                            <Button variant="subtle" onClick={() => { setDeleteMode(false); setSelectedForDelete(new Set()); }}>Cancel</Button>
-                            <Button color="red" disabled={selectedForDelete.size === 0} onClick={executeDelete}>
-                                Delete ({selectedForDelete.size})
-                            </Button>
-                        </>
-                    )}
+                <Text fw={700} size="lg">{t('galleryTitle')}</Text>
+                <Group>
+                    <FileButton onChange={handleUpload} accept="image/png,image/jpeg,image/heic">
+                        {(props) => <Button {...props} size="xs" variant="light" leftSection={<IconUpload size={14} />}>{t('uploadBtn')}</Button>}
+                    </FileButton>
+                    <Button
+                        size="xs"
+                        color={deleteMode ? 'red' : 'gray'}
+                        variant={deleteMode ? 'filled' : 'outline'}
+                        leftSection={<IconTrash size={14} />}
+                        onClick={() => setDeleteMode(!deleteMode)}
+                    >
+                        {deleteMode ? t('cancel') : t('deleteMode')}
+                    </Button>
                 </Group>
             </Group>
 
-            <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="xs">
-                {photos.map((photo) => {
+            {deleteMode && (
+                <Button fullWidth color="red" mb="md" disabled={selectedForDelete.size === 0} onClick={handleDelete}>
+                    {t('deleteSelected')} ({selectedForDelete.size})
+                </Button>
+            )}
+
+            <SimpleGrid cols={{ base: 3, sm: 4 }} spacing="xs">
+                {photos.map(photo => {
                     const isSelected = selectedPhoto === photo;
-                    const isMarkedDelete = selectedForDelete.has(photo);
+                    const isMarked = selectedForDelete.has(photo);
 
                     return (
-                        <div
+                        <Card
                             key={photo}
-                            style={{ position: 'relative', cursor: 'pointer' }}
-                            onClick={() => {
-                                if (deleteMode) toggleSelection(photo);
-                                else onSelectPhoto(photo);
+                            p={0}
+                            radius="sm"
+                            style={{
+                                cursor: 'pointer',
+                                border: deleteMode
+                                    ? (isMarked ? '3px solid red' : 'none')
+                                    : (isSelected ? '3px solid #007AFF' : 'none'),
+                                opacity: deleteMode && !isMarked ? 0.6 : 1
                             }}
+                            onClick={() => deleteMode ? toggleDeleteSelection(photo) : onSelectPhoto(photo)}
                         >
-                            <Image
-                                src={getPhotoUrl(photo)}
-                                radius="md"
-                                h={120}
-                                fit="cover"
-                                style={{
-                                    border: deleteMode
-                                        ? (isMarkedDelete ? '4px solid #fa5252' : 'none')
-                                        : (isSelected ? '4px solid #228be6' : 'none'),
-                                    opacity: deleteMode && isMarkedDelete ? 0.6 : 1,
-                                    transition: 'all 0.2s ease'
-                                }}
-                            />
-                            {deleteMode && isMarkedDelete && (
-                                <IconCheck
-                                    style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: 'white', filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.5))' }}
-                                    size={40}
-                                />
+                            <Image src={getPhotoUrl(photo)} h={100} fit="cover" />
+                            {deleteMode && isMarked && (
+                                <div style={{ position: 'absolute', top: 5, right: 5, background: 'red', borderRadius: '50%', padding: 2 }}>
+                                    <IconCheck color="white" size={12} />
+                                </div>
                             )}
-                        </div>
+                        </Card>
                     );
                 })}
             </SimpleGrid>

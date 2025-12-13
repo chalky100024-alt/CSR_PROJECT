@@ -5,6 +5,7 @@ import {
 } from '@mantine/core';
 import { IconMapPin, IconKey, IconDeviceDesktop, IconRefresh } from '@tabler/icons-react';
 import { getConfig, saveConfig, searchLocation, scanWifi, connectWifi, systemAction } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 interface SettingsModalProps {
     opened: boolean;
@@ -12,6 +13,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ opened, onClose }: SettingsModalProps) {
+    const { t } = useLanguage();
     const [activeTab, setActiveTab] = useState<string | null>('general');
     const [config, setConfig] = useState<any>({});
 
@@ -30,7 +32,7 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
 
     const handleSave = async () => {
         await saveConfig(config);
-        alert("Settings Saved!");
+        alert(t('saveChanges') + " OK!");
         onClose();
     };
 
@@ -52,44 +54,44 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
             const res = await scanWifi();
             setNetworks(res);
         } catch (e) {
-            alert("Scan failed");
+            alert(t('scanFailed'));
         }
     };
 
     const handleWifiConnect = async () => {
         if (!selectedWifi) return;
         await connectWifi(selectedWifi, wifiPass);
-        alert("Connection attempt sent!");
+        alert(t('connect') + "...");
     };
 
     return (
-        <Modal opened={opened} onClose={onClose} title="Settings ⚙️" size="lg">
+        <Modal opened={opened} onClose={onClose} title={t('settingsTitle')} size="lg">
             <Tabs value={activeTab} onChange={setActiveTab}>
                 <Tabs.List>
-                    <Tabs.Tab value="general" leftSection={<IconMapPin size={14} />}>General</Tabs.Tab>
-                    <Tabs.Tab value="api" leftSection={<IconKey size={14} />}>API Keys</Tabs.Tab>
-                    <Tabs.Tab value="system" leftSection={<IconDeviceDesktop size={14} />}>System</Tabs.Tab>
+                    <Tabs.Tab value="general" leftSection={<IconMapPin size={14} />}>{t('tabGeneral')}</Tabs.Tab>
+                    <Tabs.Tab value="api" leftSection={<IconKey size={14} />}>{t('tabApi')}</Tabs.Tab>
+                    <Tabs.Tab value="system" leftSection={<IconDeviceDesktop size={14} />}>{t('tabSystem')}</Tabs.Tab>
                 </Tabs.List>
 
                 <Tabs.Panel value="general" pt="md">
                     <Stack>
                         <TextInput
-                            label="Current Location"
-                            value={config.location?.name || 'Not Set'}
+                            label={t('currentLoc')}
+                            value={config.location?.name || t('notSet')}
                             readOnly
                             rightSection={<IconMapPin size={16} />}
                         />
 
                         <Group align="flex-end">
                             <TextInput
-                                label="Search Location (Korean)"
-                                placeholder="e.g. 고덕"
+                                label={t('searchLoc')}
+                                placeholder={t('searchLocPlaceholder')}
                                 value={locQuery}
                                 onChange={(e) => setLocQuery(e.currentTarget.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSearchLoc()}
                                 style={{ flex: 1 }}
                             />
-                            <Button onClick={handleSearchLoc}>Search</Button>
+                            <Button onClick={handleSearchLoc}>{t('searchBtn')}</Button>
                         </Group>
 
                         {locResults.length > 0 && (
@@ -108,11 +110,11 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
 
                 <Tabs.Panel value="api" pt="md">
                     <Stack>
-                        <Text fw={700} c="dimmed" size="sm" tt="uppercase">Image Generation</Text>
+                        <Text fw={700} c="dimmed" size="sm" tt="uppercase">{t('imageGeneration')}</Text>
 
                         <Group align="flex-start" grow>
                             <TextInput
-                                label="HuggingFace API Token"
+                                label={t('hfApiToken')}
                                 placeholder="hf_..."
                                 value={config.api_key_hf || ''}
                                 onChange={(e) => setConfig({ ...config, api_key_hf: e.currentTarget.value })}
@@ -120,23 +122,23 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                         </Group>
 
                         <Stack gap="xs" mt="sm">
-                            <Text size="sm" fw={500}>Google Vertex AI</Text>
+                            <Text size="sm" fw={500}>{t('googleVertexAi')}</Text>
                             <Group grow>
                                 <TextInput
-                                    label="Project ID"
+                                    label={t('projectId')}
                                     placeholder="my-project-id"
                                     value={config.google_project_id || ''}
                                     onChange={(e) => setConfig({ ...config, google_project_id: e.currentTarget.value })}
                                 />
                                 <Select
-                                    label="Location"
+                                    label={t('location')}
                                     value={config.google_location || 'us-central1'}
                                     data={['us-central1', 'asia-northeast3', 'europe-west1']}
                                     onChange={(v) => setConfig({ ...config, google_location: v })}
                                 />
                             </Group>
                             <Textarea
-                                label="Service Account JSON (Key)"
+                                label={t('serviceAccountJson')}
                                 placeholder='{"type": "service_account", ...}'
                                 minRows={3}
                                 autosize
@@ -145,18 +147,18 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                             />
                         </Stack>
 
-                        <Divider my="md" label="Data APIs" labelPosition="center" />
+                        <Divider my="md" label={t('dataApis')} labelPosition="center" />
 
-                        <Text fw={700} c="dimmed" size="sm" tt="uppercase">Weather & Environment</Text>
+                        <Text fw={700} c="dimmed" size="sm" tt="uppercase">{t('weatherEnvironment')}</Text>
                         <TextInput
-                            label="KMA Weather API Key (Encoding)"
-                            description="기상청 공공데이터포털 일반 인증키 (Decoding이 아닌 Encoding 키 사용 권장)"
+                            label={t('kmaApiKey')}
+                            description={t('kmaApiKeyDesc')}
                             value={config.api_key_kma || ''}
                             onChange={(e) => setConfig({ ...config, api_key_kma: e.currentTarget.value })}
                         />
                         <TextInput
-                            label="AirKorea Dust API Key"
-                            description="한국환경공단 에어코리아 대기오염정보"
+                            label={t('airKoreaApiKey')}
+                            description={t('airKoreaApiKeyDesc')}
                             value={config.api_key_air || ''}
                             onChange={(e) => setConfig({ ...config, api_key_air: e.currentTarget.value })}
                         />
@@ -165,14 +167,14 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
 
                 <Tabs.Panel value="system" pt="md">
                     <Stack>
-                        <Text fw={700}>Wi-Fi Setup</Text>
+                        <Text fw={700}>{t('wifiSetup')}</Text>
                         <Button leftSection={<IconRefresh size={16} />} onClick={handleWifiScan} variant="outline">
-                            Scan Networks
+                            {t('scanWifi')}
                         </Button>
 
                         {networks.length > 0 && (
                             <Select
-                                label="Select Network"
+                                label={t('selectNetwork')}
                                 data={networks.map(n => ({ value: n.ssid, label: `${n.ssid} (${n.signal}%)` }))}
                                 value={selectedWifi}
                                 onChange={setSelectedWifi}
@@ -182,28 +184,28 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                         {selectedWifi && (
                             <Group align="flex-end">
                                 <PasswordInput
-                                    label="Password"
+                                    label={t('password')}
                                     value={wifiPass}
                                     onChange={(e) => setWifiPass(e.currentTarget.value)}
                                     style={{ flex: 1 }}
                                 />
-                                <Button onClick={handleWifiConnect}>Connect</Button>
+                                <Button onClick={handleWifiConnect}>{t('connect')}</Button>
                             </Group>
                         )}
 
-                        <Text fw={700} mt="xl">Device Control</Text>
+                        <Text fw={700} mt="xl">{t('deviceControl')}</Text>
                         <Group>
-                            <Button color="orange" onClick={() => systemAction('reboot')}>Reboot</Button>
-                            <Button color="red" onClick={() => systemAction('shutdown')}>Shutdown</Button>
-                            <Button color="blue" onClick={() => systemAction('update')}>Git Pull Update</Button>
+                            <Button color="orange" onClick={() => systemAction('reboot')}>{t('reboot')}</Button>
+                            <Button color="red" onClick={() => systemAction('shutdown')}>{t('shutdown')}</Button>
+                            <Button color="blue" onClick={() => systemAction('update')}>{t('update')}</Button>
                         </Group>
                     </Stack>
                 </Tabs.Panel>
             </Tabs>
 
             <Group justify="flex-end" mt="xl">
-                <Button variant="default" onClick={onClose}>Cancel</Button>
-                <Button onClick={handleSave}>Save Changes</Button>
+                <Button variant="default" onClick={onClose}>{t('cancel')}</Button>
+                <Button onClick={handleSave}>{t('saveChanges')}</Button>
             </Group>
         </Modal>
     );
