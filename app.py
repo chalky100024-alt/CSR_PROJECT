@@ -119,7 +119,9 @@ def settings_page():
 
 @app.route('/api/get_config')
 def get_config():
-    return jsonify(settings.load_config())
+    response = jsonify(settings.load_config())
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return response
 
 @app.route('/api/save_config', methods=['POST'])
 def api_save_config():

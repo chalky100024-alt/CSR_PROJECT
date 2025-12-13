@@ -47,7 +47,7 @@ export const generateAI = async (prompt: string, style: string) => {
 };
 
 export const getConfig = async (): Promise<PhotoConfig> => {
-    const res = await api.get('/api/get_config');
+    const res = await api.get(`/api/get_config?t=${Date.now()}`);
     return res.data;
 };
 
