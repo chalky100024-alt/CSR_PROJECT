@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, send_from_directory
 import os
 import settings
 import hardware
@@ -20,6 +20,12 @@ except ImportError:
     print("pillow-heif not installed. HEIC support disabled.")
 
 app = Flask(__name__, template_folder='my_frame_web/templates', static_folder='my_frame_web/static')
+try:
+    from flask_cors import CORS
+    CORS(app) # Enable CORS for all routes (Dev mode)
+except ImportError:
+    print("flask-cors not found. Install it to run with React frontend.")
+
 hw = hardware.HardwareController()
 
 # ... (rest of imports)
@@ -81,17 +87,35 @@ def upload_file():
 
 # --- [Routes] ---
 
+# --- [Routes] ---
+
 @app.route('/uploads/<path:filename>')
 def serve_upload(filename):
     return send_file(os.path.join(settings.UPLOADS_DIR, filename))
 
-@app.route('/')
-def index():
+# Serve React Static Files
+@app.route('/assets/<path:path>')
+def send_assets(path):
+    return send_from_directory('my_frame_web/static/assets', path)
+
+# Catch-all for React Router
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def catch_all(path):
+    # API endpoints should be handled above or distinct
+    if path.startswith('api/'):
+        return jsonify({'error': 'Not found'}), 404
+        
     return render_template('index.html')
 
-@app.route('/settings')
+@app.route('/index.html') # Legacy redirection
+def index_legacy():
+    return render_template('index.html')
+
+@app.route('/settings') # React Router handles this URL now, but initial load needs HTML
 def settings_page():
-    return render_template('settings.html')
+    return render_template('index.html')
+
 
 @app.route('/api/get_config')
 def get_config():

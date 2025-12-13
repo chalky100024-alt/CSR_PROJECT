@@ -43,19 +43,28 @@ def get_fine_dust_data(api_key, station_name):
 
 def get_kma_base_time(api_type='ultrasrt'):
     now = datetime.now()
-    base_date = now.strftime('%Y%m%d')
-    if now.minute < 40:
-        if now.hour == 0:
-            base_time = "2330"
-            base_date = (now - timedelta(days=1)).strftime('%Y%m%d')
-        else:
-            base_time = (now - timedelta(hours=1)).strftime('%H') + "30"
-    else:
+    if api_type == 'ultrasrt': # 초단기실황 (매시 40분 이후)
+        if now.minute < 45: # 안전하게 45분 기준
+            now = now - timedelta(hours=1)
+        base_time = now.strftime('%H') + "00"
+        base_date = now.strftime('%Y%m%d')
+    else: # 초단기예보 (매시 45분 마다 생성)
+        if now.minute < 45:
+            now = now - timedelta(hours=1)
         base_time = now.strftime('%H') + "30"
+        base_date = now.strftime('%Y%m%d')
+        
     return base_date, base_time
 
 def get_weather_data(api_key, nx, ny):
     if not api_key: return None
+    # Decode API Key if it's URL encoded (Common mistake)
+    if '%' in api_key:
+        try:
+            from urllib.parse import unquote
+            api_key = unquote(api_key)
+        except: pass
+        
     weather_info = {}
     try:
         # 1. 초단기실황
@@ -69,34 +78,50 @@ def get_weather_data(api_key, nx, ny):
             'base_time': bt, 
             'nx': nx, 
             'ny': ny, 
-            '_type': 'xml'
+            'dataType': 'JSON' # Changed to JSON for easier debug
         }
+        
+        # Requests automatically encodes params, but serviceKey is tricky.
+        # We must append serviceKey manually if normal params fail.
+        # But requests usually handles it. try manual string construction if fails.
+        res = requests.get(url, params=params, timeout=10)
+        
+        try:
+            data = res.json()
+            items = data['response']['body']['items']['item']
+        except: 
+            # JSON Fail -> Try XML Fallback logic or just Log
+            logger.error(f"Weather JSON Parse Fail. Raw: {res.text[:100]}")
+            items = []
 
-        root = ET.fromstring(requests.get(url, params=params, timeout=10).text)
-        for item in root.findall(".//item"):
-            cat = item.find("category").text
-            val = item.find("obsrValue").text
+        for item in items:
+            cat = item['category']
+            val = item['obsrValue']
             if cat == 'T1H':
                 try: weather_info['temp'] = float(val)
                 except: weather_info['temp'] = 0.0
             elif cat == 'RN1':
-                # '강수없음' or 'null' handling
                 try: weather_info['current_rain_amount'] = float(val)
                 except: weather_info['current_rain_amount'] = 0.0
 
         # 2. 초단기예보
         bd, bt = get_kma_base_time('ultrasrt_fcst')
         url = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst"
-        params['base_date'] = bd;
-        params['base_time'] = bt;
+        params['base_date'] = bd
+        params['base_time'] = bt
         params['numOfRows'] = '60'
-
-        root = ET.fromstring(requests.get(url, params=params, timeout=10).text)
+        
+        res = requests.get(url, params=params, timeout=10)
+        try:
+            data = res.json()
+            items = data['response']['body']['items']['item']
+        except: items = []
+        
         forecasts = {}
-        for item in root.findall(".//item"):
-            dt = item.find("fcstDate").text + item.find("fcstTime").text
+        for item in items:
+            dt = item['fcstDate'] + item['fcstTime']
             if dt not in forecasts: forecasts[dt] = {}
-            forecasts[dt][item.find("category").text] = item.find("fcstValue").text
+            forecasts[dt][item['category']] = item['fcstValue']
 
         now = datetime.now()
         closest_time = min(

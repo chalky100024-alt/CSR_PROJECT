@@ -5,3 +5,7 @@ __pycache__/
 uploads/
 # *.db  <-- Database allowed for location search
 my_frame_web/config.json
+node_modules/
+dist/
+.env
+

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "TC001",
+    "title": "photo management api list photos",
+    "description": "Verify that the API endpoint for listing photos returns the correct list of photos stored locally with appropriate metadata and status code."
+  },
+  {
+    "id": "TC002",
+    "title": "photo management api upload photo",
+    "description": "Test the photo upload API endpoint to ensure it accepts valid image files, stores them correctly, and returns a success response."
+  },
+  {
+    "id": "TC003",
+    "title": "photo management api delete photo",
+    "description": "Validate the photo deletion API endpoint to confirm it removes the specified photo from local storage and returns the correct status."
+  },
+  {
+    "id": "TC004",
+    "title": "ai image generation api generate image",
+    "description": "Test the AI image generation API endpoint by sending valid prompts and verifying that it returns generated images within expected time frames and correct format."
+  },
+  {
+    "id": "TC005",
+    "title": "hardware control api eink display update",
+    "description": "Verify the hardware control API endpoint that updates the E-Ink display with a new image, ensuring the hardware interface responds without errors."
+  },
+  {
+    "id": "TC006",
+    "title": "hardware control api battery status",
+    "description": "Test the API endpoint that retrieves the PiSugar battery status to ensure it returns accurate battery information and handles hardware communication correctly."
+  },
+  {
+    "id": "TC007",
+    "title": "configuration api update settings",
+    "description": "Validate the configuration API endpoint that updates device settings, ensuring changes are saved correctly and reflected in device behavior."
+  },
+  {
+    "id": "TC008",
+    "title": "configuration api get settings",
+    "description": "Test the API endpoint that retrieves current configuration settings to confirm it returns accurate and up-to-date configuration data."
+  }
+]

@@ -1,0 +1,81 @@
+{
+  "meta": {
+    "project": "AI-Powered Photo Frame",
+    "date": "2025-12-10",
+    "prepared_by": "Software Development Manager"
+  },
+  "product_overview": "AI-Powered Photo Frame is a connected device system with a web-based interface that allows users to manage photos, generate AI-created images, and control a physical E-Ink photo frame with battery management. The product integrates backend APIs and frontend React application to provide seamless photo management and customization.",
+  "core_goals": [
+    "Provide robust photo management with upload, list, and deletion capabilities via API.",
+    "Enable AI-based image generation using advanced models accessed through backend services.",
+    "Support hardware control for an E-Ink display and power management (PiSugar battery) for the photo frame.",
+    "Offer configuration settings for personalization and device operation adjustments.",
+    "Ensure smooth interaction between frontend and backend with clear debugging and error resolution guidelines."
+  ],
+  "key_features": [
+    "Photo Management API to handle listing, uploading, and deleting photos stored locally.",
+    "AI Image Generation feature using HuggingFace or Google Vertex AI to generate new images on demand.",
+    "Hardware Control interface for interacting with the E-Ink display and managing battery state via PiSugar controller.",
+    "Settings and Configuration management through config files and API endpoints to customize the photo frame behavior.",
+    "Dual server architecture with Flask backend (port 8080) and React frontend (port 5173) to segregate concerns and optimize performance."
+  ],
+  "user_flow_summary": [
+    "User accesses the React frontend to view existing photos and upload new ones through the photo management interface.",
+    "User triggers AI image generation by providing prompts that are sent to the backend API, which generates new images and returns them to the frontend.",
+    "User can delete photos from the collection via frontend commands that issue delete requests to the backend API.",
+    "Backend controls the connected hardware such as the E-Ink display to update shown images and monitors battery status to manage power supply.",
+    "Users or administrators can modify device settings either through configuration files or dedicated UI settings options in the web app."
+  ],
+  "validation_criteria": [
+    "Successful upload, listing, and deletion of photos through API endpoints.",
+    "AI image generation responds correctly with valid images to user prompts within expected time frames.",
+    "Hardware control APIs interact correctly with E-Ink display and battery hardware without error.",
+    "Configuration changes via UI or config files reflect correctly in device behavior.",
+    "Frontend and backend communicate properly with no CORS or proxy errors; errors are logged and traceable following the debugging guide.",
+    "Performance of image loading and generation meet user experience standards, with no UI freezes or backend failures."
+  ],
+  "code_summary": {
+    "tech_stack": [
+      "python",
+      "flask",
+      "sqlite",
+      "react",
+      "typescript",
+      "vite",
+      "mantine"
+    ],
+    "features": [
+      {
+        "name": "Photo Management API",
+        "description": "API endpoints to list, upload, and delete photos.",
+        "files": [
+          "app.py"
+        ]
+      },
+      {
+        "name": "AI Image Generation",
+        "description": "Logic to generate images using HuggingFace or Google Vertex AI.",
+        "files": [
+          "ai_generator.py",
+          "app.py"
+        ]
+      },
+      {
+        "name": "Hardware Control",
+        "description": "Interface for E-Ink display and PiSugar battery control.",
+        "files": [
+          "hardware.py",
+          "photo_frame.py"
+        ]
+      },
+      {
+        "name": "Configuration",
+        "description": "Settings management for the frame.",
+        "files": [
+          "settings.py",
+          "my_frame_web/config.json"
+        ]
+      }
+    ]
+  }
+}
