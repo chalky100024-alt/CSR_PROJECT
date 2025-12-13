@@ -255,9 +255,10 @@ def get_preview():
 def api_gen_ai():
     prompt = request.json.get('prompt')
     style = request.json.get('style', 'anime')
+    image_filename = request.json.get('image_filename')
     provider = settings.load_config().get('ai_provider', 'huggingface')
     
-    filename = ai_generator.generate_image(prompt, style, provider)
+    filename = ai_generator.generate_image(prompt, style, provider, image_filename)
     if filename:
         return jsonify({"status": "success", "image": filename})
     else:

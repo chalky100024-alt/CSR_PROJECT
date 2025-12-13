@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Card, Text, Select, TextInput, Button, Group, Image, Stack } from '@mantine/core';
+import { Card, Text, Select, TextInput, Button, Group, Image, Stack, Checkbox } from '@mantine/core';
 import { IconWand } from '@tabler/icons-react';
-import { generateAI, getPhotoUrl, getConfig, saveConfig } from '../api';
+import { generateAI, getPhotoUrl, getConfig, saveConfig, fetchPhotos } from '../api';
 import { useLanguage } from '../context/LanguageContext';
 
 interface AIAtelierProps {
@@ -36,9 +36,20 @@ export function AIAtelier({ onImageGenerated }: AIAtelierProps) {
     const [loading, setLoading] = useState(false);
     const [lastImage, setLastImage] = useState<string | null>(null);
 
+    // Multimodal State
+    const [useImage, setUseImage] = useState(false);
+    const [availablePhotos, setAvailablePhotos] = useState<string[]>([]);
+    const [selectedInputImage, setSelectedInputImage] = useState<string>('');
+
     useEffect(() => {
         getConfig().then(cfg => {
             if (cfg.ai_provider) setProvider(cfg.ai_provider);
+        });
+
+        // Load photos for selector
+        fetchPhotos().then(photos => {
+            setAvailablePhotos(photos);
+            if (photos.length > 0) setSelectedInputImage(photos[0]);
         });
     }, []);
 
@@ -50,7 +61,8 @@ export function AIAtelier({ onImageGenerated }: AIAtelierProps) {
     const handleGenerate = async () => {
         setLoading(true);
         try {
-            const res = await generateAI(prompt, style);
+            const imageToUse = (useImage && provider === 'google') ? selectedInputImage : undefined;
+            const res = await generateAI(prompt, style, imageToUse);
             if (res.status === 'success') {
                 if (res.image) setLastImage(res.image);
                 onImageGenerated();
@@ -98,6 +110,40 @@ export function AIAtelier({ onImageGenerated }: AIAtelierProps) {
                     searchable
                     maxDropdownHeight={280}
                 />
+
+
+
+                {provider === 'google' && (
+                    <Card withBorder p="xs" radius="sm" style={{ backgroundColor: '#f8f9fa' }}>
+                        <Group justify="space-between">
+                            <Text size="sm" fw={500}>🖼️ 이미지와 함께 전송 (Multimodal)</Text>
+                            <Checkbox
+                                checked={useImage}
+                                onChange={(e) => setUseImage(e.currentTarget.checked)}
+                            />
+                        </Group>
+
+                        {useImage && (
+                            <Stack mt="xs">
+                                <Select
+                                    placeholder="Select Image"
+                                    data={availablePhotos.map(p => ({ value: p, label: p }))}
+                                    value={selectedInputImage}
+                                    onChange={(v) => setSelectedInputImage(v as string)}
+                                />
+                                {selectedInputImage && (
+                                    <Image
+                                        src={getPhotoUrl(selectedInputImage)}
+                                        h={100}
+                                        radius="sm"
+                                        fit="contain"
+                                        style={{ backgroundColor: '#eee' }}
+                                    />
+                                )}
+                            </Stack>
+                        )}
+                    </Card>
+                )}
 
                 <Button
                     fullWidth

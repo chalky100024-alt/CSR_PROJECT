@@ -24,7 +24,7 @@ def _get_hf_client():
         return None
     return InferenceClient(token=api_key)
 
-def generate_image(prompt, style_preset, provider="huggingface"):
+def generate_image(prompt, style_preset, provider="huggingface", image_filename=None):
     config = settings.load_config()
     
     # 0. Common Pre-processing (Translation & Style Mapping)
@@ -65,7 +65,11 @@ def generate_image(prompt, style_preset, provider="huggingface"):
             return None
             
         try:
-            return _gen_gemini_flash(full_prompt, api_key)
+            image_path = None
+            if image_filename:
+                image_path = os.path.join(settings.UPLOADS_DIR, image_filename)
+                
+            return _gen_gemini_flash(full_prompt, api_key, image_path)
         except Exception as e:
             logger.error(f"Google Gen Failed: {e}")
             return None
@@ -138,7 +142,7 @@ def _get_gcloud_token():
     except:
         return None, None
 
-def _gen_gemini_flash(prompt, _unused_api_key):
+def _gen_gemini_flash(prompt, _unused_api_key, image_path=None):
     # Strict Usage: Vertex AI (OAuth2)
     # Model: gemini-2.5-flash-image (Nano Banana)
     
@@ -160,9 +164,29 @@ def _gen_gemini_flash(prompt, _unused_api_key):
     }
     
     # Payload: Same as AI Studio
+    # Construct Parts
+    parts = [{"text": prompt}]
+    
+    # Add Image if provided
+    if image_path and os.path.exists(image_path):
+        try:
+            with open(image_path, "rb") as image_file:
+                image_data = base64.b64encode(image_file.read()).decode('utf-8')
+                
+            parts.append({
+                "inlineData": {
+                    "mimeType": "image/jpeg", # Assuming JPEG for now, or match file extension
+                    "data": image_data
+                }
+            })
+            logger.info(f"📸 Attached Image: {os.path.basename(image_path)}")
+        except Exception as e:
+            logger.error(f"Failed to read image for API: {e}")
+    
     payload = {
         "contents": [{
-            "parts": [{"text": prompt}]
+            "role": "user",
+            "parts": parts
         }]
     }
     

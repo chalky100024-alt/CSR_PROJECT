@@ -41,8 +41,8 @@ export const deletePhotos = async (filenames: string[]) => {
     return res.data;
 };
 
-export const generateAI = async (prompt: string, style: string) => {
-    const res = await api.post('/api/generate_ai', { prompt, style });
+export const generateAI = async (prompt: string, style: string, imageFilename?: string) => {
+    const res = await api.post('/api/generate_ai', { prompt, style, image_filename: imageFilename });
     return res.data; // { status: "success", image: "..." }
 };
 
