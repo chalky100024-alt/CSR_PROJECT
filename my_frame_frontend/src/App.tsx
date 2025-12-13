@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppShell, Container, Grid, Title, Group, Button, Select } from '@mantine/core';
 import { IconPhoto, IconSettings } from '@tabler/icons-react';
 
