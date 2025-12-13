@@ -92,65 +92,58 @@ def generate_image(prompt, style_preset, provider="huggingface"):
 # --- Helper Functions ---
 
 def _gen_gemini_flash(prompt, api_key):
-    # Google Gemini 2.5 Flash (Nano Banana) implementation - RESTORED
-    # User confirms this WAS working.
-    model_id = "gemini-2.5-flash-image"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
+    # Implemented based on User provided docs: https://ai.google.dev/gemini-api/docs/image-generation
+    # The Gemini API uses the 'imagen-3.0-generate-001' model for image generation.
+    model_id = "imagen-3.0-generate-001"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:predict"
     
-    # Auth: Try passing key in both Params (standard) and Header (sometimes required)
-    headers = { 
-        "Content-Type": "application/json",
-        "x-goog-api-key": api_key 
-    }
+    headers = { "Content-Type": "application/json" }
     params = {"key": api_key}
     
-    # Debug API Key (Masked)
-    if api_key:
-        logger.info(f"🔑 API Key used: {api_key[:5]}...{api_key[-3:]}")
-    else:
-        logger.error("❌ No API Key found!")
-
-    # Gemini Flash Payload structure
-    # Simplify payload to minimal working example to avoid 401 on advanced features
+    # Payload format as per documentation (Standard Imagen/Vertex format)
     payload = {
-        "contents": [{
-            "parts": [{"text": prompt}]
-        }]
+        "instances": [
+            { "prompt": prompt }
+        ],
+        "parameters": {
+            "sampleCount": 1,
+            # 'aspectRatio' is supported. 
+            # 16:9 is closest to 800x480 (5:3)
+            "aspectRatio": "16:9" 
+        }
     }
     
-    logger.info(f"⚡️ Calling Gemini Flash ({model_id})...")
-    # Log the URL for debug
+    logger.info(f"⚡️ Calling Gemini Image API ({model_id})...")
     logger.debug(f"URL: {url}")
     
     response = requests.post(url, headers=headers, params=params, json=payload, timeout=60)
     
     if response.status_code != 200:
-        logger.error(f"Gemini Error: {response.text}")
+        logger.error(f"Gemini/Imagen Error: {response.text}")
         return None
         
     try:
         res_json = response.json()
-        # Parse Gemini Response: candidates[0].content.parts[0].inlineData.data
-        candidates = res_json.get('candidates', [])
-        if not candidates:
-            # Check for prompt feedback block if blocked
-            if 'promptFeedback' in res_json:
-                logger.warning(f"Prompt Feedback: {res_json['promptFeedback']}")
-            logger.error(f"No candidates in response. Full: {res_json}")
+        # Parse Response: predictions[0].bytesBase64Encoded
+        predictions = res_json.get('predictions', [])
+        if not predictions:
+            logger.error(f"No predictions in response: {res_json}")
             return None
             
-        parts = candidates[0].get('content', {}).get('parts', [])
-        for part in parts:
-            if 'inlineData' in part:
-                b64_img = part['inlineData']['data']
-                img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
-                return _save_result(img, "gemini")
+        # Check keys (bytesBase64Encoded or bytes_base64_encoded)
+        b64_img = predictions[0].get('bytesBase64Encoded')
+        if not b64_img:
+             b64_img = predictions[0].get('bytes_base64_encoded')
+             
+        if b64_img:
+            img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
+            return _save_result(img, "gemini_imagen3")
                 
-        logger.error("No image data found in response parts")
+        logger.error("No image data found in prediction")
         return None
 
     except Exception as e:
-        logger.error(f"Gemini Parse Error: {e}")
+        logger.error(f"Parse Error: {e}")
         return None
 
     except Exception as e:
