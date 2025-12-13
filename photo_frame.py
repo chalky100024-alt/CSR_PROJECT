@@ -13,6 +13,7 @@ import threading
 # Use project settings
 import settings
 import data_api
+import renderer # Use renderer to create composed image
 import hardware # Use existing hardware controller wrapper if compatible
 # But user code imports waveshare directly in try/except.
 # We will adopt user's direct approach for EPD to be safe with their provided code,
@@ -117,19 +118,7 @@ class EInkPhotoFrame:
         palette_image.putpalette(full_palette_data[:768])
         return palette_image
 
-    def _load_weather_icons(self):
-        icons = {}
-        icon_map = {'맑음': 'sun.png', '구름 많음': 'cloud.png', '흐림': 'cloudy.png', '비': 'rain.png',
-                    '비 또는 눈': 'rain_snow.png', '눈': 'snow.png', '소나기': 'shower.png', '정보없음': 'unknown.png'}
-        if not os.path.exists(self.icon_dir): return icons
-        for desc, filename in icon_map.items():
-            path = os.path.join(self.icon_dir, filename)
-            if os.path.exists(path):
-                try:
-                    icons[desc] = Image.open(path).convert("RGBA").resize((45, 45), Image.Resampling.LANCZOS)
-                except:
-                    pass
-        return icons
+
 
     def init_display(self):
         if self.is_preview_mode: return True
@@ -155,11 +144,7 @@ class EInkPhotoFrame:
         return [os.path.join(self.photos_dir, f) for f in os.listdir(self.photos_dir) if
                 f.lower().endswith(exts) and not f.startswith('.')]
 
-    def enhance_image(self, image):
-        if image.mode != 'RGB': image = image.convert('RGB')
-        image = ImageEnhance.Contrast(image).enhance(1.2)
-        image = ImageEnhance.Sharpness(image).enhance(1.5)
-        return ImageEnhance.Color(image).enhance(1.1)
+
 
 
 
@@ -178,303 +163,39 @@ class EInkPhotoFrame:
 
 
 
-    def get_font(self, size=20):
-        for font_path in self.font_paths:
-            if os.path.exists(font_path): return ImageFont.truetype(font_path, size)
-        return ImageFont.load_default()
 
-    def resize_image_fill(self, image):
-        target_ratio = self.display_width / self.display_height
-        img_ratio = image.width / image.height
-        if img_ratio > target_ratio:
-            new_height = self.display_height
-            new_width = int(image.width * (new_height / image.height))
-        else:
-            new_width = self.display_width
-            new_height = int(image.height * (new_width / image.width))
-        resized = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-        left = (new_width - self.display_width) / 2
-        top = (new_height - self.display_height) / 2
-        return resized.crop((left, top, left + self.display_width, top + self.display_height))
 
-    def get_dust_grade_info(self, pm10, pm25):
-        try:
-            p10, p25 = int(pm10 or -1), int(pm25 or -1)
-        except:
-            return "정보 없음", "●", (128, 128, 128)
 
-        lv = max(
-            1 if p25 <= 15 else 2 if p25 <= 35 else 3 if p25 <= 75 else 4,
-            1 if p10 <= 30 else 2 if p10 <= 80 else 3 if p10 <= 150 else 4
-        )
-        return ["", "좋음", "보통", "나쁨", "매우나쁨"][lv], "●", \
-        [(0, 0, 0), (0, 0, 255), (0, 128, 0), (255, 165, 0), (255, 0, 0)][lv]
 
-    def create_info_overlay_image(self, dust_data, weather_data):
-        overlay = Image.new('RGBA', (self.display_width, self.display_height), (255, 255, 255, 0))
-        draw = ImageDraw.Draw(overlay)
 
-        # --- [Apple-like Vertical Widget Layout] ---
-        layout_cfg = self.config.get('layout', {})
-        widget_scale = float(layout_cfg.get('widget_size', 1.0))
-        font_scale = float(layout_cfg.get('font_scale', 1.0)) # New Font Scale Slider
-        opacity_val = float(layout_cfg.get('opacity', 0.85))
-        bg_alpha = int(255 * opacity_val)
 
-        # Base Dimensions
-        card_w = int(220 * widget_scale) 
-        # Height will be dynamic, start small
-        padding = int(15 * widget_scale)
-        line_spacing = int(5 * widget_scale)
 
-        # Fonts (Scaled by widget_size AND font_scale)
-        s = widget_scale * font_scale
-        font_xl = self.get_font(int(45 * s)) # Temp
-        font_lg = self.get_font(int(22 * s)) # Main Text
-        font_md = self.get_font(int(16 * s)) # Sub Text / Dust
-        font_sm = self.get_font(int(13 * s)) # Detail
-
-        # Data Preparation
-        temp_str = "--°"
-        desc_str = ""
-        rain_str = "" # Current Rain
-        umbrella_msg = "" # Forecast Message
-        w_icon = None
-
-        if weather_data and 'temp' in weather_data:
-            temp_str = f"{int(weather_data['temp'])}°"
-            desc_str = weather_data.get('weather_description', '정보없음')
-            
-            # Icon
-            if desc_str in self.weather_icons:
-                w_icon = self.weather_icons[desc_str]
-            else:
-                w_icon = self.weather_icons.get('정보없음')
-            
-            if w_icon:
-                icon_sz = int(55 * widget_scale) # Icon size scales with widget only
-                if w_icon.size[0] != icon_sz:
-                    w_icon = w_icon.resize((icon_sz, icon_sz), Image.Resampling.LANCZOS)
-
-            # Current Rain
-            if weather_data.get('current_rain_amount', 0) > 0:
-                rain_str = f"강수 {weather_data['current_rain_amount']:.1f}mm"
-            
-        
-        # [Rain Widget handled separately now]
-        # if weather_data.get('rain_forecast'): ...
-
-        
-        # Dust (2 Lines: PM10, PM2.5)
-        # "미세먼지 30 ●"
-        # "초미세 20 ●"
-        pm10_str = "미세먼지 --"
-        pm25_str = "초미세 --"
-        color_pm10 = (150,150,150)
-        color_pm25 = (150,150,150)
-
-        if dust_data:
-            p10 = dust_data.get('pm10')
-            p25 = dust_data.get('pm25')
-            
-            # Grade Colors
-            # 1:Blue, 2:Green, 3:Orange, 4:Red (Corrected Logic)
-            # Standard Korea: Good(Blue), Normal(Green), Bad(Orange), Very Bad(Red)
-            # Actually standard is Blue(Good), Green(Normal), Yellow/Orange(Bad), Red(Very Bad).
-            # My previous code logic:
-            # [(0, 0, 0), (0, 0, 255), (0, 128, 0), (255, 165, 0), (255, 0, 0)]
-            # Idx 1: Blue, 2: Green, 3: Orange, 4: Red. Correct.
-            
-            g10, _, c10 = self.get_dust_grade_info(p10, 0) # Hack to get just p10 grade
-            g25, _, c25 = self.get_dust_grade_info(0, p25) # Hack to get just p25 grade
-            
-            pm10_str = f"미세먼지 {p10}"
-            pm25_str = f"초미세 {p25}"
-            color_pm10 = c10
-            color_pm25 = c25
-
-        # Time
-        time_str = datetime.now().strftime('%m/%d %H:%M')
-
-        # --- Layout Calculation ---
-        current_y = padding
-        
-        # Row 1: Icon & Temp [Fixed Height]
-        h_row1 = max(w_icon.height if w_icon else 0, font_xl.getbbox(temp_str)[3])
-        current_y += h_row1 + line_spacing
-        
-        # Row 2: Desc
-        current_y += font_lg.getbbox(desc_str)[3] + (line_spacing * 2)
-        
-        # Row 3: Dust Line 1
-        current_y += font_md.getbbox(pm10_str)[3] + line_spacing
-        # Row 4: Dust Line 2
-        current_y += font_md.getbbox(pm25_str)[3] + (line_spacing * 2)
-
-        # Row 5: Rain Message (Optional)
-        if umbrella_msg:
-             current_y += font_sm.getbbox(umbrella_msg)[3] + line_spacing
-
-        # Row 6: Time (Bottom)
-        current_y += 5 + font_sm.getbbox(time_str)[3] + padding
-
-        card_h = int(current_y)
-
-        # Positioning Loop
-        pos = layout_cfg.get('position', 'top')
-        layout_type = layout_cfg.get('type', 'type_A')
-        
-        box_x = self.display_width - card_w - int(20 * widget_scale)
-        box_y = int(20 * widget_scale)
-
-        if layout_type == 'custom':
-            try:
-                box_x = int(layout_cfg.get('x', box_x))
-                box_y = int(layout_cfg.get('y', box_y))
-            except: pass
-        elif pos == 'bottom' or layout_type == 'type_B':
-            box_y = self.display_height - card_h - int(20 * widget_scale)
-        
-        # Overflow
-        if box_x + card_w > self.display_width: box_x = self.display_width - card_w - 5
-        if box_x < 0: box_x = 0
-        if box_y + card_h > self.display_height: box_y = self.display_height - card_h - 5
-        if box_y < 0: box_y = 0
-
-        # Draw
-        draw.rounded_rectangle([box_x, box_y, box_x + card_w, box_y + card_h], 
-                               radius=int(18 * widget_scale), 
-                               fill=(255, 255, 255, bg_alpha), 
-                               outline=None)
-
-        cx = box_x + padding
-        cy = box_y + padding
-
-        # Row 1: Icon + Temp
-        if w_icon:
-            overlay.paste(w_icon, (cx, cy), w_icon)
-            temp_x = cx + w_icon.width + 10
-            temp_y = cy + (w_icon.height - font_xl.getbbox(temp_str)[3]) // 2 - 5
-            draw.text((temp_x, temp_y), temp_str, font=font_xl, fill=(0,0,0))
-            cy += max(w_icon.height, font_xl.getbbox(temp_str)[3]) + line_spacing
-        else:
-            draw.text((cx, cy), temp_str, font=font_xl, fill=(0,0,0))
-            cy += font_xl.getbbox(temp_str)[3] + line_spacing
-
-        # Row 2: Desc
-        draw.text((cx + 5, cy), desc_str, font=font_lg, fill=(50,50,50))
-        cy += font_lg.getbbox(desc_str)[3] + (line_spacing * 2)
-
-        # Row 3: Dust PM10
-        # Text + Dot
-        dot_r = int(5 * widget_scale)
-        draw.text((cx + 5, cy), pm10_str, font=font_md, fill=(60,60,60))
-        # Dot at end of string? Or right aligned? User said "Icons only" for grade.
-        # Let's put dot after text.
-        txt_w = font_md.getlength(pm10_str)
-        dot_cx = cx + 5 + txt_w + 15
-        dot_cy = cy + (font_md.getbbox("A")[3] // 2) + 2
-        draw.ellipse([dot_cx - dot_r, dot_cy - dot_r, dot_cx + dot_r, dot_cy + dot_r], fill=color_pm10)
-        
-        cy += font_md.getbbox(pm10_str)[3] + line_spacing
-
-        # Row 4: Dust PM2.5
-        draw.text((cx + 5, cy), pm25_str, font=font_md, fill=(60,60,60))
-        txt_w = font_md.getlength(pm25_str)
-        dot_cx = cx + 5 + txt_w + 15
-        dot_cy = cy + (font_md.getbbox("A")[3] // 2) + 2
-        draw.ellipse([dot_cx - dot_r, dot_cy - dot_r, dot_cx + dot_r, dot_cy + dot_r], fill=color_pm25)
-
-        cy += font_md.getbbox(pm25_str)[3] + (line_spacing * 2)
-
-        return overlay
-
-    def create_rain_widget(self, weather_data):
-        """
-        Creates a dedicated bottom widget for rain alerts.
-        Style: Full width (minus margins), height ~100px, Apple-like rounded pill.
-        """
-        
-        # FOR TESTING ONLY: FORCE RAIN ALERT
-        # weather_data['rain_forecast'] = {'start_time': '15:00', 'type_code': 1}
-        # Actually let's just use a local override flag for clarity
-        force_rain_test = False
-        
-        rain_info = weather_data.get('rain_forecast')
-        
-        if not rain_info and not force_rain_test:
-            return None
-            
-        # Mock Data if testing
-        if force_rain_test and not rain_info:
-            rain_info = {'start_time': '15:00', 'type_code': 1}
-            
-        # Message Construction
-        start_h = rain_info['start_time'].split(':')[0]
-        # rain_info['type_code'] -> 1:비, 2:비/눈, 3:눈, 4:소나기
-        r_list = ["", "비", "비/눈", "눈", "소나기"]
-        rtype = r_list[rain_info.get('type_code', 1)] if rain_info.get('type_code', 1) < len(r_list) else "비"
-        
-        message = f"☔️ {start_h}시 {rtype} 예보, 우산 챙기세요!"
-        
-        # Widget Dimensions
-        w_h = 100
-        w_w = self.display_width - 40 # 20px margin each side
-        
-        img = Image.new('RGBA', (w_w, w_h), (255, 255, 255, 0)) # Clean Slate
-        draw = ImageDraw.Draw(img)
-        
-        # Background (Glass/White)
-        draw.rounded_rectangle([0, 0, w_w, w_h], radius=30, fill=(255, 255, 255, 230))
-        
-        # Text
-        # Use existing font helper but larger
-        font_large = self.get_font(40)
-        
-        # Centering
-        text_w = font_large.getlength(message)
-        text_h = font_large.getbbox(message)[3]
-        
-        tx = (w_w - text_w) / 2
-        ty = (w_h - text_h) / 2 - 5 # Slight adjustment for baseline
-        
-        # Draw Text (Blue/Dark Blue for visibility)
-        draw.text((tx, ty), message, font=font_large, fill=(0, 50, 150))
-        
-        return img
 
 
     def display_image(self, image_path):
         if not self.is_preview_mode and not self.epd: 
             # If no EPD but not in preview mode, we might be testing.
-            # But earlier logic says "If !HAS_EPD -> Preview Mode" implicitly or just logs error.
-            # We continue to generate preview.jpg at least.
             pass
 
         try:
             logger.info(f"Processing: {os.path.basename(image_path)}")
 
-            # 이미지 처리
-            img = Image.open(image_path)
-            img = self.resize_image_fill(img)
-            img = self.enhance_image(img)
-
-            # 오버레이 합성
+            # 데이터 로드
             d_data = self.get_fine_dust_data()
             w_data = self.get_weather_data()
-            overlay = self.create_info_overlay_image(d_data, w_data)
-
-            final_img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
             
-            # [Rain Widget Composite]
-            rain_widget = self.create_rain_widget(w_data)
-            if rain_widget:
-                # Position: Bottom Center
-                # 800 width id self.display_width
-                rx = 20 # Margin
-                ry = self.display_height - 100 - 20 # Height 100 + Margin 20
-                final_img.paste(rain_widget, (rx, ry), rain_widget)
+            # 설정 및 위치 이름 로드
+            layout_config = self.config.get('layout', {})
+            location_name = self.config.get('location', {}).get('name', '')
 
+            # [핵심] Renderer 모듈 사용 (Web Preview와 동일한 로직)
+            final_img, _, _, _, _ = renderer.create_composed_image(
+                image_path, 
+                w_data, 
+                d_data, 
+                layout_config, 
+                location_name
+            )
 
             # [중요] 웹 미리보기 저장
             preview_path = settings.PREVIEW_PATH

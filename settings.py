@@ -17,7 +17,7 @@ DEFAULT_CONFIG = {
     "api_key_ai": "",       # Deprecated (Shared)
     "api_key_google": "",   # Google Vertex AI Key
     "api_key_hf": "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", # User's HF Key (Restored)
-    "ai_provider": "huggingface", # or 'google'
+    "ai_provider": "google", # or 'huggingface'
     "layout": {
         "type": "type_A",
         "widget_size": 1.0, # 0.5 ~ 1.5

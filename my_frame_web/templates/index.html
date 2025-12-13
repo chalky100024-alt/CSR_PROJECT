@@ -10,9 +10,20 @@
   <link rel="stylesheet" crossorigin href="/assets/index-CYcXCw89.css">
   <style>
     /* Targeted fix for Preview Alignment */
+    /* Use :has to target the parent container of the preview image */
+    div:has(> img[src*="/api/preview"]) {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      text-align: center;
+    }
+
     img[src*="/api/preview"] {
       display: block;
       margin: 0 auto;
+      max-width: 100%;
+      height: auto;
     }
   </style>
 </head>
