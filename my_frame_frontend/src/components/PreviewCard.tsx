@@ -153,18 +153,6 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
                         label={(v) => `${v}x`}
                     />
 
-                    {/* Font Scale Slider */}
-                    <Text size="sm" fw={500} mt="xs">글자 크기 (Font Size)</Text>
-                    <Slider
-                        value={config.layout.font_scale || 1.0}
-                        onChange={(v) => {
-                            setConfig({ ...config, layout: { ...config.layout, font_scale: v } });
-                        }}
-                        onChangeEnd={(v) => updateLayout('font_scale', v)}
-                        min={0.5} max={2.0} step={0.1}
-                        label={(v) => `${Math.round(v * 100)}%`}
-                    />
-
                     <Text size="sm" fw={500} mt="xs">{t('opacity')}</Text>
                     <Slider
                         value={config.layout.opacity}

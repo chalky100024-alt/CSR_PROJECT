@@ -92,56 +92,51 @@ def generate_image(prompt, style_preset, provider="huggingface"):
 # --- Helper Functions ---
 
 def _gen_gemini_flash(prompt, api_key):
-    # Fallback to Imagen 3.0 (Stable) as Gemini 2.5 Flash seems to have Auth issues with API Keys
+    # Fallback to Imagen 3.0 (Stable) via AI Studio 'predict' endpoint
+    # Note: 'gemini-2.5-flash-image' seems restricted/alpha.
     model_id = "imagen-3.0-generate-001" 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:predict"
-    
-    # Imagen requires different payload usually (instances) but let's check if it supports generateContent via AI Studio
-    # AI Studio 'generateContent' works for newer models.
-    # If using 'imagen-3.0-generate-001', it might be via 'predict' endpoint on Vertex, but for AI Studio:
-    # Let's try 'gemini-1.5-flash' which is definitely open.
-    # BUT Gemini 1.5 Flash is NOT an image generator.
-    
-    # Let's try the exact Nano Banana setup from the notebook again, maybe it was v1beta
-    model_id = "gemini-2.5-flash-image"
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
     
     headers = { "Content-Type": "application/json" }
     params = {"key": api_key}
     
-    # Payload Refinement: Maybe 'response_modalities' caused the 401/400?
-    # Or maybe the model is just 'gemini-2.0-flash-exp'? 
-    # Let's try without generationConfig first (default)
+    # Imagen 3.0 Payload (Standard AI Studio / Vertex format)
     payload = {
-        "contents": [{
-            "parts": [{"text": prompt}]
-        }]
+        "instances": [
+            { "prompt": prompt }
+        ],
+        "parameters": {
+            "aspectRatio": "16:9", # or 4:3, adjust as needed. 800x480 is ~5:3
+            "sampleCount": 1
+        }
     }
     
-    logger.info(f"⚡️ Calling Gemini Flash ({model_id})...")
+    logger.info(f"⚡️ Calling Imagen 3.0 ({model_id})...")
     response = requests.post(url, headers=headers, params=params, json=payload, timeout=60)
     
     if response.status_code != 200:
-        logger.error(f"Gemini Error: {response.text}")
+        logger.error(f"Imagen Error: {response.text}")
+        # If 404/400, try Gemini 1.5 Pro as last resort prompt generator? no.
         return None
         
     try:
         res_json = response.json()
-        # Parse Gemini Response: candidates[0].content.parts[0].inlineData.data
-        # Note: Sometimes text is returned if image gen fails or is filtered, but usually inlineData
-        candidates = res_json.get('candidates', [])
-        if not candidates:
-            logger.error("No candidates in response")
+        # Parse Imagen Response: predictions[0].bytesBase64Encoded
+        predictions = res_json.get('predictions', [])
+        if not predictions:
+            logger.error("No predictions in response")
             return None
             
-        parts = candidates[0].get('content', {}).get('parts', [])
-        for part in parts:
-            if 'inlineData' in part:
-                b64_img = part['inlineData']['data']
-                img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
-                return _save_result(img, "gemini")
+        b64_img = predictions[0].get('bytesBase64Encoded')
+        if not b64_img:
+             # Fallback check
+             b64_img = predictions[0].get('bytes_base64_encoded')
+             
+        if b64_img:
+            img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
+            return _save_result(img, "imagen3")
                 
-        logger.error("No image data found in response parts")
+        logger.error("No image data found in prediction")
         return None
 
     except Exception as e:
