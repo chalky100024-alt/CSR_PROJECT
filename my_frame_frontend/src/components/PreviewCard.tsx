@@ -100,8 +100,9 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
                         src={imgUrl}
                         alt="E-Paper Preview"
                         fit="contain"
-                        w="auto"
-                        h={300} // Fixed height for consistency
+                        w="100%"
+                        h="auto"
+                        style={{ maxHeight: '400px' }}
                         fallbackSrc="https://placehold.co/800x480?text=Loading+Preview"
                     />
                 </div>

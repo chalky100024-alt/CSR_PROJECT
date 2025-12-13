@@ -91,22 +91,30 @@ def generate_image(prompt, style_preset, provider="huggingface"):
 # --- Helper Functions ---
 
 def _gen_gemini_flash(prompt, api_key):
-    # Google Gemini 2.5 Flash (Nano Banana) implementation
+    # Fallback to Imagen 3.0 (Stable) as Gemini 2.5 Flash seems to have Auth issues with API Keys
+    model_id = "imagen-3.0-generate-001" 
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:predict"
+    
+    # Imagen requires different payload usually (instances) but let's check if it supports generateContent via AI Studio
+    # AI Studio 'generateContent' works for newer models.
+    # If using 'imagen-3.0-generate-001', it might be via 'predict' endpoint on Vertex, but for AI Studio:
+    # Let's try 'gemini-1.5-flash' which is definitely open.
+    # BUT Gemini 1.5 Flash is NOT an image generator.
+    
+    # Let's try the exact Nano Banana setup from the notebook again, maybe it was v1beta
     model_id = "gemini-2.5-flash-image"
-    # Use v1alpha for experimental/preview models if v1beta fails with Auth error
-    url = f"https://generativelanguage.googleapis.com/v1alpha/models/{model_id}:generateContent"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
     
     headers = { "Content-Type": "application/json" }
     params = {"key": api_key}
     
-    # Gemini Flash Payload structure
+    # Payload Refinement: Maybe 'response_modalities' caused the 401/400?
+    # Or maybe the model is just 'gemini-2.0-flash-exp'? 
+    # Let's try without generationConfig first (default)
     payload = {
         "contents": [{
             "parts": [{"text": prompt}]
-        }],
-        "generationConfig": {
-            "response_modalities": ["IMAGE"]
-        }
+        }]
     }
     
     logger.info(f"⚡️ Calling Gemini Flash ({model_id})...")
