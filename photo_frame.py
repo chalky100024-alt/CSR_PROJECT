@@ -66,16 +66,23 @@ class EInkPhotoFrame:
             return False
             
         # Check if a specific photo is fixed in config
+        # Check if a specific photo is fixed in config
         pinned_photo = self.config.get('selected_photo')
+        selected_photo = None
+        
         if pinned_photo:
-            # Validate existence
             full_path = os.path.join(settings.UPLOADS_DIR, pinned_photo)
             if os.path.exists(full_path):
                 selected_photo = full_path
+                logger.info(f"Selected pinned photo: {pinned_photo}")
             else:
-                selected_photo = random.choice(photos) # Fallback
-        else:
-            selected_photo = random.choice(photos)
+                logger.warning(f"Pinned photo not found: {full_path}")
+        
+        if not selected_photo:
+            # Fallback: Sort by modification time (Newest first)
+            photos.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+            selected_photo = photos[0]
+            logger.info(f"Fallback to latest photo: {os.path.basename(selected_photo)}")
         
         # 2. Fetch Data (Blocking with Timeout)
         # User requested to ensure data is received before displaying
