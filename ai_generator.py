@@ -92,15 +92,17 @@ def generate_image(prompt, style_preset, provider="huggingface"):
 # --- Helper Functions ---
 
 def _gen_gemini_flash(prompt, api_key):
-    # Strict Usage: Imagen 3 (imagen-3.0-generate-001)
-    model_id = "imagen-3.0-generate-001"
+    # Strict Usage: Gemini 2.5 Flash Image (Nano Banana) via AI Studio
+    # Endpoint: generativelanguage.googleapis.com (API Key Auth)
+    model_id = "gemini-2.5-flash-image"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
     
-    # Headers: Explicitly include x-goog-api-key for robustness
+    # Headers for AI Studio (API Key via x-goog-api-key)
     headers = { 
         "Content-Type": "application/json",
         "x-goog-api-key": api_key
     }
+    # Also pass key as param for safety with some client libraries/proxies
     params = {"key": api_key}
     
     # Payload: Standard text-to-image prompt
