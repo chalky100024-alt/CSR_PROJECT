@@ -49,7 +49,9 @@ function MainApp() {
                 <IconPhoto size={28} color="#007AFF" />
                 <Title order={3} style={{ fontWeight: 600 }}>{t('appTitle')}</Title>
               </Group>
-              <Group>
+
+              {/* Desktop Menu */}
+              <Group visibleFrom="sm">
                 <Select
                   data={[
                     { value: 'ko', label: '🇰🇷 한국어' },
@@ -66,6 +68,13 @@ function MainApp() {
                 />
                 <Button variant="default" radius="xl" leftSection={<IconSettings size={18} />} onClick={() => setSettingsOpen(true)}>
                   {t('settings')}
+                </Button>
+              </Group>
+
+              {/* Mobile Menu Button */}
+              <Group hiddenFrom="sm">
+                <Button variant="subtle" size="sm" p={0} onClick={() => setSettingsOpen(true)}>
+                  <IconSettings size={24} />
                 </Button>
               </Group>
             </Group>

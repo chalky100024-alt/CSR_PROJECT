@@ -50,8 +50,19 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
                 </Button>
             </Group>
 
-            <div style={{ background: '#eee', borderRadius: 8, overflow: 'hidden', display: 'flex', justifyContent: 'center' }}>
-                <Image src={imgUrl} fit="contain" style={{ maxHeight: 400 }} />
+            <div style={{
+                background: '#eee',
+                borderRadius: 8,
+                overflow: 'hidden',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                aspectRatio: '800/480',
+                width: '100%',
+                maxWidth: 800,
+                margin: '0 auto'
+            }}>
+                <Image src={imgUrl} w="100%" h="100%" fit="contain" />
             </div>
 
             <Collapse in={openControls}>

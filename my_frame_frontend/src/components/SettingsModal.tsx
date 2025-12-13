@@ -6,6 +6,7 @@ import {
 import { IconMapPin, IconKey, IconDeviceDesktop, IconRefresh } from '@tabler/icons-react';
 import { getConfig, saveConfig, searchLocation, scanWifi, connectWifi, systemAction } from '../api';
 import { useLanguage } from '../context/LanguageContext';
+import type { Language } from '../translations';
 
 interface SettingsModalProps {
     opened: boolean;
@@ -13,7 +14,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ opened, onClose }: SettingsModalProps) {
-    const { t } = useLanguage();
+    const { t, language, setLanguage } = useLanguage();
     const [activeTab, setActiveTab] = useState<string | null>('general');
     const [config, setConfig] = useState<any>({});
 
@@ -83,6 +84,20 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                         />
 
                         <Group align="flex-end">
+                            <Select
+                                label={t('language')}
+                                data={[
+                                    { value: 'ko', label: '🇰🇷 한국어' },
+                                    { value: 'en', label: '🇺🇸 English' },
+                                    { value: 'ja', label: '🇯🇵 日本語' },
+                                    { value: 'zh', label: '🇨🇳 中文' },
+                                ]}
+                                value={language}
+                                onChange={(v) => setLanguage(v as Language)}
+                                allowDeselect={false}
+                                mb="md"
+                            />
+
                             <TextInput
                                 label={t('searchLoc')}
                                 placeholder={t('searchLocPlaceholder')}

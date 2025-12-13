@@ -51,6 +51,9 @@ class EInkPhotoFrame:
         """Force refresh the E-Ink display with current settings/photo."""
         logger.info("Starting Display Refresh...")
         
+        # Reload config to get latest updates
+        self.config = settings.load_config()
+        
         # 1. Photos
         if not os.path.exists(settings.UPLOADS_DIR):
             os.makedirs(settings.UPLOADS_DIR)
