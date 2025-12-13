@@ -26,7 +26,7 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
 
     useEffect(() => {
         getConfig().then(setConfig);
-    }, []);
+    }, [refreshKey]);
 
     const updateLayout = async (key: string, val: number) => {
         const newLayout = { ...config.layout, [key]: val };
