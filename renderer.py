@@ -15,10 +15,12 @@ def get_font_path(bold=True):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     # Fonts from user reference
     fonts = [
+        # Local Project Root (Best Match)
+        os.path.join(base_dir, "AppleSDGothicNeoB.ttf"), 
         # User specific local paths
         "/usr/local/share/fonts/apple_sandol/AppleSDGothicNeoEB.ttf" if bold else "/usr/local/share/fonts/apple_sandol/AppleSDGothicNeoB.ttf",
         "/usr/local/share/fonts/apple_sandol/AppleSDGothicNeoM.ttf",
-        # Project local fallback
+        # Project local fallback (User's subdir)
         os.path.join(base_dir, "Apple_산돌고딕_Neo", "AppleSDGothicNeoEB.ttf" if bold else "AppleSDGothicNeoB.ttf"),
         # Standard System Fonts
         "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf" if bold else "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",

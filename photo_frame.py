@@ -86,6 +86,7 @@ class EInkPhotoFrame:
         
         # 폰트 경로들
         self.font_paths = [
+            os.path.join(BASE_DIR, "AppleSDGothicNeoB.ttf"), # Downloaded Fallback
             os.path.join(BASE_DIR, "Apple_산돌고딕_Neo", "AppleSDGothicNeoEB.ttf"),
             os.path.join(BASE_DIR, "Apple_산돌고딕_Neo", "AppleSDGothicNeoB.ttf"),
             "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
@@ -489,8 +490,15 @@ class EInkPhotoFrame:
             logger.info(f"Checking pinned photo path: {full_path}")
             if os.path.exists(full_path):
                 selected_photo = full_path
+                logger.info(f"✅ Found pinned photo: {full_path}")
             else:
-                logger.warning(f"Pinned photo not found at: {full_path}")
+                # Try checking if it's just a filename that needs to be found in uploads
+                # Sometimes path might be mixed up
+                logger.warning(f"❌ Pinned photo NOT found at: {full_path}")
+                
+        if not selected_photo:
+            # Fallback logic
+            pass
                 
         if not selected_photo:
             photos = self.get_photo_list()
