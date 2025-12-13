@@ -8,6 +8,7 @@ import settings
 import data_api
 import renderer
 import hardware
+import threading
 from PIL import Image
 
 # 로깅 설정
@@ -47,11 +48,19 @@ class EInkPhotoFrame:
         palette_image.putpalette(full_palette_data[:768])
         return palette_image
 
+    # Global Lock for display updates to prevent overlapping
+    _lock = threading.Lock()
+
     def refresh_display(self):
         """Force refresh the E-Ink display with current settings/photo."""
-        logger.info("Starting Display Refresh...")
-        
-        # Reload config to get latest updates
+        if not self._lock.acquire(blocking=False):
+            logger.warning("Display refresh already in progress. Skipping this request.")
+            return False
+            
+        try:
+            logger.info("Starting Display Refresh...")
+            
+            # Reload config to get latest updates
         self.config = settings.load_config()
         
         # 1. Photos
@@ -127,7 +136,7 @@ class EInkPhotoFrame:
                 self.hw.epd.display(self.hw.epd.getbuffer(final_quantized))
                 self.hw.epd.sleep()
                 logger.info("Display update successful.")
-            except Exception as e:
+        except Exception as e:
                 logger.error(f"EPD Error: {e}")
                 return False
         else:
@@ -135,6 +144,9 @@ class EInkPhotoFrame:
             logger.info("Mock Display Update.")
             
         return True
+    
+    finally:
+        self._lock.release()
 
     def run(self):
         # ... Legacy run behavior if needed for standalone execution ...

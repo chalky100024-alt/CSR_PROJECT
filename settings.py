@@ -55,15 +55,20 @@ def load_config():
                 config = json.load(f)
                 # Default Key Injection (Fallback)
                 if 'api_key_kma' not in config:
-                    config['api_key_kma'] = "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHyKg=="
-                    config['api_key_air'] = "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHyKg=="
+                    config['api_key_kma'] = "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHuKg=="
+                    config['api_key_air'] = "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHuKg=="
                 return config
         except Exception as e:
             if i == 2: # Last attempt
                 print(f"Error loading config: {e}")
-                return DEFAULT_CONFIG # Fallback only after retries
+                pass # Use default below
             time.sleep(0.1)
-    return DEFAULT_CONFIG
+            
+    # Return default with correct keys if load failed
+    defaults = DEFAULT_CONFIG.copy()
+    defaults['api_key_kma'] = "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHuKg=="
+    defaults['api_key_air'] = "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHuKg=="
+    return defaults
 
 def save_config(config_data):
     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
