@@ -29,15 +29,16 @@ def generate_image(prompt, style_preset, provider="huggingface"):
     
     # 0. Common Pre-processing (Translation & Style Mapping)
     # 0. Common Pre-processing (Translation & Style Mapping)
-    # Auto-Translate (Korean -> English) - DISABLED by user request
-    # try:
-    #     from deep_translator import GoogleTranslator
-    #     if prompt and any(ord(c) > 127 for c in prompt): # Simple check if translation needed
-    #         translated = GoogleTranslator(source='auto', target='en').translate(prompt)
-    #         logger.info(f"🔤 Translate: {prompt} -> {translated}")
-    #         prompt = translated
-    # except Exception as e:
-    #     logger.warning(f"Translation failed: {e}")
+    # Auto-Translate (Korean -> English) - Only for HuggingFace
+    if provider == "huggingface":
+        try:
+            from deep_translator import GoogleTranslator
+            if prompt and any(ord(c) > 127 for c in prompt): # Simple check if translation needed
+                translated = GoogleTranslator(source='auto', target='en').translate(prompt)
+                logger.info(f"🔤 Translate (HF): {prompt} -> {translated}")
+                prompt = translated
+        except Exception as e:
+            logger.warning(f"Translation failed: {e}")
 
     # Style Mapping
     if style_preset == "anime style": 
