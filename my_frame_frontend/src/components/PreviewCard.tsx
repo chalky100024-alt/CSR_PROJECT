@@ -32,8 +32,14 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
         const newLayout = { ...config.layout, [key]: val };
         setConfig({ ...config, layout: newLayout });
         await saveConfig({ layout: newLayout }, false);
-        // Force refresh preview image with new timestamp
-        setImgUrl(`${getPreviewUrl()}&t=${Date.now()}`);
+
+        // Force refresh preview image with new timestamp AND preserve selected photo
+        let url = `${getPreviewUrl()}&t=${Date.now()}`;
+        const currentPhoto = selectedPhoto || config.selected_photo;
+        if (currentPhoto) {
+            url += `&min_filename=${encodeURIComponent(currentPhoto)}`;
+        }
+        setImgUrl(url);
     };
 
     const handleSaveAndTransfer = async () => {

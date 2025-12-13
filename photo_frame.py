@@ -86,7 +86,7 @@ class EInkPhotoFrame:
         
         # 폰트 경로들
         self.font_paths = [
-            os.path.join(BASE_DIR, "AppleSDGothicNeoB.ttf"), # Downloaded Fallback
+            os.path.join(BASE_DIR, "AppleSDGothicNeoB.ttf"), # 1. User Provided (Best)
             os.path.join(BASE_DIR, "Apple_산돌고딕_Neo", "AppleSDGothicNeoEB.ttf"),
             os.path.join(BASE_DIR, "Apple_산돌고딕_Neo", "AppleSDGothicNeoB.ttf"),
             "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
@@ -140,6 +140,14 @@ class EInkPhotoFrame:
                 return False
         return False
 
+    def get_fine_dust_data(self):
+        # Delegate to shared data_api for consistency
+        return data_api.get_fine_dust_data(self.airkorea_api_key, self.station_name)
+
+    def get_weather_data(self):
+        # Delegate to shared data_api for consistency
+        return data_api.get_weather_data(self.kma_weather_api_key, self.kma_nx, self.kma_ny)
+
     def get_photo_list(self):
         if not os.path.exists(self.photos_dir): return []
         exts = ('.jpg', '.jpeg', '.png', '.bmp')
@@ -152,20 +160,7 @@ class EInkPhotoFrame:
         image = ImageEnhance.Sharpness(image).enhance(1.5)
         return ImageEnhance.Color(image).enhance(1.1)
 
-    def get_fine_dust_data(self):
-        if not self.airkorea_api_key: return None
-        url = "http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty"
-        params = {'serviceKey': self.airkorea_api_key, 'returnType': 'json', 'numOfRows': '1', 'pageNo': '1',
-                  'stationName': self.station_name, 'dataTerm': 'DAILY', 'ver': '1.3'}
-        try:
-            res = requests.get(url, params=params, timeout=10)
-            items = res.json().get('response', {}).get('body', {}).get('items', [])
-            if items:
-                return {'pm10': int(items[0]['pm10Value']), 'pm25': int(items[0]['pm25Value']),
-                        'time': items[0]['dataTime']}
-        except:
-            pass
-        return None
+
 
     def get_kma_base_time(self, api_type='ultrasrt'):
         now = datetime.now()
@@ -180,69 +175,7 @@ class EInkPhotoFrame:
             base_time = now.strftime('%H') + "30"
         return base_date, base_time
 
-    def get_weather_data(self):
-        if not self.kma_weather_api_key: return None
-        weather_info = {}
-        try:
-            # 1. 초단기실황
-            bd, bt = self.get_kma_base_time('ultrasrt')
-            url = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst"
-            params = {'serviceKey': self.kma_weather_api_key, 'numOfRows': '10', 'pageNo': '1',
-                      'base_date': bd, 'base_time': bt, 'nx': self.kma_nx, 'ny': self.kma_ny, '_type': 'xml'}
 
-            root = ET.fromstring(requests.get(url, params=params, timeout=10).text)
-            for item in root.findall(".//item"):
-                cat = item.find("category").text
-                val = item.find("obsrValue").text
-                if cat == 'T1H':
-                    weather_info['temp'] = _safe_float(val)
-                elif cat == 'RN1':
-                    weather_info['current_rain_amount'] = _safe_float(val)
-
-            # 2. 초단기예보
-            bd, bt = self.get_kma_base_time('ultrasrt_fcst')
-            url = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst"
-            params['base_date'] = bd;
-            params['base_time'] = bt;
-            params['numOfRows'] = '60'
-
-            root = ET.fromstring(requests.get(url, params=params, timeout=10).text)
-            forecasts = {}
-            for item in root.findall(".//item"):
-                dt = item.find("fcstDate").text + item.find("fcstTime").text
-                if dt not in forecasts: forecasts[dt] = {}
-                forecasts[dt][item.find("category").text] = item.find("fcstValue").text
-
-            now = datetime.now()
-            closest_time = min(
-                [t for t in forecasts.keys() if datetime.strptime(t, '%Y%m%d%H%M') >= now - timedelta(minutes=30)],
-                key=lambda x: abs(datetime.strptime(x, '%Y%m%d%H%M') - now), default=None)
-
-            if closest_time:
-                sky = int(forecasts[closest_time].get('SKY', '1'))
-                pty = int(forecasts[closest_time].get('PTY', '0'))
-                weather_info['weather_main_code'] = pty
-                if pty == 0:
-                    weather_info['weather_description'] = ['맑음', '맑음', '구름 많음', '흐림'][sky - 1] if sky <= 4 else '흐림'
-                else:
-                    weather_info['weather_description'] = ['', '비', '비 또는 눈', '눈', '소나기'][pty]
-
-            # 6시간 강수 예보
-            max_rain = None
-            for t in sorted(forecasts.keys()):
-                ft = datetime.strptime(t, '%Y%m%d%H%M')
-                if now <= ft <= now + timedelta(hours=6):
-                    pty = int(forecasts[t].get('PTY', '0'))
-                    rn1 = _safe_float(forecasts[t].get('RN1', '0'))
-                    if pty > 0 and rn1 > 0:
-                        if not max_rain or rn1 > max_rain['amount']:
-                            max_rain = {'amount': rn1, 'start_time': ft.strftime('%H:%M'),
-                                        'end_time': (ft + timedelta(hours=1)).strftime('%H:%M'), 'type_code': pty}
-            weather_info['rain_forecast'] = max_rain
-            return weather_info
-        except Exception as e:
-            logger.error(f"Weather API Error: {e}")
-            return None
 
     def get_font(self, size=20):
         for font_path in self.font_paths:
@@ -323,9 +256,10 @@ class EInkPhotoFrame:
             if weather_data.get('rain_forecast'):
                 rf = weather_data['rain_forecast']
                 rtype = ["", "비", "비/눈", "눈", "소나기"][rf['type_code']]
-                lines.append(f"└ {rtype} {rf['start_time']}~ {rf['amount']:.1f}mm")
+                # Simplified Text: "눈 1.0mm"
+                lines.append(f"└ {rtype} {rf['amount']:.1f}mm")
             elif weather_data.get('current_rain_amount', 0) > 0:
-                lines.append(f"└ 현재 강수량: {weather_data['current_rain_amount']:.1f}mm")
+                lines.append(f"└ 강수량 {weather_data['current_rain_amount']:.1f}mm")
         else:
             lines.append("날씨 정보 없음")
             w_icon = self.weather_icons.get('정보없음')
@@ -381,6 +315,16 @@ class EInkPhotoFrame:
             box_y = self.display_height - box_h - margin
         else:
             box_y = margin
+
+        # [Overflow Protection]
+        # Prevent going off-screen (Right/Bottom)
+        if box_x + box_w > self.display_width:
+             box_x = self.display_width - box_w - margin
+        if box_x < 0: box_x = 0 # Safety for huge widgets
+        
+        if box_y + box_h > self.display_height:
+             box_y = self.display_height - box_h - margin
+        if box_y < 0: box_y = 0
 
         # 박스 그리기
         draw.rounded_rectangle([box_x, box_y, box_x + box_w, box_y + box_h], radius=10, fill=(255, 255, 255, bg_alpha),

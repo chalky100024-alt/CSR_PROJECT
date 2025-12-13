@@ -2,41 +2,41 @@
   {
     "id": "TC001",
     "title": "photo management api list photos",
-    "description": "Verify that the API endpoint for listing photos returns the correct list of photos stored locally with appropriate metadata and status code."
+    "description": "Test the photo management API endpoint for listing photos to ensure it returns the correct list of photos stored locally with proper response format and status code."
   },
   {
     "id": "TC002",
     "title": "photo management api upload photo",
-    "description": "Test the photo upload API endpoint to ensure it accepts valid image files, stores them correctly, and returns a success response."
+    "description": "Verify the photo upload API endpoint accepts valid photo files, stores them correctly, and returns a success response with appropriate status code."
   },
   {
     "id": "TC003",
     "title": "photo management api delete photo",
-    "description": "Validate the photo deletion API endpoint to confirm it removes the specified photo from local storage and returns the correct status."
+    "description": "Check the photo deletion API endpoint to confirm it deletes the specified photo from local storage and returns a success response or appropriate error if the photo does not exist."
   },
   {
     "id": "TC004",
     "title": "ai image generation api generate image",
-    "description": "Test the AI image generation API endpoint by sending valid prompts and verifying that it returns generated images within expected time frames and correct format."
+    "description": "Test the AI image generation API endpoint by sending valid prompts and verifying that it returns generated images within expected time frames and with correct response structure."
   },
   {
     "id": "TC005",
     "title": "hardware control api eink display update",
-    "description": "Verify the hardware control API endpoint that updates the E-Ink display with a new image, ensuring the hardware interface responds without errors."
+    "description": "Validate the hardware control API endpoint that updates the E-Ink display to ensure it correctly sends commands to the display and handles errors gracefully."
   },
   {
     "id": "TC006",
     "title": "hardware control api battery status",
-    "description": "Test the API endpoint that retrieves the PiSugar battery status to ensure it returns accurate battery information and handles hardware communication correctly."
+    "description": "Test the battery status API endpoint to verify it accurately reports the PiSugar battery state and handles hardware communication errors properly."
   },
   {
     "id": "TC007",
     "title": "configuration api update settings",
-    "description": "Validate the configuration API endpoint that updates device settings, ensuring changes are saved correctly and reflected in device behavior."
+    "description": "Verify the configuration API endpoint allows updating device settings and that changes are reflected correctly in the device behavior and persisted in config files."
   },
   {
     "id": "TC008",
-    "title": "configuration api get settings",
-    "description": "Test the API endpoint that retrieves current configuration settings to confirm it returns accurate and up-to-date configuration data."
+    "title": "frontend backend communication",
+    "description": "Test the communication between frontend and backend APIs to ensure no CORS or proxy errors occur and that errors are logged and traceable according to the debugging guide."
   }
 ]

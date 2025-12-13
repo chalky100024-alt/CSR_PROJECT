@@ -159,7 +159,8 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
         if weather_data.get('rain_forecast'):
             rf = weather_data['rain_forecast']
             rtype = ["", "비", "비/눈", "눈", "소나기"][rf['type_code']]
-            lines.append(f"└ {rtype} {rf['start_time']}~ {rf['amount']:.1f}mm")
+            # Simplified Text matching user request
+            lines.append(f"└ {rtype} {rf['amount']:.1f}mm")
         elif weather_data.get('current_rain_amount', 0) > 0:
             lines.append(f"└ 현재 강수량: {weather_data['current_rain_amount']:.1f}mm")
     else:
@@ -217,6 +218,16 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
         if pos_y is not None: box_y = int(float(pos_y))
     elif layout_config.get('position') == 'bottom' or layout_type == 'type_B':
         box_y = DISPLAY_HEIGHT - box_h - margin
+
+    # [Overflow Protection]
+    # Prevent going off-screen (Right/Bottom)
+    if box_x + box_w > DISPLAY_WIDTH:
+            box_x = DISPLAY_WIDTH - box_w - margin
+    if box_x < 0: box_x = 0
+    
+    if box_y + box_h > DISPLAY_HEIGHT:
+            box_y = DISPLAY_HEIGHT - box_h - margin
+    if box_y < 0: box_y = 0
 
     # Draw Box
     draw.rounded_rectangle([box_x, box_y, box_x + box_w, box_y + box_h], radius=int(10*scale), fill=(255, 255, 255, bg_alpha),

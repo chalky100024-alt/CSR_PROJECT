@@ -3,14 +3,5 @@
   "type": "backend",
   "scope": "codebase",
   "localEndpoint": "http://localhost:8080",
-  "backendAuthType": "public",
-  "executionArgs": {
-    "projectName": "CSR_PROJECT",
-    "projectPath": "/Users/sangryulcho/Desktop/CSR_PROJECT",
-    "testIds": [],
-    "additionalInstruction": "Basic API verification",
-    "envs": {
-      "API_KEY": "sk-user-_TjG1XMDajyCqBZ_s71sFb5O5jMeHmfAOEVVnOqzfMjQY2sQLZ35lVUWtelffFBIbjreDdawGq_3TCSIAI7UgWum3v6QVXHjeNsYpH326kJHmFvn3JQUmpzV0y2Gq-aS8AE"
-    }
-  }
+  "backendAuthType": "public"
 }
