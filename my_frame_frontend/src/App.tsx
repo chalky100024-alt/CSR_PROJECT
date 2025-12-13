@@ -6,7 +6,7 @@ import { PreviewCard } from './components/PreviewCard';
 import { Gallery } from './components/Gallery';
 import { AIAtelier } from './components/AIAtelier';
 import { SettingsModal } from './components/SettingsModal';
-import { saveConfig } from './api';
+import { saveConfig, getConfig } from './api';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import type { Language } from './translations';
 
@@ -15,6 +15,15 @@ function MainApp() {
   const [selectedPhoto, setSelectedPhoto] = useState<string>('');
   const [refreshPreview, setRefreshPreview] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Sync state with backend config on load
+  useEffect(() => {
+    getConfig().then(cfg => {
+      if (cfg.selected_photo) {
+        setSelectedPhoto(cfg.selected_photo);
+      }
+    });
+  }, []);
 
   const handlePhotoSelect = async (photo: string) => {
     setSelectedPhoto(photo);
