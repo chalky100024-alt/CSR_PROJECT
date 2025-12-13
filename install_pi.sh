@@ -16,30 +16,19 @@ source venv/bin/activate
 pip install -r requirements.txt
 pip install flask-cors pillow-heif h11==0.14.0 # Specific fix for some Pi versions
 
-# 3. Frontend Setup
-echo "⚛️ Building Frontend..."
-if ! command -v node &> /dev/null; then
-    echo "❌ Node.js not found. Installing Node 18..."
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-    sudo apt-get install -y nodejs
-fi
+# 3. Frontend Setup (Pre-built on Mac)
+echo "⚛️ Using Pre-built Frontend Assets..."
+# SKIP BUILD on Pi Zero 2 W (Low RAM)
+# if ! command -v node &> /dev/null; then
+#     echo "❌ Node.js not found. Installing Node 18..."
+#     curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+#     sudo apt-get install -y nodejs
+# fi
 
-cd my_frame_frontend
-npm install
-npm run build 
-# Build output goes to my_frame_frontend/dist
-
-# 4. Move Build to Flask Static
-echo "📂 Moving Build files..."
-cd ..
-# Cleanup old static
-rm -rf my_frame_web/static/*
-rm -rf my_frame_web/templates/index.html
-
-# Copy new assets
-# Vite builds assets into dist/assets and index.html
-cp -r my_frame_frontend/dist/assets my_frame_web/static/
-cp my_frame_frontend/dist/index.html my_frame_web/templates/
+# cd my_frame_frontend
+# npm install
+# npm run build 
+# cd ..
 
 echo "✅ Update Complete!"
 echo "👉 Run: source venv/bin/activate && python app.py"
