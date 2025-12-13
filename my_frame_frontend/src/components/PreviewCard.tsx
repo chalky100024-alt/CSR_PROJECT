@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Card, Image, Text, Group, Button, Slider, Stack, Collapse, Badge, Loader } from '@mantine/core';
-import { IconSettings, IconRefresh, IconDeviceFloppy } from '@tabler/icons-react';
+import { Card, Image, Text, Group, Button, Slider, Stack, Collapse, Badge } from '@mantine/core';
+import { IconRefresh, IconDeviceFloppy } from '@tabler/icons-react';
 import { getPreviewUrl, saveConfig, getConfig } from '../api';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -55,12 +55,11 @@ export function PreviewCard({ refreshKey, selectedPhoto }: PreviewCardProps) {
             selected_photo: photoToSave
         };
 
-        // Debug Alert for User
-        const msg = `Saving Layout & Transferring:\nPhoto: ${photoToSave}\nWidget Size: ${config.layout.widget_size}`;
-        if (!confirm(msg)) return; // Allow user to cancel if wrong
+        // Confirm removed as per user request
+        // if (!confirm(msg)) return; 
 
         await saveConfig(finalConfig, true);
-        alert(t('saveTransfer') + " OK!");
+        // alert(t('saveTransfer') + " OK!"); // Removed alert too for smoother experience
     };
     const handleRefresh = () => {
         setImgUrl(getPreviewUrl() + '&t=' + Date.now());

@@ -269,7 +269,8 @@ class EInkPhotoFrame:
         dust_grade = ""
         if dust_data:
             grade, sym, color = self.get_dust_grade_info(dust_data.get('pm10'), dust_data.get('pm25'))
-            dust_str = f"미세먼지 {grade}"
+            # Format: "미세먼지 좋음 (25/12)"
+            dust_str = f"미세먼지 {grade} ({dust_data.get('pm10')}/{dust_data.get('pm25')})"
             dust_grade = grade
             dust_color = color
         else:

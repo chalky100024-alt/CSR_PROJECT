@@ -170,7 +170,7 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
     dust_color = (100, 100, 100)
     if dust_data:
         grade, sym, color = get_dust_grade_info(dust_data.get('pm10'), dust_data.get('pm25'))
-        dust_str = f"미세먼지 {grade}"
+        dust_str = f"미세먼지 {grade} ({dust_data.get('pm10')}/{dust_data.get('pm25')})"
         dust_color = color
     else:
         dust_str = "미세먼지 정보 없음"
