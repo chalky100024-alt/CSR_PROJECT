@@ -166,15 +166,23 @@ def api_save_config():
     # Trigger Display Refresh in Background ONLY if requested
     # User Requirement: Refresh ONLY when "Save Layout & Transfer" is pressed.
     should_refresh = request.args.get('refresh', 'false').lower() == 'true'
+    print(f"DEBUG: api_save_config called. Request args: {request.args}, should_refresh: {should_refresh}")
     
     if should_refresh:
         def refresh_task():
             try:
+                print("DEBUG: Starting background refresh task...")
                 # 2. Refresh
                 pf = photo_frame.EInkPhotoFrame()
+                # Ensure we strictly follow display logic
+                # Pass explicit photo_path if selected_photo is in config
+                print("DEBUG: Calling pf.refresh_display()")
                 pf.refresh_display()
+                print("DEBUG: pf.refresh_display() completed.")
             except Exception as e:
                 print(f"Refresh failed: {e}")
+                import traceback
+                traceback.print_exc()
                 
         threading.Thread(target=refresh_task).start()
     
@@ -255,10 +263,14 @@ def get_preview():
 def api_gen_ai():
     prompt = request.json.get('prompt')
     style = request.json.get('style', 'anime')
-    image_filename = request.json.get('image_filename')
+    # Support both single (legacy/optional) and list
+    image_filenames = request.json.get('image_filenames', [])
+    if not image_filenames and request.json.get('image_filename'):
+        image_filenames = [request.json.get('image_filename')]
+        
     provider = settings.load_config().get('ai_provider', 'huggingface')
     
-    filename = ai_generator.generate_image(prompt, style, provider, image_filename)
+    filename = ai_generator.generate_image(prompt, style, provider, image_filenames)
     if filename:
         return jsonify({"status": "success", "image": filename})
     else:

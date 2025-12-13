@@ -39,7 +39,7 @@ export function AIAtelier({ onImageGenerated }: AIAtelierProps) {
     // Multimodal State
     const [useImage, setUseImage] = useState(false);
     const [availablePhotos, setAvailablePhotos] = useState<string[]>([]);
-    const [selectedInputImage, setSelectedInputImage] = useState<string>('');
+    const [selectedInputImages, setSelectedInputImages] = useState<string[]>([]);
 
     useEffect(() => {
         getConfig().then(cfg => {
@@ -49,7 +49,7 @@ export function AIAtelier({ onImageGenerated }: AIAtelierProps) {
         // Load photos for selector
         fetchPhotos().then(photos => {
             setAvailablePhotos(photos);
-            if (photos.length > 0) setSelectedInputImage(photos[0]);
+            // Dont auto select for multi-mode, let user choose
         });
     }, []);
 
@@ -61,8 +61,8 @@ export function AIAtelier({ onImageGenerated }: AIAtelierProps) {
     const handleGenerate = async () => {
         setLoading(true);
         try {
-            const imageToUse = (useImage && provider === 'google') ? selectedInputImage : undefined;
-            const res = await generateAI(prompt, style, imageToUse);
+            const imagesToUse = (useImage && provider === 'google') ? selectedInputImages : undefined;
+            const res = await generateAI(prompt, style, imagesToUse);
             if (res.status === 'success') {
                 if (res.image) setLastImage(res.image);
                 onImageGenerated();
@@ -115,7 +115,7 @@ export function AIAtelier({ onImageGenerated }: AIAtelierProps) {
 
                 {provider === 'google' && (
                     <Card withBorder p="xs" radius="sm" style={{ backgroundColor: '#f8f9fa' }}>
-                        <Group justify="space-between">
+                        <Group justify="space-between" mb="xs">
                             <Text size="sm" fw={500}>🖼️ 이미지와 함께 전송 (Multimodal)</Text>
                             <Checkbox
                                 checked={useImage}
@@ -125,21 +125,60 @@ export function AIAtelier({ onImageGenerated }: AIAtelierProps) {
 
                         {useImage && (
                             <Stack mt="xs">
-                                <Select
-                                    placeholder="Select Image"
-                                    data={availablePhotos.map(p => ({ value: p, label: p }))}
-                                    value={selectedInputImage}
-                                    onChange={(v) => setSelectedInputImage(v as string)}
-                                />
-                                {selectedInputImage && (
-                                    <Image
-                                        src={getPhotoUrl(selectedInputImage)}
-                                        h={100}
-                                        radius="sm"
-                                        fit="contain"
-                                        style={{ backgroundColor: '#eee' }}
-                                    />
-                                )}
+                                <Text size="xs" c="dimmed">
+                                    선택된 이미지: {selectedInputImages.length}장
+                                </Text>
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(4, 1fr)',
+                                    gap: '8px',
+                                    maxHeight: '200px',
+                                    overflowY: 'auto',
+                                    padding: '4px'
+                                }}>
+                                    {availablePhotos.map((photo) => {
+                                        const isSelected = selectedInputImages.includes(photo);
+                                        return (
+                                            <div
+                                                key={photo}
+                                                onClick={() => {
+                                                    setSelectedInputImages(prev =>
+                                                        isSelected
+                                                            ? prev.filter(p => p !== photo)
+                                                            : [...prev, photo]
+                                                    );
+                                                }}
+                                                style={{
+                                                    cursor: 'pointer',
+                                                    border: isSelected ? '3px solid #228be6' : '1px solid #ddd',
+                                                    borderRadius: '8px',
+                                                    overflow: 'hidden',
+                                                    position: 'relative',
+                                                    aspectRatio: '1'
+                                                }}
+                                            >
+                                                <Image
+                                                    src={getPhotoUrl(photo)}
+                                                    w="100%"
+                                                    h="100%"
+                                                    fit="cover"
+                                                />
+                                                {isSelected && (
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        top: 0, right: 0, left: 0, bottom: 0,
+                                                        background: 'rgba(34, 139, 230, 0.3)',
+                                                        display: 'flex',
+                                                        justifyContent: 'center',
+                                                        alignItems: 'center'
+                                                    }}>
+                                                        <Text size="xl">✔️</Text>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </Stack>
                         )}
                     </Card>

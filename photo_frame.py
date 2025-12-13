@@ -96,7 +96,7 @@ class EInkPhotoFrame:
         ]
 
         self.icon_dir = os.path.join(BASE_DIR, "icons")
-        self.weather_icons = self._load_weather_icons()
+        # self.weather_icons = self._load_weather_icons() # Removed: Renderer handles this, and method was missing causing crash.
 
         if self.is_preview_mode:
             logger.info(">> 미리보기 모드 실행 (E-Ink 갱신 없음)")
