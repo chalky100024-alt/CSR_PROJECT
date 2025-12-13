@@ -114,153 +114,150 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
     overlay = Image.new('RGBA', (DISPLAY_WIDTH, DISPLAY_HEIGHT), (255, 255, 255, 0))
     draw = ImageDraw.Draw(overlay)
 
-    # Layout Config
-    try:
-        base_font_size = int(layout_config.get('font_size', 20))
-        scale = float(layout_config.get('widget_size', 1.0))
-        opacity = float(layout_config.get('opacity', 0.6))
-    except:
-        base_font_size = 20
-        scale = 1.0
-        opacity = 0.6
-    
-    # Calculate Alpha
-    # Opacity 1.0 = Opaque (255), 0.0 = Transparent (0)
-    bg_alpha = int(255 * opacity)
+    # --- [Apple-like Vertical Widget Layout] ---
+    # Apply defaults if missing
+    widget_scale = float(layout_config.get('widget_size', 1.0))
+    opacity_val = float(layout_config.get('opacity', 0.85)) # Higher default
+    bg_alpha = int(255 * opacity_val)
 
-    # Apply scale to font size - Match photo_frame.py logic
-    # Base sizes: 23, 20, 18, 12
-    font_lg = get_font(int(23 * scale))
-    font_md = get_font(int(20 * scale))
-    font_sm = get_font(int(18 * scale))
-    font_dt = get_font(int(12 * scale))
+    # Base Dimensions
+    card_w = int(200 * widget_scale) 
+    card_h = int(220 * widget_scale) # Initial estimate
+    padding = int(15 * widget_scale)
+    line_spacing = int(5 * widget_scale)
 
-    # Load Icons (Assuming icons dir is relative to project root)
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    icon_dir = os.path.join(base_dir, 'icons')
-    weather_icons = _load_weather_icons(icon_dir)
+    # Fonts
+    # renderer.py uses global get_font function
+    font_xl = get_font(int(40 * widget_scale)) 
+    font_lg = get_font(int(22 * widget_scale)) 
+    font_md = get_font(int(18 * widget_scale)) 
+    font_sm = get_font(int(14 * widget_scale)) 
 
-    lines = []
+    # Data Preparation
+    temp_str = "--°"
+    desc_str = ""
+    rain_str = ""
     w_icon = None
 
-    # 1. Weather Line
     if weather_data and 'temp' in weather_data:
-        desc = weather_data.get('weather_description', '정보없음')
-        w_icon = weather_icons.get(desc, weather_icons.get('정보없음'))
+        temp_str = f"{int(weather_data['temp'])}°"
+        desc_str = weather_data.get('weather_description', '정보없음')
         
-        # Resize Icon based on scale
+        # Icon
+        w_icon = weather_icons.get(desc_str, weather_icons.get('정보없음'))
+        
         if w_icon:
-            # Resize Icon 
-            icon_sz = int(45 * scale)
-            w_icon = w_icon.resize((icon_sz, icon_sz), Image.Resampling.LANCZOS)
+            # Icon size
+            icon_sz = int(50 * widget_scale)
+            if w_icon.size[0] != icon_sz:
+                w_icon = w_icon.resize((icon_sz, icon_sz), Image.Resampling.LANCZOS)
 
-        lines.append(f"{weather_data['temp']:.1f}°C ({desc})")
-
+        # Rain
         if weather_data.get('rain_forecast'):
             rf = weather_data['rain_forecast']
             rtype = ["", "비", "비/눈", "눈", "소나기"][rf['type_code']]
-            # Simplified Text matching user request
-            lines.append(f"└ {rtype} {rf['amount']:.1f}mm")
+            rain_str = f"{rtype} {rf['amount']:.1f}mm"
         elif weather_data.get('current_rain_amount', 0) > 0:
-            lines.append(f"└ 현재 강수량: {weather_data['current_rain_amount']:.1f}mm")
-    else:
-        lines.append("날씨 정보 없음")
-        w_icon = weather_icons.get('정보없음')
-        if w_icon:
-             icon_sz = int(45 * scale)
-             w_icon = w_icon.resize((icon_sz, icon_sz), Image.Resampling.LANCZOS)
-
-    # 2. Dust Line
-    dust_color = (128, 128, 128)
+            rain_str = f"강수 {weather_data['current_rain_amount']:.1f}mm"
+    
+    # Dust
+    dust_str = ""
+    dust_color = (100, 100, 100)
     if dust_data:
         grade, sym, color = get_dust_grade_info(dust_data.get('pm10'), dust_data.get('pm25'))
-        # Line 1: Grade symbol & text
-        lines.append(f"{sym} {grade} (PM10:{dust_data['pm10']}|PM2.5:{dust_data['pm25']})")
+        dust_str = f"미세먼지 {grade}"
         dust_color = color
     else:
-        lines.append("미세먼지 정보 없음")
+        dust_str = "미세먼지 정보 없음"
 
-    # Time & Location Line
-    time_str = datetime.now().strftime('%m/%d %H시 기준')
-    lines.append(time_str)
+    # Time
+    time_str = datetime.now().strftime('%m/%d %H:%M')
 
-    # Dimensions
-    pad = int(5 * scale)
-    line_heights = [font_lg.getmetrics()[0] + font_lg.getmetrics()[1] for _ in lines]
+    # Calculate Box Height dynamically
+    current_y = padding
     
-    # Calculate Max Width
-    try:
-        max_text_w = max([draw.textlength(l, font_lg) for l in lines]) 
-        icon_w = w_icon.width if w_icon else 0
-        max_w = max_text_w + icon_w + int(20 * scale)
-    except:
-        max_w = int(300 * scale)
+    # Row 1 Height (Max of Icon or Temp)
+    row1_h = max(w_icon.height if w_icon else 0, font_xl.getbbox(temp_str)[3])
+    current_y += row1_h + line_spacing
+    
+    # Row 2 (Desc)
+    current_y += font_md.getbbox(desc_str)[3] + (line_spacing * 2)
+    
+    # Row 3 (Rain)
+    if rain_str:
+        current_y += font_md.getbbox(rain_str)[3] + line_spacing
 
-    # Height accumulation
-    total_h = sum(line_heights) + (pad * len(lines)) + int(30 * scale)
+    # Row 4 (Dust)
+    current_y += font_md.getbbox(dust_str)[3] + line_spacing
+    
+    # Row 5 (Time) - margin top
+    current_y += 10 + font_sm.getbbox(time_str)[3] + padding
 
-    box_w = max_w + int(30 * scale)
-    box_h = total_h + int(20 * scale)
-    margin = int(15 * scale)
+    box_h = int(current_y) # Update height
+    box_w = card_w
 
-    # Position Calculation
+    # Position Logic
     pos_x = layout_config.get('x')
     pos_y = layout_config.get('y')
     layout_type = layout_config.get('type')
-
-    # Default X (Right Aligned)
-    box_x = DISPLAY_WIDTH - box_w - margin
-    # Default Y
-    box_y = margin
+    
+    box_x = DISPLAY_WIDTH - box_w - int(20 * widget_scale) # Default Right
+    box_y = int(20 * widget_scale) # Default Top
 
     if layout_type == 'custom':
         if pos_x is not None: box_x = int(float(pos_x))
         if pos_y is not None: box_y = int(float(pos_y))
     elif layout_config.get('position') == 'bottom' or layout_type == 'type_B':
-        box_y = DISPLAY_HEIGHT - box_h - margin
+         box_y = DISPLAY_HEIGHT - box_h - int(20 * widget_scale)
 
-    # [Overflow Protection]
-    # Prevent going off-screen (Right/Bottom)
-    if box_x + box_w > DISPLAY_WIDTH:
-            box_x = DISPLAY_WIDTH - box_w - margin
+    # Overflow Protection
+    if box_x + box_w > DISPLAY_WIDTH: box_x = DISPLAY_WIDTH - box_w - 5
     if box_x < 0: box_x = 0
-    
-    if box_y + box_h > DISPLAY_HEIGHT:
-            box_y = DISPLAY_HEIGHT - box_h - margin
+    if box_y + box_h > DISPLAY_HEIGHT: box_y = DISPLAY_HEIGHT - box_h - 5
     if box_y < 0: box_y = 0
 
-    # Draw Box
-    draw.rounded_rectangle([box_x, box_y, box_x + box_w, box_y + box_h], radius=int(10*scale), fill=(255, 255, 255, bg_alpha),
-                           outline=(0, 0, 0), width=2)
-
-    # Draw Text
-    cy = box_y + int(15 * scale)
-    cx = box_x + int(15 * scale)
-
-    # Line 1: Weather
-    if w_icon:
-        overlay.paste(w_icon, (int(cx), int(cy)), w_icon)
-        cx += w_icon.width + int(5 * scale)
-    draw.text((cx, cy), lines[0], font=font_lg, fill=(0, 0, 0))
+    # Draw Background (Rounded Card)
+    draw.rounded_rectangle([box_x, box_y, box_x + box_w, box_y + box_h], 
+                           radius=int(20 * widget_scale), 
+                           fill=(255, 255, 255, bg_alpha), 
+                           outline=None)
     
-    # Use proper spacing for next line
-    cy += line_heights[0] + pad
-    cx = box_x + int(15 * scale)
+    # Content Draw Cursor
+    cx = box_x + padding
+    cy = box_y + padding
 
-    # Remaining Lines
-    for i, line in enumerate(lines[1:]):
-        f = font_dt if i == len(lines) - 2 else font_md # Last line is date (small)
-        
-        if "●" in line:
-            parts = line.split(' ', 1)
-            sym = parts[0]
-            txt = parts[1] if len(parts) > 1 else ""
-            draw.text((cx, cy), sym, font=f, fill=dust_color)
-            draw.text((cx + draw.textlength(sym, f) + 5, cy), txt, font=f, fill=(0, 0, 0))
-        else:
-            draw.text((cx, cy), line, font=f, fill=(0, 0, 0))
-            
-        cy += line_heights[i+1] + pad
+    # Row 1: Icon & Temp
+    if w_icon:
+        overlay.paste(w_icon, (cx, cy), w_icon)
+        # Temp Text right next to icon
+        temp_x = cx + w_icon.width + 10
+        # Center vertically with icon
+        temp_y = cy + (w_icon.height - font_xl.getbbox(temp_str)[3]) // 2 - 5
+        draw.text((temp_x, temp_y), temp_str, font=font_xl, fill=(0,0,0))
+        cy += max(w_icon.height, font_xl.getbbox(temp_str)[3]) + line_spacing
+    else:
+        draw.text((cx, cy), temp_str, font=font_xl, fill=(0,0,0))
+        cy += font_xl.getbbox(temp_str)[3] + line_spacing
+
+    # Row 2: Desc
+    draw.text((cx + 5, cy), desc_str, font=font_md, fill=(60,60,60))
+    cy += font_md.getbbox(desc_str)[3] + (line_spacing * 2)
+
+    # Row 3: Rain (Optional)
+    if rain_str:
+        draw.text((cx + 5, cy), f"☔ {rain_str}", font=font_md, fill=(0,0,200))
+        cy += font_md.getbbox(rain_str)[3] + line_spacing
+
+    # Row 4: Dust
+    # Draw colored dot + text
+    dot_r = 4
+    dot_y = cy + 10
+    draw.ellipse([cx + 5, dot_y - dot_r, cx + 5 + (dot_r*2), dot_y + dot_r], fill=dust_color)
+    draw.text((cx + 20, cy), dust_str, font=font_md, fill=(0,0,0))
+    cy += font_md.getbbox(dust_str)[3] + line_spacing + 10
+
+    # Row 5: Time (Bottom)
+    draw.text((cx + 5, cy), time_str, font=font_sm, fill=(100,100,100))
 
     final_image = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
     return final_image, box_x, box_y, box_w, box_h
