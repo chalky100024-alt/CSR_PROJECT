@@ -8,10 +8,30 @@ interface AIAtelierProps {
     onImageGenerated: () => void;
 }
 
+// Fun & Rich Style Presets
+const STYLES = [
+    { value: 'no_style', label: '🚫 화풍 없음 (No Style)' },
+    { value: 'Watercolor', label: '🎨 수채화 (Watercolor)' },
+    { value: 'Oil Painting, Van Gogh style', label: '🌻 유화 (반 고흐 스타일)' },
+    { value: 'Studio Ghibli', label: '🍃 지브리 애니메이션' },
+    { value: 'Pixel Art', label: '👾 픽셀 아트' },
+    { value: 'Lego Brick', label: '🧱 레고 블록' },
+    { value: 'Claymation', label: '🥣 클레이 애니메이션' },
+    { value: 'Origami', label: '📄 종이접기' },
+    { value: 'Cyberpunk', label: '🌃 사이버펑크' },
+    { value: 'Makoto Shinkai', label: '🌠 신카이 마코토 (초고화질)' },
+    { value: 'Polaroid', label: '📸 폴라로이드 사진' },
+    { value: '3D Cute Character Rendering', label: '🧸 3D 귀여운 캐릭터' },
+    { value: 'Steampunk', label: '⚙️ 스팀펑크' },
+    { value: 'Pencil Sketch', label: '✏️ 연필 스케치' },
+    { value: 'Futuristic City', label: '🚀 미래도시' },
+    { value: 'Vintage Comic Book', label: '📖 옛날 만화책' },
+];
+
 export function AIAtelier({ onImageGenerated }: AIAtelierProps) {
     const { t } = useLanguage();
     const [prompt, setPrompt] = useState('');
-    const [style, setStyle] = useState('anime style');
+    const [style, setStyle] = useState('Watercolor'); // Default to first item
     const [provider, setProvider] = useState('huggingface');
     const [loading, setLoading] = useState(false);
     const [lastImage, setLastImage] = useState<string | null>(null);
@@ -57,7 +77,7 @@ export function AIAtelier({ onImageGenerated }: AIAtelierProps) {
                     onChange={(v) => handleChangeProvider(v as string)}
                     data={[
                         { value: 'huggingface', label: 'HuggingFace (Free)' },
-                        { value: 'google', label: 'Google Vertex AI (High Quality)' },
+                        { value: 'google', label: 'Google Gemini (Nano Banana) 🍌' },
                     ]}
                     allowDeselect={false}
                 />
@@ -71,15 +91,12 @@ export function AIAtelier({ onImageGenerated }: AIAtelierProps) {
                 />
 
                 <Select
+                    label="화풍 선택 / Style Select"
                     value={style}
                     onChange={(v) => setStyle(v as string)}
-                    data={[
-                        { value: 'anime style', label: 'Studio Ghibli' },
-                        { value: 'photorealistic', label: 'Photorealistic' },
-                        { value: 'oil painting', label: 'Van Gogh Oil' },
-                        { value: 'watercolor', label: 'Watercolor' },
-                        { value: 'lego', label: 'Lego' }
-                    ]}
+                    data={STYLES}
+                    searchable
+                    maxDropdownHeight={280}
                 />
 
                 <Button

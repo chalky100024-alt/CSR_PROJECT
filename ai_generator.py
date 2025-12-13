@@ -28,15 +28,16 @@ def generate_image(prompt, style_preset, provider="huggingface"):
     config = settings.load_config()
     
     # 0. Common Pre-processing (Translation & Style Mapping)
-    # Auto-Translate (Korean -> English)
-    try:
-        from deep_translator import GoogleTranslator
-        if prompt and any(ord(c) > 127 for c in prompt): # Simple check if translation needed
-            translated = GoogleTranslator(source='auto', target='en').translate(prompt)
-            logger.info(f"🔤 Translate: {prompt} -> {translated}")
-            prompt = translated
-    except Exception as e:
-        logger.warning(f"Translation failed: {e}")
+    # 0. Common Pre-processing (Translation & Style Mapping)
+    # Auto-Translate (Korean -> English) - DISABLED by user request
+    # try:
+    #     from deep_translator import GoogleTranslator
+    #     if prompt and any(ord(c) > 127 for c in prompt): # Simple check if translation needed
+    #         translated = GoogleTranslator(source='auto', target='en').translate(prompt)
+    #         logger.info(f"🔤 Translate: {prompt} -> {translated}")
+    #         prompt = translated
+    # except Exception as e:
+    #     logger.warning(f"Translation failed: {e}")
 
     # Style Mapping
     if style_preset == "anime style": 
@@ -46,7 +47,11 @@ def generate_image(prompt, style_preset, provider="huggingface"):
     clean_style = style_preset.replace(" style", "")
     
     # Common Prompt Construction
-    full_prompt = f"{prompt}, {clean_style} style, HD, high quality, 8k"
+    if style_preset == "no_style":
+        full_prompt = f"{prompt}, HD, high quality, 8k"
+    else:
+        full_prompt = f"{prompt}, {clean_style} style, HD, high quality, 8k"
+        
     logger.info(f"🎨 Generate Request ({provider}): {full_prompt}")
 
     # 1. Google Provider
@@ -57,7 +62,7 @@ def generate_image(prompt, style_preset, provider="huggingface"):
             return None
             
         try:
-            return _gen_google_vertex(full_prompt, api_key)
+            return _gen_gemini_flash(full_prompt, api_key)
         except Exception as e:
             logger.error(f"Google Gen Failed: {e}")
             return None
@@ -83,38 +88,52 @@ def generate_image(prompt, style_preset, provider="huggingface"):
 
 # --- Helper Functions ---
 
-def _gen_google_vertex(prompt, api_key):
-    # Google Vertex AI (Rest API)
-    config = settings.load_config()
-    project_id = config.get('google_project_id')
-    location = config.get('google_location', 'us-central1')
-    
-    if not project_id: return None
-
-    model_id = "imagen-3.0-generate-001"
-    url = f"https://{location}-aiplatform.googleapis.com/v1/projects/{project_id}/locations/{location}/publishers/google/models/{model_id}:predict"
+def _gen_gemini_flash(prompt, api_key):
+    # Google Gemini 2.5 Flash (Nano Banana) implementation
+    model_id = "gemini-2.5-flash-image"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_id}:generateContent"
     
     headers = { "Content-Type": "application/json" }
     params = {"key": api_key}
     
+    # Gemini Flash Payload structure
     payload = {
-        "instances": [{"prompt": prompt}],
-        "parameters": { "sampleCount": 1, "aspectRatio": "16:9" }
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }],
+        "generationConfig": {
+            "response_modalities": ["IMAGE"]
+        }
     }
     
+    logger.info(f"⚡️ Calling Gemini Flash ({model_id})...")
     response = requests.post(url, headers=headers, params=params, json=payload, timeout=60)
     
     if response.status_code != 200:
-        logger.error(f"Google Error: {response.text}")
+        logger.error(f"Gemini Error: {response.text}")
         return None
         
     try:
         res_json = response.json()
-        b64_img = res_json['predictions'][0]['bytesBase64Encoded']
-        img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
-        return _save_result(img, "google")
+        # Parse Gemini Response: candidates[0].content.parts[0].inlineData.data
+        # Note: Sometimes text is returned if image gen fails or is filtered, but usually inlineData
+        candidates = res_json.get('candidates', [])
+        if not candidates:
+            logger.error("No candidates in response")
+            return None
+            
+        parts = candidates[0].get('content', {}).get('parts', [])
+        for part in parts:
+            if 'inlineData' in part:
+                b64_img = part['inlineData']['data']
+                img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
+                return _save_result(img, "gemini")
+                
+        logger.error("No image data found in response parts")
+        return None
+
     except Exception as e:
-        logger.error(f"Google Parse Error: {e}")
+        logger.error(f"Gemini Parse Error: {e}")
         return None
 
 def _gen_dalle3(prompt, api_key):

@@ -260,13 +260,10 @@ class EInkPhotoFrame:
             if weather_data.get('current_rain_amount', 0) > 0:
                 rain_str = f"강수 {weather_data['current_rain_amount']:.1f}mm"
             
-            # [Umbrella Message]
-            # "15시에 비소식이 있어요. 우산챙기세요"
-            if weather_data.get('rain_forecast'):
-                rf = weather_data['rain_forecast']
-                start_h = rf['start_time'].split(':')[0]
-                rtype = ["", "비", "비/눈", "눈", "소나기"][rf['type_code']]
-                umbrella_msg = f"{start_h}시 {rtype} 예보, 우산 챙기세요"
+        
+        # [Rain Widget handled separately now]
+        # if weather_data.get('rain_forecast'): ...
+
         
         # Dust (2 Lines: PM10, PM2.5)
         # "미세먼지 30 ●"
@@ -390,16 +387,62 @@ class EInkPhotoFrame:
 
         cy += font_md.getbbox(pm25_str)[3] + (line_spacing * 2)
 
-        # Row 5: Umbrella Msg
-        if umbrella_msg:
-            # Blue accent
-            draw.text((cx + 5, cy), umbrella_msg, font=font_sm, fill=(0,0,200))
-            cy += font_sm.getbbox(umbrella_msg)[3] + line_spacing
-
-        # Row 6: Time
-        draw.text((cx + 5, cy), time_str, font=font_sm, fill=(120,120,120))
-
         return overlay
+
+    def create_rain_widget(self, weather_data):
+        """
+        Creates a dedicated bottom widget for rain alerts.
+        Style: Full width (minus margins), height ~100px, Apple-like rounded pill.
+        """
+        
+        # FOR TESTING ONLY: FORCE RAIN ALERT
+        # weather_data['rain_forecast'] = {'start_time': '15:00', 'type_code': 1}
+        # Actually let's just use a local override flag for clarity
+        force_rain_test = True
+        
+        rain_info = weather_data.get('rain_forecast')
+        
+        if not rain_info and not force_rain_test:
+            return None
+            
+        # Mock Data if testing
+        if force_rain_test and not rain_info:
+            rain_info = {'start_time': '15:00', 'type_code': 1}
+            
+        # Message Construction
+        start_h = rain_info['start_time'].split(':')[0]
+        # rain_info['type_code'] -> 1:비, 2:비/눈, 3:눈, 4:소나기
+        r_list = ["", "비", "비/눈", "눈", "소나기"]
+        rtype = r_list[rain_info.get('type_code', 1)] if rain_info.get('type_code', 1) < len(r_list) else "비"
+        
+        message = f"☔️ {start_h}시 {rtype} 예보, 우산 챙기세요!"
+        
+        # Widget Dimensions
+        w_h = 100
+        w_w = self.display_width - 40 # 20px margin each side
+        
+        img = Image.new('RGBA', (w_w, w_h), (255, 255, 255, 0)) # Clean Slate
+        draw = ImageDraw.Draw(img)
+        
+        # Background (Glass/White)
+        draw.rounded_rectangle([0, 0, w_w, w_h], radius=30, fill=(255, 255, 255, 230))
+        
+        # Text
+        # Use existing font helper but larger
+        font_large = self.get_font(40)
+        
+        # Centering
+        text_w = font_large.getlength(message)
+        text_h = font_large.getbbox(message)[3]
+        
+        tx = (w_w - text_w) / 2
+        ty = (w_h - text_h) / 2 - 5 # Slight adjustment for baseline
+        
+        # Draw Text (Blue/Dark Blue for visibility)
+        draw.text((tx, ty), message, font=font_large, fill=(0, 50, 150))
+        
+        return img
+
 
     def display_image(self, image_path):
         if not self.is_preview_mode and not self.epd: 
@@ -422,6 +465,16 @@ class EInkPhotoFrame:
             overlay = self.create_info_overlay_image(d_data, w_data)
 
             final_img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
+            
+            # [Rain Widget Composite]
+            rain_widget = self.create_rain_widget(w_data)
+            if rain_widget:
+                # Position: Bottom Center
+                # 800 width id self.display_width
+                rx = 20 # Margin
+                ry = self.display_height - 100 - 20 # Height 100 + Margin 20
+                final_img.paste(rain_widget, (rx, ry), rain_widget)
+
 
             # [중요] 웹 미리보기 저장
             preview_path = settings.PREVIEW_PATH
