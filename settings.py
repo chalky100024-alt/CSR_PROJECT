@@ -47,21 +47,39 @@ def load_config():
         if not os.path.exists(CONFIG_PATH):
             return DEFAULT_CONFIG
 
-    try:
-        with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
-            config = json.load(f)
-            # Default Key Injection (Fallback)
-            if 'api_key_kma' not in config:
-                config['api_key_kma'] = "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHyKg=="
-                config['api_key_air'] = "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHyKg=="
-            return config
-    except:
-        return DEFAULT_CONFIG
+    # Retry logic for reading to avoid race conditions
+    import time
+    for i in range(3):
+        try:
+            with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                # Default Key Injection (Fallback)
+                if 'api_key_kma' not in config:
+                    config['api_key_kma'] = "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHyKg=="
+                    config['api_key_air'] = "F3I3IeSUH4yLzn6o45Qwob4eGGydLmGax83sAzxr3FH2h82xRoHO5afglEMsRuQ6enj4qJaF2UCQo89cSWHyKg=="
+                return config
+        except Exception as e:
+            if i == 2: # Last attempt
+                print(f"Error loading config: {e}")
+                return DEFAULT_CONFIG # Fallback only after retries
+            time.sleep(0.1)
+    return DEFAULT_CONFIG
 
 def save_config(config_data):
     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
-    with open(CONFIG_PATH, 'w') as f:
-        json.dump(config_data, f, indent=4, ensure_ascii=False)
+    # Atomic write: Write to temp file then rename
+    tmp_path = CONFIG_PATH + '.tmp'
+    try:
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, indent=4, ensure_ascii=False)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, CONFIG_PATH)
+    except Exception as e:
+        print(f"Error saving config: {e}")
+        if os.path.exists(tmp_path):
+            try: os.remove(tmp_path)
+            except: pass
 
 def get_font_path(bold=True):
     # Apple산돌고딕 또는 나눔고딕 우선 사용
