@@ -3,13 +3,23 @@ import os
 import sys
 import time
 import random
+import json
 import logging
-import settings
-import data_api
-import renderer
-import hardware
+from datetime import datetime, timedelta
+import xml.etree.ElementTree as ET
+import requests
 import threading
-from PIL import Image
+
+# Use project settings
+import settings
+import hardware # Use existing hardware controller wrapper if compatible
+# But user code imports waveshare directly in try/except.
+# We will adopt user's direct approach for EPD to be safe with their provided code,
+# OR use hardware.py if it wraps it well.
+# User code has specific display logic (7 color palette etc).
+# Best to keep user's logic self-contained but use settings for config.
+
+from PIL import Image, ImageEnhance, ImageDraw, ImageFont
 
 # 로깅 설정
 logging.basicConfig(
@@ -18,28 +28,69 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Waveshare import removed - use hardware.py instead
+# --- [경로 및 설정 정의] ---
+# settings.py defines these, we should use them to be consistent
+BASE_DIR = settings.BASE_DIR
+UPLOADS_DIR = settings.UPLOADS_DIR
+# PREVIEW_PATH = settings.PREVIEW_PATH # User code uses static/preview.jpg
 
+# Waveshare 라이브러리 경로 설정 (User provided)
+lib_dir = os.path.join(BASE_DIR, 'lib')
+if os.path.exists(lib_dir):
+    sys.path.append(lib_dir)
+
+try:
+    from waveshare_epd import epd7in3f
+    HAS_EPD = True
+except ImportError:
+    logger.warning("Waveshare EPD 라이브러리 없음. 미리보기 모드로 동작합니다.")
+    HAS_EPD = False
 
 class EInkPhotoFrame:
     def __init__(self):
-        self.config = settings.load_config()
-        self.hw = hardware.HardwareController()
-        
-        self.api_key_air = self.config.get('api_key_air', "")
-        self.api_key_kma = self.config.get('api_key_kma', "")
-        loc_name = self.config.get('location', {}).get('name', '')
-        if loc_name:
-            self.station_name = loc_name.split()[-1]
-        else:
-            self.station_name = self.config.get('station_name', "고덕")
-        location = self.config.get('location', {})
-        self.nx = int(location.get('nx', 61))
-        self.ny = int(location.get('ny', 115))
-        
+        self.epd = None
         # Check command line for preview
         self.is_preview_mode = ('--preview' in sys.argv)
         
+        # Load Config via Settings (Secure)
+        self.config = settings.load_config()
+        
+        self.display_width = 800
+        self.display_height = 480
+
+        # API Keys - Load from config (Empty by default, secure)
+        # Try specific keys first, then generic fallback (as user code did)
+        self.airkorea_api_key = self.config.get('api_key_air', self.config.get('api_key', ""))
+        self.kma_weather_api_key = self.config.get('api_key_kma', self.config.get('api_key', ""))
+        
+        self.station_name = self.config.get('station_name', "고덕")
+        loc = self.config.get('location', {})
+        self.kma_nx = int(loc.get('nx', 61))
+        self.kma_ny = int(loc.get('ny', 115))
+
+        # 사진 경로
+        self.photos_dir = getattr(settings, 'UPLOADS_DIR', UPLOADS_DIR)
+        
+        # 폰트 경로들
+        self.font_paths = [
+            os.path.join(BASE_DIR, "Apple_산돌고딕_Neo", "AppleSDGothicNeoEB.ttf"),
+            os.path.join(BASE_DIR, "Apple_산돌고딕_Neo", "AppleSDGothicNeoB.ttf"),
+            "/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        ]
+
+        self.icon_dir = os.path.join(BASE_DIR, "icons")
+        self.weather_icons = self._load_weather_icons()
+
+        if self.is_preview_mode:
+            logger.info(">> 미리보기 모드 실행 (E-Ink 갱신 없음)")
+        elif HAS_EPD:
+            try:
+                self.epd = epd7in3f.EPD()
+                logger.info("E-Ink 객체 생성 성공")
+            except Exception as e:
+                logger.error(f"E-Ink 객체 생성 실패: {e}")
+
     def get_7color_palette(self):
         standard_7_colors = [0, 0, 0, 255, 255, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 165, 0]
         filler = [255, 255, 255]
@@ -48,116 +99,399 @@ class EInkPhotoFrame:
         palette_image.putpalette(full_palette_data[:768])
         return palette_image
 
-    # Global Lock for display updates to prevent overlapping
-    _lock = threading.Lock()
-
-    def refresh_display(self):
-        """Force refresh the E-Ink display with current settings/photo."""
-        if not self._lock.acquire(blocking=False):
-            logger.warning("Display refresh already in progress. Skipping this request.")
-            return False
-            
-        try:
-            logger.info("Starting Display Refresh...")
-            
-            # Reload config to get latest updates
-            self.config = settings.load_config()
-            
-            # 1. Photos
-            if not os.path.exists(settings.UPLOADS_DIR):
-                os.makedirs(settings.UPLOADS_DIR)
-            
-            photos = [os.path.join(settings.UPLOADS_DIR, f) for f in os.listdir(settings.UPLOADS_DIR) 
-                    if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
-            
-            if not photos:
-                logger.warning("No photos found.")
-                return False
-                
-            # Check if a specific photo is fixed in config
-            pinned_photo = self.config.get('selected_photo')
-            selected_photo = None
-            
-            if pinned_photo:
-                full_path = os.path.join(settings.UPLOADS_DIR, pinned_photo)
-                if os.path.exists(full_path):
-                    selected_photo = full_path
-                    logger.info(f"Selected pinned photo: {pinned_photo}")
-                else:
-                    logger.warning(f"Pinned photo not found: {full_path}")
-            
-            if not selected_photo:
-                # Fallback: Sort by modification time (Newest first)
-                photos.sort(key=lambda x: os.path.getmtime(x), reverse=True)
-                selected_photo = photos[0]
-                logger.info(f"Fallback to latest photo: {os.path.basename(selected_photo)}")
-            
-            # 2. Fetch Data (Blocking with Timeout)
-            # User requested to ensure data is received before displaying
-            w_data = None
-            d_data = None
-            
-            max_retries = 10 # 10 * 2sec = 20 seconds max wait
-            for i in range(max_retries):
-                logger.info(f"Fetching data attempt {i+1}/{max_retries}...")
-                
-                if w_data is None: 
-                    w_data = data_api.get_weather_data(self.api_key_kma, self.nx, self.ny)
-                
-                if d_data is None: 
-                    d_data = data_api.get_fine_dust_data(self.api_key_air, self.station_name)
-                
-                # If we have both (or at least one if the other is failing hard?), break
-                # For now, strict: wait for both unless retries exhausted
-                if w_data and d_data: 
-                    logger.info("Data fetch complete.")
-                    break
-                    
-                time.sleep(2)
-                
-            if not w_data: logger.warning("Weather data fetch failed after retries.")
-            if not d_data: logger.warning("Dust data fetch failed after retries.")
-            
-            # 3. Render
-            layout = self.config.get('layout', {})
-            location_name = self.config.get('location', {}).get('name', '')
-            final_img, _, _, _, _ = renderer.create_composed_image(selected_photo, w_data, d_data, layout, location_name)
-            
-            # 4. Dithering & Display
-            # Use hardware controller's EPD instance
-            if self.hw.epd:
-                logger.info("Initializing EPD and displaying...")
+    def _load_weather_icons(self):
+        icons = {}
+        icon_map = {'맑음': 'sun.png', '구름 많음': 'cloud.png', '흐림': 'cloudy.png', '비': 'rain.png',
+                    '비 또는 눈': 'rain_snow.png', '눈': 'snow.png', '소나기': 'shower.png', '정보없음': 'unknown.png'}
+        if not os.path.exists(self.icon_dir): return icons
+        for desc, filename in icon_map.items():
+            path = os.path.join(self.icon_dir, filename)
+            if os.path.exists(path):
                 try:
-                    self.hw.epd.init()
-                    # 7-Color Dithering
+                    icons[desc] = Image.open(path).convert("RGBA").resize((45, 45), Image.Resampling.LANCZOS)
+                except:
+                    pass
+        return icons
+
+    def init_display(self):
+        if self.is_preview_mode: return True
+        if self.epd:
+            try:
+                self.epd.init()
+                return True
+            except:
+                return False
+        return False
+
+    def get_photo_list(self):
+        if not os.path.exists(self.photos_dir): return []
+        exts = ('.jpg', '.jpeg', '.png', '.bmp')
+        return [os.path.join(self.photos_dir, f) for f in os.listdir(self.photos_dir) if
+                f.lower().endswith(exts) and not f.startswith('.')]
+
+    def enhance_image(self, image):
+        if image.mode != 'RGB': image = image.convert('RGB')
+        image = ImageEnhance.Contrast(image).enhance(1.2)
+        image = ImageEnhance.Sharpness(image).enhance(1.5)
+        return ImageEnhance.Color(image).enhance(1.1)
+
+    def get_fine_dust_data(self):
+        if not self.airkorea_api_key: return None
+        url = "http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty"
+        params = {'serviceKey': self.airkorea_api_key, 'returnType': 'json', 'numOfRows': '1', 'pageNo': '1',
+                  'stationName': self.station_name, 'dataTerm': 'DAILY', 'ver': '1.3'}
+        try:
+            res = requests.get(url, params=params, timeout=10)
+            items = res.json().get('response', {}).get('body', {}).get('items', [])
+            if items:
+                return {'pm10': int(items[0]['pm10Value']), 'pm25': int(items[0]['pm25Value']),
+                        'time': items[0]['dataTime']}
+        except:
+            pass
+        return None
+
+    def get_kma_base_time(self, api_type='ultrasrt'):
+        now = datetime.now()
+        base_date = now.strftime('%Y%m%d')
+        if now.minute < 40:
+            if now.hour == 0:
+                base_time = "2330"
+                base_date = (now - timedelta(days=1)).strftime('%Y%m%d')
+            else:
+                base_time = (now - timedelta(hours=1)).strftime('%H') + "30"
+        else:
+            base_time = now.strftime('%H') + "30"
+        return base_date, base_time
+
+    def get_weather_data(self):
+        if not self.kma_weather_api_key: return None
+        weather_info = {}
+        try:
+            # 1. 초단기실황
+            bd, bt = self.get_kma_base_time('ultrasrt')
+            url = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst"
+            params = {'serviceKey': self.kma_weather_api_key, 'numOfRows': '10', 'pageNo': '1',
+                      'base_date': bd, 'base_time': bt, 'nx': self.kma_nx, 'ny': self.kma_ny, '_type': 'xml'}
+
+            root = ET.fromstring(requests.get(url, params=params, timeout=10).text)
+            for item in root.findall(".//item"):
+                cat = item.find("category").text
+                val = item.find("obsrValue").text
+                if cat == 'T1H':
+                    weather_info['temp'] = float(val)
+                elif cat == 'RN1':
+                    weather_info['current_rain_amount'] = float(val)
+
+            # 2. 초단기예보
+            bd, bt = self.get_kma_base_time('ultrasrt_fcst')
+            url = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtFcst"
+            params['base_date'] = bd;
+            params['base_time'] = bt;
+            params['numOfRows'] = '60'
+
+            root = ET.fromstring(requests.get(url, params=params, timeout=10).text)
+            forecasts = {}
+            for item in root.findall(".//item"):
+                dt = item.find("fcstDate").text + item.find("fcstTime").text
+                if dt not in forecasts: forecasts[dt] = {}
+                forecasts[dt][item.find("category").text] = item.find("fcstValue").text
+
+            now = datetime.now()
+            closest_time = min(
+                [t for t in forecasts.keys() if datetime.strptime(t, '%Y%m%d%H%M') >= now - timedelta(minutes=30)],
+                key=lambda x: abs(datetime.strptime(x, '%Y%m%d%H%M') - now), default=None)
+
+            if closest_time:
+                sky = int(forecasts[closest_time].get('SKY', '1'))
+                pty = int(forecasts[closest_time].get('PTY', '0'))
+                weather_info['weather_main_code'] = pty
+                if pty == 0:
+                    weather_info['weather_description'] = ['맑음', '맑음', '구름 많음', '흐림'][sky - 1] if sky <= 4 else '흐림'
+                else:
+                    weather_info['weather_description'] = ['', '비', '비 또는 눈', '눈', '소나기'][pty]
+
+            # 6시간 강수 예보
+            max_rain = None
+            for t in sorted(forecasts.keys()):
+                ft = datetime.strptime(t, '%Y%m%d%H%M')
+                if now <= ft <= now + timedelta(hours=6):
+                    pty = int(forecasts[t].get('PTY', '0'))
+                    rn1 = float(forecasts[t].get('RN1', '0') or 0)
+                    if pty > 0 and rn1 > 0:
+                        if not max_rain or rn1 > max_rain['amount']:
+                            max_rain = {'amount': rn1, 'start_time': ft.strftime('%H:%M'),
+                                        'end_time': (ft + timedelta(hours=1)).strftime('%H:%M'), 'type_code': pty}
+            weather_info['rain_forecast'] = max_rain
+            return weather_info
+        except Exception as e:
+            logger.error(f"Weather API Error: {e}")
+            return None
+
+    def get_font(self, size=20):
+        for font_path in self.font_paths:
+            if os.path.exists(font_path): return ImageFont.truetype(font_path, size)
+        return ImageFont.load_default()
+
+    def resize_image_fill(self, image):
+        target_ratio = self.display_width / self.display_height
+        img_ratio = image.width / image.height
+        if img_ratio > target_ratio:
+            new_height = self.display_height
+            new_width = int(image.width * (new_height / image.height))
+        else:
+            new_width = self.display_width
+            new_height = int(image.height * (new_width / image.width))
+        resized = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        left = (new_width - self.display_width) / 2
+        top = (new_height - self.display_height) / 2
+        return resized.crop((left, top, left + self.display_width, top + self.display_height))
+
+    def get_dust_grade_info(self, pm10, pm25):
+        try:
+            p10, p25 = int(pm10 or -1), int(pm25 or -1)
+        except:
+            return "정보 없음", "●", (128, 128, 128)
+
+        lv = max(
+            1 if p25 <= 15 else 2 if p25 <= 35 else 3 if p25 <= 75 else 4,
+            1 if p10 <= 30 else 2 if p10 <= 80 else 3 if p10 <= 150 else 4
+        )
+        return ["", "좋음", "보통", "나쁨", "매우나쁨"][lv], "●", \
+        [(0, 0, 0), (0, 0, 255), (0, 128, 0), (255, 165, 0), (255, 0, 0)][lv]
+
+    def create_info_overlay_image(self, dust_data, weather_data):
+        overlay = Image.new('RGBA', (self.display_width, self.display_height), (255, 255, 255, 0))
+        draw = ImageDraw.Draw(overlay)
+
+        # Config Layout Override (e.g. font size) if needed
+        # For now, default to user provided hardcoded sizes
+        font_sm = self.get_font(18)
+        font_md = self.get_font(20)
+        font_lg = self.get_font(23)
+        font_dt = self.get_font(12)
+
+        lines = []
+        w_icon = None
+
+        # 1. 날씨 라인 구성
+        if weather_data and 'temp' in weather_data:
+            desc = weather_data.get('weather_description', '정보없음')
+            if desc in self.weather_icons:
+                w_icon = self.weather_icons[desc]
+            else:
+                w_icon = self.weather_icons.get('정보없음')
+
+            lines.append(f"{weather_data['temp']:.1f}°C ({desc})")
+
+            if weather_data.get('rain_forecast'):
+                rf = weather_data['rain_forecast']
+                rtype = ["", "비", "비/눈", "눈", "소나기"][rf['type_code']]
+                lines.append(f"└ {rtype} {rf['start_time']}~ {rf['amount']:.1f}mm")
+            elif weather_data.get('current_rain_amount', 0) > 0:
+                lines.append(f"└ 현재 강수량: {weather_data['current_rain_amount']:.1f}mm")
+        else:
+            lines.append("날씨 정보 없음")
+            w_icon = self.weather_icons.get('정보없음')
+
+        # 2. 미세먼지 라인 구성
+        # Color state
+        self.dust_color = (128, 128, 128)
+        
+        if dust_data:
+            grade, sym, color = self.get_dust_grade_info(dust_data.get('pm10'), dust_data.get('pm25'))
+            lines.append(f"{sym} {grade} (PM10:{dust_data['pm10']}|PM2.5:{dust_data['pm25']})")
+            self.dust_color = color
+        else:
+            lines.append("미세먼지 정보 없음")
+
+        lines.append(datetime.now().strftime('%m/%d %H시 기준'))
+
+        # --- [레이아웃 계산] ---
+        # 텍스트 박스 크기 계산
+        line_heights = [font_lg.getmetrics()[0] + font_lg.getmetrics()[1] for _ in lines]
+        
+        # Approximate height calculation if getmetrics is strictly ascent/descent
+        # Adding some padding
+        total_h = sum(line_heights) + (5 * len(lines)) + 30 # Extra padding
+        
+        try:
+            max_w = max([draw.textlength(l, font_lg) for l in lines]) + (w_icon.width if w_icon else 0) + 20
+        except:
+             max_w = 300 # Fallback
+
+        box_w, box_h = max_w + 30, total_h + 20
+        margin = 15
+
+        # 설정에 따른 위치 변경
+        # We use 'layout' dict from config (project standard) or flat keys (user standard)
+        # Project config uses: config['layout']['position']
+        # User code uses: config['layout_type'] (type_A/B)
+        
+        # Adapter:
+        layout_cfg = self.config.get('layout', {})
+        if isinstance(layout_cfg, dict):
+            pos = layout_cfg.get('position', 'top')
+        else:
+            pos = 'top'
+
+        box_x = self.display_width - box_w - margin
+
+        if pos == 'bottom' or self.config.get('layout_type') == 'type_B':
+            box_y = self.display_height - box_h - margin
+        else:
+            box_y = margin
+
+        # 박스 그리기
+        draw.rounded_rectangle([box_x, box_y, box_x + box_w, box_y + box_h], radius=10, fill=(255, 255, 255, 160),
+                               outline=(0, 0, 0), width=2)
+
+        # 텍스트 그리기
+        cy = box_y + 15
+        cx = box_x + 15
+
+        # 첫째줄 (날씨)
+        if w_icon:
+            overlay.paste(w_icon, (int(cx), int(cy)), w_icon)
+            cx += w_icon.width + 5
+        draw.text((cx, cy), lines[0], font=font_lg, fill=(0, 0, 0))
+        cy += line_heights[0] + 5 # Move down
+        cx = box_x + 15
+
+        # 나머지 줄
+        for i, line in enumerate(lines[1:]):
+            f = font_dt if i == len(lines) - 2 else font_md # Last line is date (small)
+            if "●" in line:  # 미세먼지 줄
+                parts = line.split(' ', 1)
+                sym = parts[0]
+                txt = parts[1] if len(parts) > 1 else ""
+                
+                draw.text((cx, cy), sym, font=f, fill=self.dust_color)
+                draw.text((cx + draw.textlength(sym, f) + 5, cy), txt, font=f, fill=(0, 0, 0))
+            else:
+                draw.text((cx, cy), line, font=f, fill=(0, 0, 0))
+            cy += line_heights[i + 1] + 5
+
+        return overlay
+
+    def display_image(self, image_path):
+        if not self.is_preview_mode and not self.epd: 
+            # If no EPD but not in preview mode, we might be testing.
+            # But earlier logic says "If !HAS_EPD -> Preview Mode" implicitly or just logs error.
+            # We continue to generate preview.jpg at least.
+            pass
+
+        try:
+            logger.info(f"Processing: {os.path.basename(image_path)}")
+
+            # 이미지 처리
+            img = Image.open(image_path)
+            img = self.resize_image_fill(img)
+            img = self.enhance_image(img)
+
+            # 오버레이 합성
+            d_data = self.get_fine_dust_data()
+            w_data = self.get_weather_data()
+            overlay = self.create_info_overlay_image(d_data, w_data)
+
+            final_img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
+
+            # [중요] 웹 미리보기 저장
+            preview_path = settings.PREVIEW_PATH
+            os.makedirs(os.path.dirname(preview_path), exist_ok=True)
+            final_img.save(preview_path)
+            logger.info(f"Preview Saved: {preview_path}")
+
+            if self.is_preview_mode: 
+                return
+
+            # E-Ink 전송
+            if self.epd:
+                logger.info("Updating E-Ink...")
+                try:
+                    self.epd.init()
                     final_quantized = final_img.quantize(palette=self.get_7color_palette(), method=Image.FLOYDSTEINBERG)
-                    self.hw.epd.display(self.hw.epd.getbuffer(final_quantized))
-                    self.hw.epd.sleep()
-                    logger.info("Display update successful.")
+                    self.epd.display(self.epd.getbuffer(final_quantized))
+                    self.epd.sleep()
+                    logger.info("Done.")
                 except Exception as e:
                     logger.error(f"EPD Error: {e}")
-                    return False
-            else:
-                self.hw.display_image(final_img) # Mock/PC fallback
-                logger.info("Mock Display Update.")
+
+        except Exception as e:
+            logger.error(f"Display Error: {e}", exc_info=True)
+
+    # --- Power Management ---
+    def is_charging(self):
+        """PiSugar 서버에 접속해 현재 충전기(전원)가 연결되어 있는지 확인"""
+        try:
+            import socket
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.settimeout(2)
+                s.connect(('127.0.0.1', 8423))
+                s.sendall(b'get battery')
+                data = s.recv(1024).decode('utf-8')
+                if '"charging":true' in data.replace(" ", ""):
+                    return True
+        except Exception as e:
+            # logger.warning(f"PiSugar check failed: {e}")
+            pass
+        return False
+
+    def refresh_display(self):
+        """Alias for standard run/update used by app.py"""
+        self.config = settings.load_config() # Reload latest config
+        
+        # Support Selected Photo Logic
+        pinned_photo = self.config.get('selected_photo')
+        selected_photo = None
+        
+        if pinned_photo:
+            full_path = os.path.join(self.photos_dir, pinned_photo)
+            if os.path.exists(full_path):
+                selected_photo = full_path
                 
-            return True
-    
-        finally:
-            self._lock.release()
+        if not selected_photo:
+            photos = self.get_photo_list()
+            if photos:
+                # Default to random or latest? User code used random.
+                # Project standard usually prefers latest.
+                # Let's stick to User's Random choice if untethered, 
+                # but App usually sets selected_photo if user clicks a file.
+                # If specific photo not selected, random is nice for a frame.
+                selected_photo = random.choice(photos)
+        
+        if selected_photo:
+            self.display_image(selected_photo)
+        else:
+            logger.warning("No photos to display.")
 
     def run(self):
-        # ... Legacy run behavior if needed for standalone execution ...
-        # For now, we just call refresh
+        """메인 실행 로직 (Standalone)"""
+        if not self.init_display(): return
+
         self.refresh_display()
-        
-        # 5. Check Power & Branch (Only relevant if running as standalone script)
-        if self.hw.is_charging():
-           # ... start server logic ...
-           pass
+
+        if self.is_preview_mode:
+            logger.info("미리보기 모드: 시스템을 종료하지 않습니다.")
+            return
+
+        if self.is_charging():
+            logger.info("⚡ 전원 케이블 연결됨 감지! 웹 서버 실행.")
+            try:
+                # Use absolute path for app.py
+                app_path = os.path.join(settings.BASE_DIR, 'app.py')
+                os.system(f"nohup python3 {app_path} > /dev/null 2>&1 &")
+            except Exception as e:
+                logger.error(f"웹 서버 실행 실패: {e}")
+            return
+
+        logger.info("🔋 배터리 모드: 5초 후 시스템을 안전하게 종료합니다 (PiSugar).")
+        time.sleep(5)
+        os.system("sudo shutdown now")
 
 if __name__ == "__main__":
     try:
         EInkPhotoFrame().run()
+    except KeyboardInterrupt:
+        pass
     except Exception as e:
         logger.critical(f"Critical Error: {e}", exc_info=True)
