@@ -115,23 +115,22 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
     draw = ImageDraw.Draw(overlay)
 
     # --- [Apple-like Vertical Widget Layout] ---
-    # Apply defaults if missing
     widget_scale = float(layout_config.get('widget_size', 1.0))
-    opacity_val = float(layout_config.get('opacity', 0.85)) # Higher default
+    font_scale = float(layout_config.get('font_scale', 1.0)) # Font Slider
+    opacity_val = float(layout_config.get('opacity', 0.85))
     bg_alpha = int(255 * opacity_val)
 
     # Base Dimensions
-    card_w = int(200 * widget_scale) 
-    card_h = int(220 * widget_scale) # Initial estimate
+    card_w = int(220 * widget_scale) 
     padding = int(15 * widget_scale)
     line_spacing = int(5 * widget_scale)
 
     # Fonts
-    # renderer.py uses global get_font function
-    font_xl = get_font(int(40 * widget_scale)) 
-    font_lg = get_font(int(22 * widget_scale)) 
-    font_md = get_font(int(18 * widget_scale)) 
-    font_sm = get_font(int(14 * widget_scale)) 
+    s = widget_scale * font_scale
+    font_xl = get_font(int(45 * s)) 
+    font_lg = get_font(int(22 * s)) 
+    font_md = get_font(int(16 * s)) 
+    font_sm = get_font(int(13 * s)) 
 
     # Load Icons
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -142,9 +141,10 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
     temp_str = "--°"
     desc_str = ""
     rain_str = ""
+    umbrella_msg = ""
     w_icon = None
 
-    if weather_data and 'temp' in weather_data:
+    if weather_data and 'temp' in weather_data: # Changed w_data to weather_data
         temp_str = f"{int(weather_data['temp'])}°"
         desc_str = weather_data.get('weather_description', '정보없음')
         
@@ -152,62 +152,74 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
         w_icon = weather_icons.get(desc_str, weather_icons.get('정보없음'))
         
         if w_icon:
-            # Icon size
-            icon_sz = int(50 * widget_scale)
+            icon_sz = int(55 * widget_scale)
             if w_icon.size[0] != icon_sz:
                 w_icon = w_icon.resize((icon_sz, icon_sz), Image.Resampling.LANCZOS)
 
-        # Rain
+        # Current Rain
+        if weather_data.get('current_rain_amount', 0) > 0:
+            rain_str = f"강수 {weather_data['current_rain_amount']:.1f}mm"
+            
+        # [Umbrella Message]
         if weather_data.get('rain_forecast'):
             rf = weather_data['rain_forecast']
+            start_h = rf['start_time'].split(':')[0]
             rtype = ["", "비", "비/눈", "눈", "소나기"][rf['type_code']]
-            rain_str = f"{rtype} {rf['amount']:.1f}mm"
-        elif weather_data.get('current_rain_amount', 0) > 0:
-            rain_str = f"강수 {weather_data['current_rain_amount']:.1f}mm"
-    
-    # Dust
-    dust_str = ""
-    dust_color = (100, 100, 100)
-    if dust_data:
-        grade, sym, color = get_dust_grade_info(dust_data.get('pm10'), dust_data.get('pm25'))
-        dust_str = f"미세먼지 {grade} ({dust_data.get('pm10')}/{dust_data.get('pm25')})"
-        dust_color = color
-    else:
-        dust_str = "미세먼지 정보 없음"
+            umbrella_msg = f"{start_h}시 {rtype} 예보, 우산 챙기세요"
+
+    # Dust (2 Lines)
+    pm10_str = "미세먼지 --"
+    pm25_str = "초미세 --"
+    color_pm10 = (150,150,150)
+    color_pm25 = (150,150,150)
+
+    if dust_data: # Changed d_data to dust_data
+        p10 = dust_data.get('pm10')
+        p25 = dust_data.get('pm25')
+        
+        g10, _, c10 = get_dust_grade_info(p10, 0)
+        g25, _, c25 = get_dust_grade_info(0, p25)
+        
+        pm10_str = f"미세먼지 {p10}"
+        pm25_str = f"초미세 {p25}"
+        color_pm10 = c10
+        color_pm25 = c25
 
     # Time
     time_str = datetime.now().strftime('%m/%d %H:%M')
 
-    # Calculate Box Height dynamically
+    # --- Layout Calculation ---
     current_y = padding
     
-    # Row 1 Height (Max of Icon or Temp)
-    row1_h = max(w_icon.height if w_icon else 0, font_xl.getbbox(temp_str)[3])
-    current_y += row1_h + line_spacing
+    # Row 1
+    h_row1 = max(w_icon.height if w_icon else 0, font_xl.getbbox(temp_str)[3])
+    current_y += h_row1 + line_spacing
     
-    # Row 2 (Desc)
-    current_y += font_md.getbbox(desc_str)[3] + (line_spacing * 2)
+    # Row 2
+    current_y += font_lg.getbbox(desc_str)[3] + (line_spacing * 2)
     
-    # Row 3 (Rain)
-    if rain_str:
-        current_y += font_md.getbbox(rain_str)[3] + line_spacing
+    # Row 3 (Dust 1)
+    current_y += font_md.getbbox(pm10_str)[3] + line_spacing
+    # Row 4 (Dust 2)
+    current_y += font_md.getbbox(pm25_str)[3] + (line_spacing * 2)
+    
+    # Row 5 (Umbrella)
+    if umbrella_msg:
+        current_y += font_sm.getbbox(umbrella_msg)[3] + line_spacing
 
-    # Row 4 (Dust)
-    current_y += font_md.getbbox(dust_str)[3] + line_spacing
-    
-    # Row 5 (Time) - margin top
-    current_y += 10 + font_sm.getbbox(time_str)[3] + padding
+    # Row 6 (Time)
+    current_y += 5 + font_sm.getbbox(time_str)[3] + padding
 
-    box_h = int(current_y) # Update height
+    box_h = int(current_y) # Dynamic Height
     box_w = card_w
 
-    # Position Logic
+    # Position
     pos_x = layout_config.get('x')
     pos_y = layout_config.get('y')
-    layout_type = layout_config.get('type')
+    layout_type = layout_config.get('type', 'type_A')
     
-    box_x = DISPLAY_WIDTH - box_w - int(20 * widget_scale) # Default Right
-    box_y = int(20 * widget_scale) # Default Top
+    box_x = DISPLAY_WIDTH - box_w - int(20 * widget_scale)
+    box_y = int(20 * widget_scale)
 
     if layout_type == 'custom':
         if pos_x is not None: box_x = int(float(pos_x))
@@ -221,22 +233,22 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
     if box_y + box_h > DISPLAY_HEIGHT: box_y = DISPLAY_HEIGHT - box_h - 5
     if box_y < 0: box_y = 0
 
-    # Draw Background (Rounded Card)
+    # Draw Background
     draw.rounded_rectangle([box_x, box_y, box_x + box_w, box_y + box_h], 
-                           radius=int(20 * widget_scale), 
+                           radius=int(18 * widget_scale), 
                            fill=(255, 255, 255, bg_alpha), 
                            outline=None)
     
-    # Content Draw Cursor
     cx = box_x + padding
     cy = box_y + padding
 
-    # Row 1: Icon & Temp
+    # Row 1: Icon + Temp
     if w_icon:
-        overlay.paste(w_icon, (cx, cy), w_icon)
-        # Temp Text right next to icon
+        # Paste with alpha
+        if w_icon.mode != 'RGBA': w_icon = w_icon.convert('RGBA')
+        overlay.paste(w_icon, (cx, cy), w_icon) # Changed base_img to overlay
+        
         temp_x = cx + w_icon.width + 10
-        # Center vertically with icon
         temp_y = cy + (w_icon.height - font_xl.getbbox(temp_str)[3]) // 2 - 5
         draw.text((temp_x, temp_y), temp_str, font=font_xl, fill=(0,0,0))
         cy += max(w_icon.height, font_xl.getbbox(temp_str)[3]) + line_spacing
@@ -245,24 +257,33 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
         cy += font_xl.getbbox(temp_str)[3] + line_spacing
 
     # Row 2: Desc
-    draw.text((cx + 5, cy), desc_str, font=font_md, fill=(60,60,60))
-    cy += font_md.getbbox(desc_str)[3] + (line_spacing * 2)
+    draw.text((cx + 5, cy), desc_str, font=font_lg, fill=(50,50,50))
+    cy += font_lg.getbbox(desc_str)[3] + (line_spacing * 2)
 
-    # Row 3: Rain (Optional)
-    if rain_str:
-        draw.text((cx + 5, cy), f"☔ {rain_str}", font=font_md, fill=(0,0,200))
-        cy += font_md.getbbox(rain_str)[3] + line_spacing
+    # Row 3: Dust PM10
+    dot_r = int(5 * widget_scale)
+    draw.text((cx + 5, cy), pm10_str, font=font_md, fill=(60,60,60))
+    txt_w = font_md.getlength(pm10_str)
+    dot_cx = cx + 5 + txt_w + 15
+    dot_cy = cy + (font_md.getbbox("A")[3] // 2) + 2
+    draw.ellipse([dot_cx - dot_r, dot_cy - dot_r, dot_cx + dot_r, dot_cy + dot_r], fill=color_pm10)
+    cy += font_md.getbbox(pm10_str)[3] + line_spacing
 
-    # Row 4: Dust
-    # Draw colored dot + text
-    dot_r = 4
-    dot_y = cy + 10
-    draw.ellipse([cx + 5, dot_y - dot_r, cx + 5 + (dot_r*2), dot_y + dot_r], fill=dust_color)
-    draw.text((cx + 20, cy), dust_str, font=font_md, fill=(0,0,0))
-    cy += font_md.getbbox(dust_str)[3] + line_spacing + 10
+    # Row 4: Dust PM2.5
+    draw.text((cx + 5, cy), pm25_str, font=font_md, fill=(60,60,60))
+    txt_w = font_md.getlength(pm25_str)
+    dot_cx = cx + 5 + txt_w + 15
+    dot_cy = cy + (font_md.getbbox("A")[3] // 2) + 2
+    draw.ellipse([dot_cx - dot_r, dot_cy - dot_r, dot_cx + dot_r, dot_cy + dot_r], fill=color_pm25)
+    cy += font_md.getbbox(pm25_str)[3] + (line_spacing * 2)
 
-    # Row 5: Time (Bottom)
-    draw.text((cx + 5, cy), time_str, font=font_sm, fill=(100,100,100))
+    # Row 5: Umbrella
+    if umbrella_msg:
+        draw.text((cx + 5, cy), umbrella_msg, font=font_sm, fill=(0,0,200))
+        cy += font_sm.getbbox(umbrella_msg)[3] + line_spacing
+
+    # Row 6: Time
+    draw.text((cx + 5, cy), time_str, font=font_sm, fill=(120,120,120))
 
     final_image = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
     return final_image, box_x, box_y, box_w, box_h

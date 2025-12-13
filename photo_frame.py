@@ -217,26 +217,28 @@ class EInkPhotoFrame:
         # --- [Apple-like Vertical Widget Layout] ---
         layout_cfg = self.config.get('layout', {})
         widget_scale = float(layout_cfg.get('widget_size', 1.0))
-        opacity_val = float(layout_cfg.get('opacity', 0.85)) # Higher default for card look
+        font_scale = float(layout_cfg.get('font_scale', 1.0)) # New Font Scale Slider
+        opacity_val = float(layout_cfg.get('opacity', 0.85))
         bg_alpha = int(255 * opacity_val)
 
         # Base Dimensions
-        # Fixed width for consistent look (Apple Widget style)
-        card_w = int(200 * widget_scale) 
-        card_h = int(220 * widget_scale) # Initial estimate, will adjust
+        card_w = int(220 * widget_scale) 
+        # Height will be dynamic, start small
         padding = int(15 * widget_scale)
         line_spacing = int(5 * widget_scale)
 
-        # Fonts
-        font_xl = self.get_font(int(40 * widget_scale)) # Temp
-        font_lg = self.get_font(int(22 * widget_scale)) # Main Text
-        font_md = self.get_font(int(18 * widget_scale)) # Sub Text
-        font_sm = self.get_font(int(14 * widget_scale)) # Detail/Time
+        # Fonts (Scaled by widget_size AND font_scale)
+        s = widget_scale * font_scale
+        font_xl = self.get_font(int(45 * s)) # Temp
+        font_lg = self.get_font(int(22 * s)) # Main Text
+        font_md = self.get_font(int(16 * s)) # Sub Text / Dust
+        font_sm = self.get_font(int(13 * s)) # Detail
 
         # Data Preparation
         temp_str = "--°"
         desc_str = ""
-        rain_str = ""
+        rain_str = "" # Current Rain
+        umbrella_msg = "" # Forecast Message
         w_icon = None
 
         if weather_data and 'temp' in weather_data:
@@ -250,73 +252,83 @@ class EInkPhotoFrame:
                 w_icon = self.weather_icons.get('정보없음')
             
             if w_icon:
-                # Icon size
-                icon_sz = int(50 * widget_scale)
+                icon_sz = int(55 * widget_scale) # Icon size scales with widget only
                 if w_icon.size[0] != icon_sz:
                     w_icon = w_icon.resize((icon_sz, icon_sz), Image.Resampling.LANCZOS)
 
-            # Rain
+            # Current Rain
+            if weather_data.get('current_rain_amount', 0) > 0:
+                rain_str = f"강수 {weather_data['current_rain_amount']:.1f}mm"
+            
+            # [Umbrella Message]
+            # "15시에 비소식이 있어요. 우산챙기세요"
             if weather_data.get('rain_forecast'):
                 rf = weather_data['rain_forecast']
+                start_h = rf['start_time'].split(':')[0]
                 rtype = ["", "비", "비/눈", "눈", "소나기"][rf['type_code']]
-                rain_str = f"{rtype} {rf['amount']:.1f}mm"
-            elif weather_data.get('current_rain_amount', 0) > 0:
-                rain_str = f"강수 {weather_data['current_rain_amount']:.1f}mm"
+                umbrella_msg = f"{start_h}시 {rtype} 예보, 우산 챙기세요"
         
-        # Dust
-        dust_str = ""
-        dust_color = (100, 100, 100)
-        dust_grade = ""
+        # Dust (2 Lines: PM10, PM2.5)
+        # "미세먼지 30 ●"
+        # "초미세 20 ●"
+        pm10_str = "미세먼지 --"
+        pm25_str = "초미세 --"
+        color_pm10 = (150,150,150)
+        color_pm25 = (150,150,150)
+
         if dust_data:
-            grade, sym, color = self.get_dust_grade_info(dust_data.get('pm10'), dust_data.get('pm25'))
-            # Format: "미세먼지 좋음 (25/12)"
-            dust_str = f"미세먼지 {grade} ({dust_data.get('pm10')}/{dust_data.get('pm25')})"
-            dust_grade = grade
-            dust_color = color
-        else:
-            dust_str = "미세먼지 정보 없음"
+            p10 = dust_data.get('pm10')
+            p25 = dust_data.get('pm25')
+            
+            # Grade Colors
+            # 1:Blue, 2:Green, 3:Orange, 4:Red (Corrected Logic)
+            # Standard Korea: Good(Blue), Normal(Green), Bad(Orange), Very Bad(Red)
+            # Actually standard is Blue(Good), Green(Normal), Yellow/Orange(Bad), Red(Very Bad).
+            # My previous code logic:
+            # [(0, 0, 0), (0, 0, 255), (0, 128, 0), (255, 165, 0), (255, 0, 0)]
+            # Idx 1: Blue, 2: Green, 3: Orange, 4: Red. Correct.
+            
+            g10, _, c10 = self.get_dust_grade_info(p10, 0) # Hack to get just p10 grade
+            g25, _, c25 = self.get_dust_grade_info(0, p25) # Hack to get just p25 grade
+            
+            pm10_str = f"미세먼지 {p10}"
+            pm25_str = f"초미세 {p25}"
+            color_pm10 = c10
+            color_pm25 = c25
 
         # Time
         time_str = datetime.now().strftime('%m/%d %H:%M')
 
-        # --- Calculate Dynamic Height if needed, or stick to fixed ---
-        # Let's do a vertical stack
-        # Row 1: Icon (Left) + Temp (Right)
-        # Row 2: Desc (Small)
-        # Divider
-        # Row 3: Rain (if exists)
-        # Row 4: Dust
-        # Row 5: Time (Bottom)
-
-        # Calculate Box Height dynamically
+        # --- Layout Calculation ---
         current_y = padding
         
-        # Row 1 Height (Max of Icon or Temp)
-        row1_h = max(w_icon.height if w_icon else 0, font_xl.getbbox(temp_str)[3])
-        current_y += row1_h + line_spacing
+        # Row 1: Icon & Temp [Fixed Height]
+        h_row1 = max(w_icon.height if w_icon else 0, font_xl.getbbox(temp_str)[3])
+        current_y += h_row1 + line_spacing
         
-        # Row 2 (Desc)
-        current_y += font_md.getbbox(desc_str)[3] + (line_spacing * 2)
+        # Row 2: Desc
+        current_y += font_lg.getbbox(desc_str)[3] + (line_spacing * 2)
         
-        # Row 3 (Rain)
-        if rain_str:
-            current_y += font_md.getbbox(rain_str)[3] + line_spacing
+        # Row 3: Dust Line 1
+        current_y += font_md.getbbox(pm10_str)[3] + line_spacing
+        # Row 4: Dust Line 2
+        current_y += font_md.getbbox(pm25_str)[3] + (line_spacing * 2)
 
-        # Row 4 (Dust)
-        current_y += font_md.getbbox(dust_str)[3] + line_spacing
-        
-        # Row 5 (Time) - margin top
-        current_y += 10 + font_sm.getbbox(time_str)[3] + padding
+        # Row 5: Rain Message (Optional)
+        if umbrella_msg:
+             current_y += font_sm.getbbox(umbrella_msg)[3] + line_spacing
 
-        card_h = int(current_y) # Update height
+        # Row 6: Time (Bottom)
+        current_y += 5 + font_sm.getbbox(time_str)[3] + padding
 
-        # --- Positioning ---
-        # Default Right-Top or User Config
+        card_h = int(current_y)
+
+        # Positioning Loop
         pos = layout_cfg.get('position', 'top')
         layout_type = layout_cfg.get('type', 'type_A')
         
-        box_x = self.display_width - card_w - int(20 * widget_scale) # Default Right
-        box_y = int(20 * widget_scale) # Default Top
+        box_x = self.display_width - card_w - int(20 * widget_scale)
+        box_y = int(20 * widget_scale)
 
         if layout_type == 'custom':
             try:
@@ -326,28 +338,25 @@ class EInkPhotoFrame:
         elif pos == 'bottom' or layout_type == 'type_B':
             box_y = self.display_height - card_h - int(20 * widget_scale)
         
-        # Overflow Protection
+        # Overflow
         if box_x + card_w > self.display_width: box_x = self.display_width - card_w - 5
         if box_x < 0: box_x = 0
         if box_y + card_h > self.display_height: box_y = self.display_height - card_h - 5
         if box_y < 0: box_y = 0
 
-        # Draw Background (Rounded Card)
+        # Draw
         draw.rounded_rectangle([box_x, box_y, box_x + card_w, box_y + card_h], 
-                               radius=int(20 * widget_scale), 
+                               radius=int(18 * widget_scale), 
                                fill=(255, 255, 255, bg_alpha), 
-                               outline=None) # No border for cleaner look, or subtle gray
-        
-        # Content Draw Cursor
+                               outline=None)
+
         cx = box_x + padding
         cy = box_y + padding
 
-        # Row 1: Icon & Temp
+        # Row 1: Icon + Temp
         if w_icon:
             overlay.paste(w_icon, (cx, cy), w_icon)
-            # Temp Text right next to icon
             temp_x = cx + w_icon.width + 10
-            # Center vertically with icon
             temp_y = cy + (w_icon.height - font_xl.getbbox(temp_str)[3]) // 2 - 5
             draw.text((temp_x, temp_y), temp_str, font=font_xl, fill=(0,0,0))
             cy += max(w_icon.height, font_xl.getbbox(temp_str)[3]) + line_spacing
@@ -356,24 +365,39 @@ class EInkPhotoFrame:
             cy += font_xl.getbbox(temp_str)[3] + line_spacing
 
         # Row 2: Desc
-        draw.text((cx + 5, cy), desc_str, font=font_md, fill=(60,60,60))
-        cy += font_md.getbbox(desc_str)[3] + (line_spacing * 2)
+        draw.text((cx + 5, cy), desc_str, font=font_lg, fill=(50,50,50))
+        cy += font_lg.getbbox(desc_str)[3] + (line_spacing * 2)
 
-        # Row 3: Rain (Optional)
-        if rain_str:
-            draw.text((cx + 5, cy), f"☔ {rain_str}", font=font_md, fill=(0,0,200))
-            cy += font_md.getbbox(rain_str)[3] + line_spacing
+        # Row 3: Dust PM10
+        # Text + Dot
+        dot_r = int(5 * widget_scale)
+        draw.text((cx + 5, cy), pm10_str, font=font_md, fill=(60,60,60))
+        # Dot at end of string? Or right aligned? User said "Icons only" for grade.
+        # Let's put dot after text.
+        txt_w = font_md.getlength(pm10_str)
+        dot_cx = cx + 5 + txt_w + 15
+        dot_cy = cy + (font_md.getbbox("A")[3] // 2) + 2
+        draw.ellipse([dot_cx - dot_r, dot_cy - dot_r, dot_cx + dot_r, dot_cy + dot_r], fill=color_pm10)
+        
+        cy += font_md.getbbox(pm10_str)[3] + line_spacing
 
-        # Row 4: Dust
-        # Draw colored dot + text
-        dot_r = 4
-        dot_y = cy + 10
-        draw.ellipse([cx + 5, dot_y - dot_r, cx + 5 + (dot_r*2), dot_y + dot_r], fill=dust_color)
-        draw.text((cx + 20, cy), dust_str, font=font_md, fill=(0,0,0))
-        cy += font_md.getbbox(dust_str)[3] + line_spacing + 10
+        # Row 4: Dust PM2.5
+        draw.text((cx + 5, cy), pm25_str, font=font_md, fill=(60,60,60))
+        txt_w = font_md.getlength(pm25_str)
+        dot_cx = cx + 5 + txt_w + 15
+        dot_cy = cy + (font_md.getbbox("A")[3] // 2) + 2
+        draw.ellipse([dot_cx - dot_r, dot_cy - dot_r, dot_cx + dot_r, dot_cy + dot_r], fill=color_pm25)
 
-        # Row 5: Time (Bottom, Right-aligned or Left)
-        draw.text((cx + 5, cy), time_str, font=font_sm, fill=(100,100,100))
+        cy += font_md.getbbox(pm25_str)[3] + (line_spacing * 2)
+
+        # Row 5: Umbrella Msg
+        if umbrella_msg:
+            # Blue accent
+            draw.text((cx + 5, cy), umbrella_msg, font=font_sm, fill=(0,0,200))
+            cy += font_sm.getbbox(umbrella_msg)[3] + line_spacing
+
+        # Row 6: Time
+        draw.text((cx + 5, cy), time_str, font=font_sm, fill=(120,120,120))
 
         return overlay
 
