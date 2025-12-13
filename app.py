@@ -166,14 +166,19 @@ def api_save_config():
 @app.route('/api/preview')
 def get_preview():
     """Generate live preview with real layout settings."""
-    # Get params
+    # Get Current Location Name & Keys
+    current_config = settings.load_config()
+    saved_layout = current_config.get('layout', {})
+
+    # Get params (Priority: Request Args > Saved Config > Defaults)
     layout = {
-        "widget_size": request.args.get('widget_size', 1.0, type=float),
-        "font_size": request.args.get('font_size', 20, type=int),
-        "opacity": request.args.get('opacity', 0.6, type=float),
-        "position": request.args.get('position', 'top'),
-        "x": request.args.get('x'),
-        "y": request.args.get('y')
+        "widget_size": request.args.get('widget_size', saved_layout.get('widget_size', 1.0), type=float),
+        "font_size": request.args.get('font_size', saved_layout.get('font_size', 20), type=int),
+        "opacity": request.args.get('opacity', saved_layout.get('opacity', 0.6), type=float),
+        "position": request.args.get('position', saved_layout.get('position', 'top')),
+        "x": request.args.get('x', saved_layout.get('x')),
+        "y": request.args.get('y', saved_layout.get('y')),
+        "type": saved_layout.get('type', 'type_A')
     }
     
     # ... (photo loading)
@@ -191,7 +196,6 @@ def get_preview():
         img_path = os.path.join(settings.UPLOADS_DIR, photos[0])
 
     # Get Current Location Name & Keys
-    current_config = settings.load_config()
     location_name = current_config.get('location', {}).get('name', '')
     
     api_key_kma = current_config.get('api_key_kma')
