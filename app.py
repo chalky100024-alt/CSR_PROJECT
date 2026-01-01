@@ -312,7 +312,7 @@ def wifi_connect():
     success = hw.connect_wifi(data['ssid'], data['password'])
     return jsonify({"status": "success" if success else "fail"})
 
-@app.route('/api/system')
+@app.route('/api/system', methods=['GET', 'POST'])
 def system_action():
     action = request.args.get('action')
     if action == 'shutdown':
