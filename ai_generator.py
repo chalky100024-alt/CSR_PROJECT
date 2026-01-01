@@ -208,16 +208,21 @@ def _gen_gemini_flash(prompt, _unused_api_key, image_paths=None):
             if candidates:
                 parts = candidates[0].get('content', {}).get('parts', [])
                 for part in parts:
+                    # Check for inline data (Image)
                     if 'inlineData' in part:
                         b64_img = part['inlineData']['data']
                         img = Image.open(io.BytesIO(base64.b64decode(b64_img)))
                         return _save_result(img, "gemini_vertex")
+                    # Check for text (if model refused to generate image)
+                    if 'text' in part:
+                         logger.warning(f"Gemini returned Text instead of Image: {part['text']}")
             
             logger.error(f"Generate success but no image data: {res_json}")
             return None
             
         else:
-            logger.error(f"Vertex AI Failed: {response.status_code} - {response.text}")
+            logger.error(f"Vertex AI Failed: {response.status_code}")
+            logger.error(f"Response Body: {response.text}")
             return None
             
     except Exception as e:
