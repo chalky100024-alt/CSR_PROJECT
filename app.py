@@ -302,6 +302,10 @@ def search_location():
 def wifi_scan():
     return jsonify(hw.scan_wifi())
 
+@app.route('/api/battery')
+def battery_status():
+    return jsonify(hw.get_battery_status())
+
 @app.route('/api/wifi_connect', methods=['POST'])
 def wifi_connect():
     data = request.json

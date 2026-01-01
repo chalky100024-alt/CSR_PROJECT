@@ -55,22 +55,51 @@ class HardwareController:
 
     def pisugar_command(self, cmd):
         """PiSugar TCP 서버로 명령 전송"""
-        if not IS_RPI: return "Mock Battery: 85%"
+        if not IS_RPI: 
+            # Mock Data for Development
+            if cmd == 'get battery': return "battery: 85"
+            if cmd == 'get battery_power_plugged': return "battery_power_plugged: true"
+            return "ok"
+            
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 s.settimeout(2)
                 s.connect(('127.0.0.1', 8423))
                 s.sendall(cmd.encode())
-                return s.recv(1024).decode('utf-8')
+                response = s.recv(1024).decode('utf-8').strip()
+                logger.debug(f"PiSugar CMD: {cmd} -> {response}")
+                return response
         except Exception as e:
             logger.error(f"PiSugar Error: {e}")
             return None
 
-    def is_charging(self):
-        res = self.pisugar_command('get battery')
-        if res and 'charging:true' in res.replace('"', '').replace(' ', ''):
-            return True
-        return False # Mock default
+    def get_battery_status(self):
+        """배터리 상태 조회 (퍼센트, 충전중 여부)"""
+        try:
+            # 1. Get Battery Level
+            bat_res = self.pisugar_command('get battery')
+            level = 0
+            if bat_res:
+                # Expected format: "battery: 85"
+                params = bat_res.split(':')
+                if len(params) > 1:
+                    level = float(params[1].strip())
+
+            # 2. Get Charging Status
+            # 'battery_power_plugged' detects if USB is plugged in
+            plug_res = self.pisugar_command('get battery_power_plugged')
+            charging = False
+            if plug_res:
+                # Expected format: "battery_power_plugged: true"
+                charging = 'true' in plug_res.lower()
+            
+            return {
+                "level": level,
+                "charging": charging
+            }
+        except Exception as e:
+            logger.error(f"Battery Status Error: {e}")
+            return {"level": 0, "charging": False}
 
     def scan_wifi(self):
         """nmcli를 이용한 와이파이 스캔"""

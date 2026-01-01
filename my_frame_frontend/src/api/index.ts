@@ -70,6 +70,11 @@ export const scanWifi = async (): Promise<{ ssid: string; signal: number }[]> =>
     return res.data;
 };
 
+export const getBatteryStatus = async (): Promise<{ level: number; charging: boolean }> => {
+    const res = await api.get('/api/battery');
+    return res.data;
+};
+
 export const connectWifi = async (ssid: string, password: string) => {
     const res = await api.post('/api/wifi_connect', { ssid, password });
     return res.data;

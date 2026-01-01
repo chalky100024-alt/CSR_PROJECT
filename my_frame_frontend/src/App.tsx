@@ -1,14 +1,54 @@
 import { useState, useEffect } from 'react';
-import { AppShell, Container, Grid, Title, Group, Button, Select } from '@mantine/core';
-import { IconPhoto, IconSettings } from '@tabler/icons-react';
+import { AppShell, Container, Grid, Title, Group, Button, Select, Badge, Tooltip } from '@mantine/core';
+import { IconPhoto, IconSettings, IconBattery, IconBatteryCharging, IconBattery1, IconBattery2, IconBattery3, IconBattery4 } from '@tabler/icons-react';
 
 import { PreviewCard } from './components/PreviewCard';
 import { Gallery } from './components/Gallery';
 import { AIAtelier } from './components/AIAtelier';
 import { SettingsModal } from './components/SettingsModal';
-import { saveConfig, getConfig } from './api';
+import { saveConfig, getConfig, getBatteryStatus } from './api';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
 import type { Language } from './translations';
+
+function BatteryStatus() {
+  const [battery, setBattery] = useState<{ level: number; charging: boolean } | null>(null);
+
+  useEffect(() => {
+    const fetchBat = async () => {
+      try {
+        const status = await getBatteryStatus();
+        setBattery(status);
+      } catch (e) {
+        console.error("Battery fetch failed", e);
+      }
+    };
+
+    fetchBat();
+    const interval = setInterval(fetchBat, 30000); // Poll every 30s
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!battery) return null;
+
+  // Determine Icon
+  let Icon = IconBattery;
+  if (battery.charging) Icon = IconBatteryCharging;
+  else if (battery.level < 20) Icon = IconBattery1;
+  else if (battery.level < 50) Icon = IconBattery2;
+  else if (battery.level < 80) Icon = IconBattery3;
+  else Icon = IconBattery4;
+
+  const color = battery.level < 20 && !battery.charging ? 'red' : 'green';
+
+  return (
+    <Tooltip label={`Battery: ${battery.level}%${battery.charging ? ' (Charging)' : ''}`}>
+      <Group gap={4} mr="xs">
+        <Icon size={20} color={color} />
+        <Badge variant="light" color={color} size="sm">{Math.round(battery.level)}%</Badge>
+      </Group>
+    </Tooltip>
+  );
+}
 
 function MainApp() {
   const { t, language, setLanguage } = useLanguage();
@@ -61,6 +101,9 @@ function MainApp() {
 
               {/* Desktop Menu */}
               <Group visibleFrom="sm">
+                {/* Battery Status */}
+                <BatteryStatus />
+
                 <Select
                   data={[
                     { value: 'ko', label: '🇰🇷 한국어' },
