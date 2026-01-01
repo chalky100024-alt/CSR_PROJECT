@@ -208,6 +208,45 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                             </Group>
                         )}
 
+                        <Divider my="md" />
+                        <Text fw={700}>🔋 Smart Power Management</Text>
+                        <Group grow>
+                            <TextInput
+                                label="Wakeup Interval (min)"
+                                description="Time to sleep between updates"
+                                type="number"
+                                value={config.power_settings?.interval_min || 60}
+                                onChange={(e) => {
+                                    const val = parseInt(e.currentTarget.value) || 60;
+                                    setConfig({
+                                        ...config,
+                                        power_settings: { ...config.power_settings, interval_min: val }
+                                    });
+                                }}
+                            />
+                            <TextInput
+                                label="Runtime Duration (min)"
+                                description="How long to stay awake"
+                                type="number"
+                                value={config.power_settings?.runtime_min || 3}
+                                onChange={(e) => {
+                                    const val = parseInt(e.currentTarget.value) || 3;
+                                    setConfig({
+                                        ...config,
+                                        power_settings: { ...config.power_settings, runtime_min: val }
+                                    });
+                                }}
+                            />
+                        </Group>
+                        <Group justify="space-between" align="center" mt="xs" p="xs" bg="gray.1" style={{ borderRadius: 8 }}>
+                            <Text size="sm">Current Mode: <b>{config.power_settings?.mode?.toUpperCase() || 'SETTINGS'}</b></Text>
+                            <Text size="xs" c="dimmed">
+                                {config.power_settings?.mode === 'operation'
+                                    ? "Device will auto-shutdown after runtime."
+                                    : "Device stays ON (Maintenance Mode)."}
+                            </Text>
+                        </Group>
+
                         <Text fw={700} mt="xl">{t('deviceControl')}</Text>
                         <Group>
                             <Button color="orange" onClick={() => systemAction('reboot')}>{t('reboot')}</Button>

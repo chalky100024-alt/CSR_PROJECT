@@ -328,6 +328,21 @@ def system_action():
             return jsonify({"status": "success", "message": output.decode('utf-8')})
         except subprocess.CalledProcessError as e:
             return jsonify({"status": "error", "message": e.output.decode('utf-8')})
+            
+    elif action == 'toggle_mode':
+        # Toggle between 'settings' and 'operation'
+        cfg = settings.load_config()
+        p_settings = cfg.get('power_settings', {})
+        current_mode = p_settings.get('mode', 'settings')
+        
+        new_mode = 'operation' if current_mode == 'settings' else 'settings'
+        p_settings['mode'] = new_mode
+        cfg['power_settings'] = p_settings
+        
+        settings.save_config(cfg)
+        print(f"Power Mode Switched: {current_mode} -> {new_mode}")
+        return jsonify({"status": "success", "mode": new_mode})
+        
     return jsonify({"status": "ok"})
     
 @app.route('/api/list_photos')
@@ -378,6 +393,56 @@ def delete_photos():
 
 
 
+# --- [Startup Logic for Power Management] ---
+def check_power_management():
+    """Check mode and schedule shutdown if needed"""
+    try:
+        cfg = settings.load_config()
+        p_settings = cfg.get('power_settings', {})
+        mode = p_settings.get('mode', 'settings')
+        
+        if mode == 'operation':
+            interval = int(p_settings.get('interval_min', 60))
+            runtime = int(p_settings.get('runtime_min', 3))
+            
+            print(f"🚀 Operation Mode Detected. Runtime: {runtime}m, Next Wakeup: {interval}m")
+            
+            # 1. Set RTC Alarm for next Wakeup (Current + Interval)
+            # Note: We set it NOW so if we shutdown early/late it's still roughly correct from boot time
+            # Actually, better to set it just before shutdown, but for safety set it now (or just logic below)
+            
+            # 2. Schedule Shutdown
+            # We wait 'runtime' minutes then shutdown.
+            # We also need to Ensure RTC is set before shutdown.
+            
+            def shutdown_sequence():
+                print(f"⏳ Waiting {runtime} minutes before shutdown...")
+                import time
+                time.sleep(runtime * 60)
+                
+                print("💤 Setting RTC Alarm & Shutting Down...")
+                if hw.set_rtc_alarm(interval):
+                    print("✅ RTC Alarm Set.")
+                else:
+                    print("❌ RTC Alarm Failed (Mock or Error).")
+                    
+                hw.schedule_shutdown(delay=5) # Give 5s buffer
+                
+            threading.Thread(target=shutdown_sequence).start()
+            
+        else:
+            print("🛠️ Settings Mode: Stay Awake.")
+            # Disable any existing RTC alarms just in case
+            # hw.pisugar_command('rtc_alarm_disable') 
+            pass
+
+    except Exception as e:
+        print(f"Power Management Error: {e}")
+
 if __name__ == '__main__':
     # use_reloader=False prevents double initialization of hardware drivers
+    # Check power management thread (delay slightly to let app start)
+    if not os.environ.get("WERKZEUG_RUN_MAIN") == "true": # Run only once (if reloader is on, but here reloader is false)
+         threading.Timer(5.0, check_power_management).start()
+
     app.run(host='0.0.0.0', port=8080, debug=True, use_reloader=False)

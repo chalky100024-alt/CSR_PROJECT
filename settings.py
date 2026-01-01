@@ -29,7 +29,13 @@ DEFAULT_CONFIG = {
         "nx": 61,
         "ny": 115
     },
-    "station_name": "고덕" # 미세먼지 측정소
+    "station_name": "고덕", # 미세먼지 측정소
+    "power_settings": {
+        "mode": "settings",       # "settings" (always on) or "operation" (auto shutdown)
+        "interval_min": 60,       # Wakeup interval (minutes)
+        "runtime_min": 3,         # How long to stay awake (minutes)
+        "boot_count": 0           # For debugging/tracking
+    }
 }
 
 def load_config():

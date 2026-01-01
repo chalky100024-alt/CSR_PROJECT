@@ -73,6 +73,48 @@ class HardwareController:
             logger.error(f"PiSugar Error: {e}")
             return None
 
+    def set_rtc_alarm(self, minutes):
+        """PiSugar RTC 알람 설정 (현재 시간 + minutes)"""
+        if not IS_RPI:
+            logger.info(f"[Mock] Setting RTC Alarm for {minutes} min later")
+            return True
+        
+        try:
+            # Clear previous
+            self.pisugar_command('rtc_alarm_disable')
+            
+            import datetime
+            now = datetime.datetime.now()
+            target = now + datetime.timedelta(minutes=minutes)
+            # ISO 8601 format
+            iso_time = target.strftime("%Y-%m-%dT%H:%M:%S")
+            
+            # Use 'rtc_alarm_set' which usually expects ISO time
+            resp = self.pisugar_command(f'rtc_alarm_set {iso_time}')
+            
+            if resp and 'ok' in resp.lower():
+                self.pisugar_command('rtc_alarm_enable')
+                logger.info(f"RTC Alarm Set: {iso_time}")
+                return True
+            logger.warning(f"RTC Set Failed: {resp}")
+            return False
+            
+        except Exception as e:
+            logger.error(f"RTC Set Error: {e}")
+            return False
+
+    def schedule_shutdown(self, delay=0):
+        """시스템 종료 예약"""
+        if not IS_RPI:
+            logger.info(f"[Mock] System Shutdown in {delay}s")
+            return
+            
+        # Background shutdown
+        if delay > 0:
+            os.system(f"(sleep {delay} && sudo shutdown -h now) &")
+        else:
+            os.system("sudo shutdown -h now")
+
     def get_battery_status(self):
         """배터리 상태 조회 (퍼센트, 충전중 여부)"""
         try:
