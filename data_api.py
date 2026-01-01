@@ -93,14 +93,20 @@ def get_weather_data(api_key, nx, ny):
         # Requests automatically encodes params, but serviceKey is tricky.
         # We must append serviceKey manually if normal params fail.
         # But requests usually handles it. try manual string construction if fails.
+        
+        logger.info(f"🌤️ Weather API Request: {url}")
+        logger.info(f"🔑 Key used: {api_key[:10]}... (Contains %: {'%' in api_key})")
+        
         res = requests.get(url, params=params, timeout=10)
+        logger.info(f"📡 Final URL: {res.url}") 
         
         try:
             data = res.json()
             items = data['response']['body']['items']['item']
         except: 
             # JSON Fail -> Try XML Fallback logic or just Log
-            logger.error(f"Weather JSON Parse Fail. Raw: {res.text[:100]}")
+            logger.error(f"Weather JSON Parse Fail. Status: {res.status_code}")
+            logger.error(f"Raw Response: {res.text[:500]}") # Print first 500 chars
             items = []
 
         for item in items:
