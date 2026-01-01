@@ -7,6 +7,15 @@ logger = logging.getLogger(__name__)
 
 def get_fine_dust_data(api_key, station_name):
     if not api_key: return None
+    
+    # [Robust Key Handling]
+    # If user provided Encoding Key (with %), unquote it to get Decoding Key.
+    if '%' in api_key:
+        try:
+            from urllib.parse import unquote
+            api_key = unquote(api_key)
+        except: pass
+
     url = "http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty"
     params = {
         'serviceKey': api_key, 
