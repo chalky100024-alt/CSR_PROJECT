@@ -13,6 +13,7 @@ import threading
 from PIL import Image, ImageCms
 import io
 import datetime
+import time
 
 try:
     import pillow_heif
@@ -447,29 +448,36 @@ def check_power_management():
             print(f"🚀 Operation Mode Detected. Runtime: {runtime}m, Next Wakeup: {interval}m")
             
             def shutdown_sequence():
-                print(f"⏳ Waiting {runtime} minutes before shutdown...")
-                time.sleep(runtime * 60)
-                
-                # Check Mode AGAIN before shutting down (Safety)
-                current_cfg = settings.load_config()
-                if current_cfg.get('power_settings', {}).get('mode') != 'operation':
-                    msg = "🛑 Shutdown Aborted: Mode changed to Settings."
+                try:
+                    log_lifecycle_event(f"Shutdown Thread Started. Waiting {runtime}m...")
+                    time.sleep(runtime * 60)
+                    
+                    # Check Mode AGAIN before shutting down (Safety)
+                    current_cfg = settings.load_config()
+                    if current_cfg.get('power_settings', {}).get('mode') != 'operation':
+                        msg = "🛑 Shutdown Aborted: Mode changed to Settings."
+                        print(msg)
+                        log_lifecycle_event(msg)
+                        return
+
+                    msg = f"💤 Setting RTC Alarm (+{interval}m) & Shutting Down..."
                     print(msg)
                     log_lifecycle_event(msg)
-                    return
-
-                msg = f"💤 Setting RTC Alarm (+{interval}m) & Shutting Down..."
-                print(msg)
-                log_lifecycle_event(msg)
-                
-                if hw.set_rtc_alarm(interval):
-                    print("✅ RTC Alarm Set.")
-                    log_lifecycle_event("RTC Alarm Set Success")
-                else:
-                    print("❌ RTC Alarm Failed (Mock or Error).")
-                    log_lifecycle_event("RTC Alarm Set FAILED")
                     
-                hw.schedule_shutdown(delay=5) 
+                    if hw.set_rtc_alarm(interval):
+                        print("✅ RTC Alarm Set.")
+                        log_lifecycle_event("RTC Alarm Set Success")
+                    else:
+                        print("❌ RTC Alarm Failed (Mock or Error).")
+                        log_lifecycle_event("RTC Alarm Set FAILED")
+                        
+                    hw.schedule_shutdown(delay=5)
+                except Exception as e:
+                    err = f"CRITICAL: Shutdown Thread Crashed: {e}"
+                    print(err)
+                    log_lifecycle_event(err)
+                    import traceback
+                    log_lifecycle_event(traceback.format_exc())
                 
             threading.Thread(target=shutdown_sequence).start()
             
