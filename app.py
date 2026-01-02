@@ -341,6 +341,11 @@ def system_action():
         
         settings.save_config(cfg)
         print(f"Power Mode Switched: {current_mode} -> {new_mode}")
+        
+        # Immediate Effect if switching TO operation
+        if new_mode == 'operation':
+             threading.Thread(target=check_power_management).start()
+             
         return jsonify({"status": "success", "mode": new_mode})
         
     return jsonify({"status": "ok"})
