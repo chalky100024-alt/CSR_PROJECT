@@ -487,5 +487,6 @@ if __name__ == '__main__':
     # use_reloader=False prevents double initialization of hardware drivers
     # Check power management thread (delay slightly to let app start)
     if not os.environ.get("WERKZEUG_RUN_MAIN") == "true": # Run only once (if reloader is on, but here reloader is false)
+         threading.Thread(target=check_power_management).start()
 
     app.run(host='0.0.0.0', port=8080, debug=True, use_reloader=False)
