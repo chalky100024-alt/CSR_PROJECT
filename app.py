@@ -425,6 +425,12 @@ def check_power_management():
                 import time
                 time.sleep(runtime * 60)
                 
+                # Check Mode AGAIN before shutting down (Safety)
+                current_cfg = settings.load_config()
+                if current_cfg.get('power_settings', {}).get('mode') != 'operation':
+                    print("🛑 Shutdown Aborted: Mode changed to Settings.")
+                    return
+
                 print("💤 Setting RTC Alarm & Shutting Down...")
                 if hw.set_rtc_alarm(interval):
                     print("✅ RTC Alarm Set.")
