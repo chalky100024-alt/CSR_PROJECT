@@ -324,10 +324,24 @@ def system_action():
         try:
             import subprocess
             # Ensure we are pulling from origin main
-            output = subprocess.check_output(["git", "pull", "origin", "main"], stderr=subprocess.STDOUT)
-            return jsonify({"status": "success", "message": output.decode('utf-8')})
+            # Use specific CWD to be safe
+            project_path = os.path.dirname(os.path.abspath(__file__))
+            output = subprocess.check_output(["git", "pull", "origin", "main"], stderr=subprocess.STDOUT, cwd=project_path)
+            
+            # Restart Service to apply changes
+            def perform_restart():
+                import time
+                time.sleep(3) # Wait for response to send
+                print("🔄 Restarting Service...")
+                os.system("sudo systemctl restart photoframe.service")
+            
+            threading.Thread(target=perform_restart).start()
+            
+            return jsonify({"status": "success", "message": f"Update OK. Restarting...\n{output.decode('utf-8')}"})
         except subprocess.CalledProcessError as e:
             return jsonify({"status": "error", "message": e.output.decode('utf-8')})
+        except Exception as e:
+            return jsonify({"status": "error", "message": str(e)})
             
     elif action == 'toggle_mode':
         # Toggle between 'settings' and 'operation'
