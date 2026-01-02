@@ -12,6 +12,7 @@ import photo_frame
 import threading
 from PIL import Image, ImageCms
 import io
+import datetime
 
 try:
     import pillow_heif
@@ -412,62 +413,79 @@ def delete_photos():
 
 
 
+# --- [Persistent Lifecycle Logging] ---
+import datetime
+def log_lifecycle_event(event):
+    """Log critical events to a file for easy debugging"""
+    try:
+        log_path = os.path.join(settings.BASE_DIR, 'lifecycle_log.txt')
+        with open(log_path, 'a') as f:
+            f.write(f"[{datetime.datetime.now()}] {event}\n")
+    except Exception as e:
+        print(f"Failed to write lifecycle log: {e}")
+
 # --- [Startup Logic for Power Management] ---
 def check_power_management():
     """Check mode and schedule shutdown if needed"""
+    # 1. Provide delay for network/system stabilization
+    import time
+    time.sleep(5) 
+    
     try:
+        log_lifecycle_event(f"APP_STARTED | Mode Check Initiated")
+        
         cfg = settings.load_config()
         p_settings = cfg.get('power_settings', {})
         mode = p_settings.get('mode', 'settings')
         
+        log_lifecycle_event(f"Current Mode: {mode}")
+
         if mode == 'operation':
             interval = int(p_settings.get('interval_min', 60))
             runtime = int(p_settings.get('runtime_min', 3))
             
             print(f"🚀 Operation Mode Detected. Runtime: {runtime}m, Next Wakeup: {interval}m")
             
-            # 1. Set RTC Alarm for next Wakeup (Current + Interval)
-            # Note: We set it NOW so if we shutdown early/late it's still roughly correct from boot time
-            # Actually, better to set it just before shutdown, but for safety set it now (or just logic below)
-            
-            # 2. Schedule Shutdown
-            # We wait 'runtime' minutes then shutdown.
-            # We also need to Ensure RTC is set before shutdown.
-            
             def shutdown_sequence():
                 print(f"⏳ Waiting {runtime} minutes before shutdown...")
-                import time
                 time.sleep(runtime * 60)
                 
                 # Check Mode AGAIN before shutting down (Safety)
                 current_cfg = settings.load_config()
                 if current_cfg.get('power_settings', {}).get('mode') != 'operation':
-                    print("🛑 Shutdown Aborted: Mode changed to Settings.")
+                    msg = "🛑 Shutdown Aborted: Mode changed to Settings."
+                    print(msg)
+                    log_lifecycle_event(msg)
                     return
 
-                print("💤 Setting RTC Alarm & Shutting Down...")
+                msg = f"💤 Setting RTC Alarm (+{interval}m) & Shutting Down..."
+                print(msg)
+                log_lifecycle_event(msg)
+                
                 if hw.set_rtc_alarm(interval):
                     print("✅ RTC Alarm Set.")
+                    log_lifecycle_event("RTC Alarm Set Success")
                 else:
                     print("❌ RTC Alarm Failed (Mock or Error).")
+                    log_lifecycle_event("RTC Alarm Set FAILED")
                     
-                hw.schedule_shutdown(delay=5) # Give 5s buffer
+                hw.schedule_shutdown(delay=5) 
                 
             threading.Thread(target=shutdown_sequence).start()
             
         else:
             print("🛠️ Settings Mode: Stay Awake.")
-            # Disable any existing RTC alarms just in case
-            # hw.pisugar_command('rtc_alarm_disable') 
+            log_lifecycle_event("Settings Mode - Staying Awake")
             pass
 
     except Exception as e:
-        print(f"Power Management Error: {e}")
+        err_msg = f"Power Management Error: {e}"
+        print(err_msg)
+        log_lifecycle_event(err_msg)
 
 if __name__ == '__main__':
     # use_reloader=False prevents double initialization of hardware drivers
     # Check power management thread (delay slightly to let app start)
     if not os.environ.get("WERKZEUG_RUN_MAIN") == "true": # Run only once (if reloader is on, but here reloader is false)
-         threading.Timer(5.0, check_power_management).start()
 
     app.run(host='0.0.0.0', port=8080, debug=True, use_reloader=False)
