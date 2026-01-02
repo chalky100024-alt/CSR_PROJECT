@@ -447,6 +447,21 @@ def check_power_management():
             
             print(f"🚀 Operation Mode Detected. Runtime: {runtime}m, Next Wakeup: {interval}m")
             
+            # [CRITICAL] Refresh Screen on Boot
+            # Since this is "Operation Mode", the whole point is to update screen and sleep.
+            def display_update_task():
+                try:
+                    log_lifecycle_event("Display Update Started")
+                    pf = photo_frame.EInkPhotoFrame()
+                    pf.refresh_display()
+                    log_lifecycle_event("Display Update Completed")
+                except Exception as e:
+                    err = f"Display Update Failed: {e}"
+                    print(err)
+                    log_lifecycle_event(err)
+            
+            threading.Thread(target=display_update_task).start()
+
             def shutdown_sequence():
                 try:
                     log_lifecycle_event(f"Shutdown Thread Started. Waiting {runtime}m...")
