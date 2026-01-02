@@ -75,6 +75,14 @@ class HardwareController:
 
     def set_rtc_alarm(self, minutes):
         """PiSugar RTC 알람 설정 (현재 시간 + minutes)"""
+        # --- Lifecycle logging helper (Embedded) ---
+        def log_hardware_event(msg):
+            try:
+                with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lifecycle_log.txt'), 'a') as f:
+                    import datetime
+                    f.write(f"[{datetime.datetime.now()}] [HW] {msg}\n")
+            except: pass
+
         if not IS_RPI:
             logger.info(f"[Mock] Setting RTC Alarm for {minutes} min later")
             return True
@@ -89,18 +97,26 @@ class HardwareController:
             # ISO 8601 format
             iso_time = target.strftime("%Y-%m-%dT%H:%M:%S")
             
+            log_hardware_event(f"Attempting RTC Set: {iso_time}")
+
             # Use 'rtc_alarm_set' which usually expects ISO time
             resp = self.pisugar_command(f'rtc_alarm_set {iso_time}')
             
             if resp and 'ok' in resp.lower():
                 self.pisugar_command('rtc_alarm_enable')
                 logger.info(f"RTC Alarm Set: {iso_time}")
+                log_hardware_event(f"RTC Set Success: {iso_time}")
                 return True
-            logger.warning(f"RTC Set Failed: {resp}")
+            
+            err = f"RTC Set Rejected. Response: {resp}"
+            logger.warning(err)
+            log_hardware_event(err)
             return False
             
         except Exception as e:
-            logger.error(f"RTC Set Error: {e}")
+            err = f"RTC Set Exception: {e}"
+            logger.error(err)
+            log_hardware_event(err)
             return False
 
     def schedule_shutdown(self, delay=0):
