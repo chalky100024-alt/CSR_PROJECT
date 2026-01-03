@@ -93,14 +93,20 @@ class HardwareController:
             
             import datetime
             now = datetime.datetime.now()
-            target = now + datetime.timedelta(minutes=minutes)
-            # ISO 8601 format
-            iso_time = target.strftime("%Y-%m-%dT%H:%M:%S")
+            # ISO 8601 format with timezone (Korean Time implies +09:00 locally)
+            # PiSugar Server needs accurate ISO string.
+            # Using astimezone() ensures we have the offset (e.g. +09:00) attached.
+            iso_time = target.astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
+            
+            # Format fix for python < 3.7 where %z might be +0900 instead of +09:00 (PiSugar expects colon)
+            if len(iso_time) > 5 and iso_time[-3] != ':':
+                iso_time = iso_time[:-2] + ':' + iso_time[-2:]
             
             log_hardware_event(f"Attempting RTC Set: {iso_time}")
 
-            # Use 'rtc_alarm_set' which usually expects ISO time
-            resp = self.pisugar_command(f'rtc_alarm_set {iso_time}')
+            # Use 'rtc_alarm_set' with REPEAT mask (127 = 0x7F = Every day)
+            # Missing the mask causes 'Invalid request'
+            resp = self.pisugar_command(f'rtc_alarm_set {iso_time} 127')
             
             if resp and 'ok' in resp.lower():
                 self.pisugar_command('rtc_alarm_enable')
