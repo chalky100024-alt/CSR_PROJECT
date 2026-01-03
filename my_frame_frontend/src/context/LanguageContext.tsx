@@ -13,7 +13,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     const [language, setLanguage] = useState<Language>('ko'); // Default Korean
 
     const t = (key: keyof typeof translations['ko']) => {
-        return translations[language][key] || translations['en'][key] || key;
+        const langData = translations[language] as Record<string, string>;
+        const enData = translations['en'] as Record<string, string>;
+        return langData[key] || enData[key] || key;
     };
 
     return (

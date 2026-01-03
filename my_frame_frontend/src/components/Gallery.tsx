@@ -7,9 +7,14 @@ import { useLanguage } from '../context/LanguageContext';
 interface GalleryProps {
     selectedPhoto: string;
     onSelectPhoto: (photo: string) => void;
+    // [Shuffle Props]
+    shuffleMode: boolean;
+    shufflePlaylist: string[];
+    onToggleShuffle: (enabled: boolean) => void;
+    onUpdatePlaylist: (playlist: string[]) => void;
 }
 
-export function Gallery({ selectedPhoto, onSelectPhoto }: GalleryProps) {
+export function Gallery({ selectedPhoto, onSelectPhoto, shuffleMode, shufflePlaylist, onToggleShuffle, onUpdatePlaylist }: GalleryProps) {
     const { t } = useLanguage();
     const [photos, setPhotos] = useState<string[]>([]);
     const [deleteMode, setDeleteMode] = useState(false);
@@ -41,6 +46,13 @@ export function Gallery({ selectedPhoto, onSelectPhoto }: GalleryProps) {
         setSelectedForDelete(newSet);
     };
 
+    const togglePlaylistSelection = (photo: string) => {
+        const currentList = new Set(shufflePlaylist);
+        if (currentList.has(photo)) currentList.delete(photo);
+        else currentList.add(photo);
+        onUpdatePlaylist(Array.from(currentList));
+    };
+
     const handleDelete = async () => {
         if (selectedForDelete.size === 0) return;
         if (!confirm('Are you sure?')) return;
@@ -57,6 +69,16 @@ export function Gallery({ selectedPhoto, onSelectPhoto }: GalleryProps) {
             <Group justify="space-between" mb="md">
                 <Text fw={700} size="lg">{t('galleryTitle')}</Text>
                 <Group>
+                    {/* Shuffle Toggle */}
+                    <Button
+                        size="xs"
+                        variant={shuffleMode ? "filled" : "light"}
+                        color={shuffleMode ? "violet" : "gray"}
+                        onClick={() => onToggleShuffle(!shuffleMode)}
+                    >
+                        {shuffleMode ? "🔀 Shuffle ON" : "➡️ Shuffle OFF"}
+                    </Button>
+
                     <FileButton onChange={handleUpload} accept="image/png,image/jpeg,image/heic">
                         {(props) => <Button {...props} size="xs" variant="light" leftSection={<IconUpload size={14} />}>{t('uploadBtn')}</Button>}
                     </FileButton>
@@ -78,10 +100,24 @@ export function Gallery({ selectedPhoto, onSelectPhoto }: GalleryProps) {
                 </Button>
             )}
 
+            {shuffleMode && !deleteMode && (
+                <Text size="sm" c="violet" mb="xs" fw={500}>
+                    Select photos for random shuffle ({shufflePlaylist.length} selected)
+                </Text>
+            )}
+
             <SimpleGrid cols={{ base: 3, sm: 4 }} spacing="xs">
                 {photos.map(photo => {
-                    const isSelected = selectedPhoto === photo;
-                    const isMarked = selectedForDelete.has(photo);
+                    // Logic depends on Mode
+                    let isSelected = false;
+
+                    if (deleteMode) {
+                        isSelected = selectedForDelete.has(photo);
+                    } else if (shuffleMode) {
+                        isSelected = shufflePlaylist.includes(photo);
+                    } else {
+                        isSelected = selectedPhoto === photo;
+                    }
 
                     return (
                         <Card
@@ -90,16 +126,26 @@ export function Gallery({ selectedPhoto, onSelectPhoto }: GalleryProps) {
                             radius="sm"
                             style={{
                                 cursor: 'pointer',
-                                border: deleteMode
-                                    ? (isMarked ? '3px solid red' : 'none')
-                                    : (isSelected ? '3px solid #007AFF' : 'none'),
-                                opacity: deleteMode && !isMarked ? 0.6 : 1
+                                border: isSelected
+                                    ? (deleteMode ? '3px solid red' : (shuffleMode ? '3px solid violet' : '3px solid #007AFF'))
+                                    : 'none',
+                                opacity: deleteMode && !isSelected ? 0.6 : 1,
+                                position: 'relative'
                             }}
-                            onClick={() => deleteMode ? toggleDeleteSelection(photo) : onSelectPhoto(photo)}
+                            onClick={() => {
+                                if (deleteMode) toggleDeleteSelection(photo);
+                                else if (shuffleMode) togglePlaylistSelection(photo);
+                                else onSelectPhoto(photo);
+                            }}
                         >
                             <Image src={getPhotoUrl(photo)} h={100} fit="cover" />
-                            {deleteMode && isMarked && (
-                                <div style={{ position: 'absolute', top: 5, right: 5, background: 'red', borderRadius: '50%', padding: 2 }}>
+                            {/* Checkmark Badge */}
+                            {isSelected && (
+                                <div style={{
+                                    position: 'absolute', top: 5, right: 5,
+                                    background: deleteMode ? 'red' : (shuffleMode ? 'violet' : '#007AFF'),
+                                    borderRadius: '50%', padding: 2, display: 'flex'
+                                }}>
                                     <IconCheck color="white" size={12} />
                                 </div>
                             )}

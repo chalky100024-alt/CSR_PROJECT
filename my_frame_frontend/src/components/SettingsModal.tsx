@@ -209,11 +209,44 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                         )}
 
                         <Divider my="md" />
-                        <Text fw={700}>🔋 Smart Power Management</Text>
+                        <Divider my="md" />
+                        <Text fw={700}>{t('smartPowerTitle')}</Text>
                         <Group grow>
                             <TextInput
-                                label="Wakeup Interval (min)"
-                                description="Time to sleep between updates"
+                                label={t('activeStartHour')}
+                                description={t('activeStartDesc')}
+                                type="number"
+                                min={0}
+                                max={23}
+                                value={config.power_settings?.active_start_hour ?? 5}
+                                onChange={(e) => {
+                                    const val = parseInt(e.currentTarget.value) || 0;
+                                    setConfig({
+                                        ...config,
+                                        power_settings: { ...config.power_settings, active_start_hour: val }
+                                    });
+                                }}
+                            />
+                            <TextInput
+                                label={t('activeEndHour')}
+                                description={t('activeEndDesc')}
+                                type="number"
+                                min={0}
+                                max={23}
+                                value={config.power_settings?.active_end_hour ?? 22}
+                                onChange={(e) => {
+                                    const val = parseInt(e.currentTarget.value) || 0;
+                                    setConfig({
+                                        ...config,
+                                        power_settings: { ...config.power_settings, active_end_hour: val }
+                                    });
+                                }}
+                            />
+                        </Group>
+                        <Group grow mt="xs">
+                            <TextInput
+                                label={t('wakeupInterval')}
+                                description={t('wakeupIntervalDesc')}
                                 type="number"
                                 value={config.power_settings?.interval_min || 60}
                                 onChange={(e) => {
@@ -225,8 +258,8 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                                 }}
                             />
                             <TextInput
-                                label="Runtime Duration (min)"
-                                description="How long to stay awake"
+                                label={t('runtimeDuration')}
+                                description={t('runtimeDurationDesc')}
                                 type="number"
                                 value={config.power_settings?.runtime_min || 3}
                                 onChange={(e) => {
@@ -239,11 +272,11 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                             />
                         </Group>
                         <Group justify="space-between" align="center" mt="xs" p="xs" bg="gray.1" style={{ borderRadius: 8 }}>
-                            <Text size="sm">Current Mode: <b>{config.power_settings?.mode?.toUpperCase() || 'SETTINGS'}</b></Text>
+                            <Text size="sm">{t('currentMode')}: <b>{config.power_settings?.mode?.toUpperCase() || 'SETTINGS'}</b></Text>
                             <Text size="xs" c="dimmed">
                                 {config.power_settings?.mode === 'operation'
-                                    ? "Device will auto-shutdown after runtime."
-                                    : "Device stays ON (Maintenance Mode)."}
+                                    ? t('modeOperation')
+                                    : t('modeSettings')}
                             </Text>
                         </Group>
 
@@ -261,6 +294,6 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                 <Button variant="default" onClick={onClose}>{t('cancel')}</Button>
                 <Button onClick={handleSave}>{t('saveChanges')}</Button>
             </Group>
-        </Modal>
+        </Modal >
     );
 }

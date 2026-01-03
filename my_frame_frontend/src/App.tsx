@@ -53,24 +53,49 @@ function BatteryStatus() {
 function MainApp() {
   const { t, language, setLanguage } = useLanguage();
   const [selectedPhoto, setSelectedPhoto] = useState<string>('');
+  const [shuffleMode, setShuffleMode] = useState(false);
+  const [shufflePlaylist, setShufflePlaylist] = useState<string[]>([]);
+  const [powerMode, setPowerMode] = useState<string>('settings');
+
   const [refreshPreview, setRefreshPreview] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Sync state with backend config on load
   useEffect(() => {
     getConfig().then(cfg => {
-      if (cfg.selected_photo) {
-        setSelectedPhoto(cfg.selected_photo);
-      }
+      if (cfg.selected_photo) setSelectedPhoto(cfg.selected_photo);
+      if (cfg.shuffle_mode !== undefined) setShuffleMode(cfg.shuffle_mode);
+      if (cfg.shuffle_playlist) setShufflePlaylist(cfg.shuffle_playlist);
+      if (cfg.power_settings?.mode) setPowerMode(cfg.power_settings.mode);
     });
   }, []);
 
   const handlePhotoSelect = async (photo: string) => {
     setSelectedPhoto(photo);
-    // Auto-select photo on backend
-    await saveConfig({ selected_photo: photo }, false);
+    // If selecting a specific photo, we might want to disable shuffle automatically? 
+    // Or just let backend logic handle it (Backend prioritizes shuffle if enabled).
+    // Let's force shuffle OFF if user explicitly picks a single photo for clarity.
+    if (shuffleMode) {
+      setShuffleMode(false);
+      await saveConfig({ selected_photo: photo, shuffle_mode: false });
+    } else {
+      await saveConfig({ selected_photo: photo });
+    }
+
     // Refresh preview to show selected photo
     setTimeout(() => setRefreshPreview(prev => prev + 1), 300);
+  };
+
+  const handleToggleShuffle = async (enabled: boolean) => {
+    setShuffleMode(enabled);
+    await saveConfig({ shuffle_mode: enabled }, false); // Don't refresh preview immediately, maybe?
+    // Actually, if enabled, preview should update to random. 
+    setTimeout(() => setRefreshPreview(prev => prev + 1), 300);
+  };
+
+  const handleUpdatePlaylist = async (playlist: string[]) => {
+    setShufflePlaylist(playlist);
+    await saveConfig({ shuffle_playlist: playlist }, false);
   };
 
   const handleAIComplete = () => {
@@ -121,6 +146,14 @@ function MainApp() {
                 <Button variant="default" radius="xl" leftSection={<IconSettings size={18} />} onClick={() => setSettingsOpen(true)}>
                   {t('settings')}
                 </Button>
+                {/* Mode Indicator */}
+                <Badge
+                  variant="dot"
+                  color={powerMode === 'operation' ? 'green' : 'orange'}
+                  size="lg"
+                >
+                  {powerMode === 'operation' ? 'AUTO MODE' : 'MANUAL'}
+                </Badge>
               </Group>
 
               {/* Mobile Menu Button */}
@@ -151,6 +184,11 @@ function MainApp() {
                     <Gallery
                       selectedPhoto={selectedPhoto}
                       onSelectPhoto={handlePhotoSelect}
+                      // [Shuffle Props]
+                      shuffleMode={shuffleMode}
+                      shufflePlaylist={shufflePlaylist}
+                      onToggleShuffle={handleToggleShuffle}
+                      onUpdatePlaylist={handleUpdatePlaylist}
                     />
                   </Grid.Col>
                 </Grid>
