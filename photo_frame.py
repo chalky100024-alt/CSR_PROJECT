@@ -238,15 +238,26 @@ class EInkPhotoFrame:
             pass
         return False
 
-    def refresh_display(self):
+    def refresh_display(self, target_photo=None):
         """Alias for standard run/update used by app.py"""
         self.config = settings.load_config() # Reload latest config
         
         # Support Selected Photo Logic
+        # If target_photo is passed (Manual Override from Web), use it!
+        if target_photo:
+             full_path = os.path.join(self.photos_dir, target_photo)
+             if os.path.exists(full_path):
+                 target_photo = full_path # Resolve to full path
+             # If target_photo is provided, we SKIP shuffle checks logic entirely for selection
+             # But we still let it flow to display_image
+             
         pinned_photo = self.config.get('selected_photo')
         selected_photo = None
         
-        if pinned_photo:
+        if target_photo:
+             selected_photo = target_photo
+             logger.info(f"🎯 Forced display of photo: {os.path.basename(selected_photo)}")
+        elif pinned_photo:
             full_path = os.path.join(self.photos_dir, pinned_photo)
             logger.info(f"Checking pinned photo path: {full_path}")
             if os.path.exists(full_path):
@@ -265,7 +276,8 @@ class EInkPhotoFrame:
         shuffle_mode = self.config.get('shuffle_mode', False)
         shuffle_playlist = self.config.get('shuffle_playlist', [])
         
-        if shuffle_mode:
+        # Only apply shuffle if NO target_photo was forced
+        if shuffle_mode and not target_photo:
             logger.info("🔀 Shuffle Mode Enabled")
             # Filter playlist for existing files
             valid_playlist = []

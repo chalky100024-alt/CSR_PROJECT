@@ -168,7 +168,12 @@ def api_save_config():
     # Trigger Display Refresh in Background ONLY if requested
     # User Requirement: Refresh ONLY when "Save Layout & Transfer" is pressed.
     should_refresh = request.args.get('refresh', 'false').lower() == 'true'
-    print(f"DEBUG: api_save_config called. Request args: {request.args}, should_refresh: {should_refresh}")
+    
+    # Capture the specific photo if user selected one in this request
+    # This allows overriding shuffle mode temporarily
+    force_photo = data.get('selected_photo')
+    
+    print(f"DEBUG: api_save_config called. Request args: {request.args}, should_refresh: {should_refresh}, force_photo: {force_photo}")
     
     if should_refresh:
         def refresh_task():
@@ -178,8 +183,8 @@ def api_save_config():
                 pf = photo_frame.EInkPhotoFrame()
                 # Ensure we strictly follow display logic
                 # Pass explicit photo_path if selected_photo is in config
-                print("DEBUG: Calling pf.refresh_display()")
-                pf.refresh_display()
+                print(f"DEBUG: Calling pf.refresh_display(target_photo={force_photo})")
+                pf.refresh_display(target_photo=force_photo)
                 print("DEBUG: pf.refresh_display() completed.")
             except Exception as e:
                 print(f"Refresh failed: {e}")
