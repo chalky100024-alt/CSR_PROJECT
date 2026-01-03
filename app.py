@@ -448,7 +448,6 @@ def check_power_management():
             print(f"🚀 Operation Mode Detected. Runtime: {runtime}m, Next Wakeup: {interval}m")
             
             # [CRITICAL] Refresh Screen on Boot
-            # Since this is "Operation Mode", the whole point is to update screen and sleep.
             def display_update_task():
                 try:
                     log_lifecycle_event("Display Update Started")
@@ -469,17 +468,60 @@ def check_power_management():
                     
                     # Check Mode AGAIN before shutting down (Safety)
                     current_cfg = settings.load_config()
-                    if current_cfg.get('power_settings', {}).get('mode') != 'operation':
+                    p_curr = current_cfg.get('power_settings', {})
+                    if p_curr.get('mode') != 'operation':
                         msg = "🛑 Shutdown Aborted: Mode changed to Settings."
                         print(msg)
                         log_lifecycle_event(msg)
                         return
 
-                    msg = f"💤 Setting RTC Alarm (+{interval}m) & Shutting Down..."
+                    # --- [Smart Wakeup Calculation] ---
+                    # Logic: Calculate standard next wakeup (now + interval)
+                    # If it falls within Sleep Time (Wait, logic is simpler: If next time is > End Hour, set to Tomorrow Start Hour)
+                    # If current time is < Start Hour, set to Today Start Hour (Shouldn't happen if shutdown logic works, but for safety)
+                    
+                    start_h = int(p_curr.get('active_start_hour', 5))
+                    end_h = int(p_curr.get('active_end_hour', 22))
+                    
+                    now = datetime.datetime.now()
+                    # Calculate 'Standard' next wake
+                    next_wake = now + datetime.timedelta(minutes=interval)
+                    
+                    # Determine 'Safe' Next Wake
+                    final_wake_time = next_wake
+                    
+                    # Case 1: Next wake is after End Hour of TODAY (Go to sleep until tmrw start)
+                    # Example: End=22. Next=22:30. -> Tomorrow 05:00
+                    if next_wake.hour >= end_h or (next_wake.hour < start_h and next_wake.day == now.day): 
+                        # Note: The 'next_wake.hour < start_h' part covers if we are running at 3AM for some reason
+                         
+                        # Calculate Tomorrow's Start Time
+                        # If next_wake is already tomorrow (e.g. 00:30), we just set hour to start_h
+                        # If next_wake is today (23:00), we add 1 day and set hour
+                        
+                        target_day = now.date() 
+                        if now.hour >= end_h: 
+                            target_day += datetime.timedelta(days=1)
+                        
+                        target_dt = datetime.datetime.combine(target_day, datetime.time(hour=start_h, minute=0))
+                        
+                        # If target_dt is in past (e.g. we are running at 3AM and Start is 5AM, target is Today 5AM)
+                        if target_dt < now:
+                             target_dt += datetime.timedelta(days=1)
+                             
+                        final_wake_time = target_dt
+                        log_lifecycle_event(f"Night Mode Active ({end_h}h ~ {start_h}h). Sleeping until {final_wake_time}")
+                    
+                    # Calculate minutes difference for RTC
+                    diff_seconds = (final_wake_time - now).total_seconds()
+                    rtc_minutes = int(diff_seconds / 60)
+                    if rtc_minutes < 1: rtc_minutes = 1 # Minimum 1 min
+                    
+                    msg = f"💤 Setting RTC Alarm (+{rtc_minutes}m) & Shutting Down..."
                     print(msg)
                     log_lifecycle_event(msg)
                     
-                    if hw.set_rtc_alarm(interval):
+                    if hw.set_rtc_alarm(rtc_minutes):
                         print("✅ RTC Alarm Set.")
                         log_lifecycle_event("RTC Alarm Set Success")
                     else:
