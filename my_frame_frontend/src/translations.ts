@@ -51,7 +51,20 @@ export const translations = {
         password: "비밀번호",
         deviceControl: "기기 제어",
         notSet: "설정 안됨",
-        searchLocPlaceholder: "예: 고덕"
+        searchLocPlaceholder: "예: 고덕",
+        // Power Management
+        smartPowerTitle: "🔋 스마트 전원 관리",
+        activeStartHour: "활동 시작 시간 (0-23시)",
+        activeStartDesc: "아침에 깨어날 시간",
+        activeEndHour: "활동 종료 시간 (0-23시)",
+        activeEndDesc: "밤에 잠들 시간 (이 시간 이후 취침)",
+        wakeupInterval: "기상 간격 (분)",
+        wakeupIntervalDesc: "한번 꺼진 뒤 다시 켜질 때까지의 시간",
+        runtimeDuration: "작동 지속 시간 (분)",
+        runtimeDurationDesc: "한번 켜지면 켜져있는 시간",
+        currentMode: "현재 모드",
+        modeOperation: "자동 모드 (설정된 시간에 꺼짐)",
+        modeSettings: "설정 모드 (계속 켜져 있음)"
     },
     en: {
         appTitle: "MyFrame Studio",
@@ -103,7 +116,19 @@ export const translations = {
         password: "Password",
         deviceControl: "Device Control",
         notSet: "Not Set",
-        searchLocPlaceholder: "e.g. Seoul"
+        // Power Management
+        smartPowerTitle: "🔋 Smart Power Management",
+        activeStartHour: "Active Start Hour (0-23)",
+        activeStartDesc: "Hour to wake up",
+        activeEndHour: "Active End Hour (0-23)",
+        activeEndDesc: "Hour to stop waking up",
+        wakeupInterval: "Wakeup Interval (min)",
+        wakeupIntervalDesc: "Time between updates",
+        runtimeDuration: "Runtime Duration (min)",
+        runtimeDurationDesc: "Time to stay awake",
+        currentMode: "Current Mode",
+        modeOperation: "Auto Mode (Sleeps on schedule)",
+        modeSettings: "Settings Mode (Always ON)"
     },
     zh: {
         appTitle: "我的相框工作室",
@@ -155,7 +180,19 @@ export const translations = {
         password: "密码",
         deviceControl: "设备控制",
         notSet: "未设置",
-        searchLocPlaceholder: "例如：首尔"
+        // Power Management
+        smartPowerTitle: "🔋 智能电源管理",
+        activeStartHour: "活动开始时间 (0-23)",
+        activeStartDesc: "唤醒时间",
+        activeEndHour: "活动结束时间 (0-23)",
+        activeEndDesc: "停止唤醒时间",
+        wakeupInterval: "唤醒间隔 (分钟)",
+        wakeupIntervalDesc: "更新间隔时间",
+        runtimeDuration: "运行持续时间 (分钟)",
+        runtimeDurationDesc: "保持唤醒的时间",
+        currentMode: "当前模式",
+        modeOperation: "自动模式 (按计划睡眠)",
+        modeSettings: "设置模式 (常亮)"
     },
     ja: {
         appTitle: "マイフレームスタジオ",
@@ -207,6 +244,18 @@ export const translations = {
         password: "パスワード",
         deviceControl: "デバイス制御",
         notSet: "未設定",
-        searchLocPlaceholder: "例：ソウル"
+        // Power Management
+        smartPowerTitle: "🔋 スマート電源管理",
+        activeStartHour: "活動開始時間 (0-23時)",
+        activeStartDesc: "起床時間",
+        activeEndHour: "活動終了時間 (0-23時)",
+        activeEndDesc: "就寝時間 (以降はスリープ)",
+        wakeupInterval: "ウェイクアップ間隔 (分)",
+        wakeupIntervalDesc: "更新の間隔",
+        runtimeDuration: "稼働時間 (分)",
+        runtimeDurationDesc: "起動している時間",
+        currentMode: "現在のモード",
+        modeOperation: "自動モード (スケジュールでスリープ)",
+        modeSettings: "設定モード (常時ON)"
     }
 };
