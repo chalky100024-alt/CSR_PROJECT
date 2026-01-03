@@ -330,6 +330,9 @@ def system_action():
             project_path = os.path.dirname(os.path.abspath(__file__))
             output = subprocess.check_output(["git", "pull", "origin", "main"], stderr=subprocess.STDOUT, cwd=project_path)
             
+            # [LOGGING FIX] Print output to journalctl
+            print(f"🔄 System Update Requested...\n{output.decode('utf-8')}")
+            
             # Restart Service to apply changes
             def perform_restart():
                 import time
