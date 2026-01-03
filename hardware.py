@@ -93,6 +93,7 @@ class HardwareController:
             
             import datetime
             now = datetime.datetime.now()
+            target = now + datetime.timedelta(minutes=minutes)
             # ISO 8601 format with timezone (Korean Time implies +09:00 locally)
             # PiSugar Server needs accurate ISO string.
             # Using astimezone() ensures we have the offset (e.g. +09:00) attached.
