@@ -64,7 +64,17 @@ export const translations = {
         runtimeDurationDesc: "한번 켜지면 켜져있는 시간",
         currentMode: "현재 모드",
         modeOperation: "자동 모드 (설정된 시간에 꺼짐)",
-        modeSettings: "설정 모드 (계속 켜져 있음)"
+        modeSettings: "설정 모드 (계속 켜져 있음)",
+        estRuntime: "🔋 예상 사용 시간 (5000mAh 기준)",
+        estDays: "일",
+        // Update Feedback
+        updateInProgress: "업데이트 다운로드 중...",
+        updateComplete: "다운로드 완료",
+        updateDesc: "최신 파일들을 받았습니다. 서비스 재시작 중입니다. 잠시 후 새로고침 해주세요.",
+        updateUptodate: "최신 버전입니다",
+        updateUptodateDesc: "업데이트할 내용이 없습니다.",
+        updateError: "업데이트 실패",
+        close: "닫기"
     },
     en: {
         appTitle: "MyFrame Studio",
@@ -128,7 +138,16 @@ export const translations = {
         runtimeDurationDesc: "Time to stay awake",
         currentMode: "Current Mode",
         modeOperation: "Auto Mode (Sleeps on schedule)",
-        modeSettings: "Settings Mode (Always ON)"
+        modeSettings: "Settings Mode (Always ON)",
+        estRuntime: "🔋 Est. Runtime (5000mAh)",
+        estDays: "days",
+        updateInProgress: "Downloading Update...",
+        updateComplete: "Download Complete",
+        updateDesc: "Latest files downloaded. Service restarting. Please refresh shortly.",
+        updateUptodate: "Up to date",
+        updateUptodateDesc: "Already on the latest version.",
+        updateError: "Update Failed",
+        close: "Close"
     },
     zh: {
         appTitle: "我的相框工作室",
@@ -192,7 +211,16 @@ export const translations = {
         runtimeDurationDesc: "保持唤醒的时间",
         currentMode: "当前模式",
         modeOperation: "自动模式 (按计划睡眠)",
-        modeSettings: "设置模式 (常亮)"
+        modeSettings: "设置模式 (常亮)",
+        estRuntime: "🔋 预计运行时间 (5000mAh)",
+        estDays: "天",
+        updateInProgress: "正在下载更新...",
+        updateComplete: "下载完成",
+        updateDesc: "已下载最新文件。服务正在重启。请稍后刷新页面。",
+        updateUptodate: "已是最新",
+        updateUptodateDesc: "没有可更新的内容。",
+        updateError: "更新失败",
+        close: "关闭"
     },
     ja: {
         appTitle: "マイフレームスタジオ",
@@ -256,6 +284,15 @@ export const translations = {
         runtimeDurationDesc: "起動している時間",
         currentMode: "現在のモード",
         modeOperation: "自動モード (スケジュールでスリープ)",
-        modeSettings: "設定モード (常時ON)"
+        modeSettings: "設定モード (常時ON)",
+        estRuntime: "🔋 予想駆動時間 (5000mAh)",
+        estDays: "日",
+        updateInProgress: "アップデートをダウンロード中...",
+        updateComplete: "ダウンロード完了",
+        updateDesc: "最新ファイルを取得しました。サービスを再起動しています。しばらくしてから更新してください。",
+        updateUptodate: "最新バージョンです",
+        updateUptodateDesc: "アップデートはありません。",
+        updateError: "更新失敗",
+        close: "閉じる"
     }
 };

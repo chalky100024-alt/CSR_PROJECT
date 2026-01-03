@@ -322,27 +322,37 @@ def system_action():
     elif action == 'reboot':
         os.system("sudo reboot")
     elif action == 'update':
-        # Git Pull
+        # Smart Update Check
         try:
             import subprocess
-            # Ensure we are pulling from origin main
-            # Use specific CWD to be safe
             project_path = os.path.dirname(os.path.abspath(__file__))
+            
+            # 1. Fetch latest meta
+            subprocess.check_output(["git", "fetch", "origin", "main"], stderr=subprocess.STDOUT, cwd=project_path)
+            
+            # 2. Compare Local vs Remote
+            local_hash = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=project_path).decode().strip()
+            remote_hash = subprocess.check_output(["git", "rev-parse", "origin/main"], cwd=project_path).decode().strip()
+            
+            if local_hash == remote_hash:
+                print("✅ System is already up-to-date.")
+                return jsonify({"status": "uptodate", "message": "Already up to date."})
+            
+            # 3. If outdated, Pull & Restart
             output = subprocess.check_output(["git", "pull", "origin", "main"], stderr=subprocess.STDOUT, cwd=project_path)
+            print(f"🔄 System Update Updating...\n{output.decode('utf-8')}")
             
-            # [LOGGING FIX] Print output to journalctl
-            print(f"🔄 System Update Requested...\n{output.decode('utf-8')}")
-            
-            # Restart Service to apply changes
+            # Restart Service
             def perform_restart():
                 import time
-                time.sleep(3) # Wait for response to send
+                time.sleep(3) 
                 print("🔄 Restarting Service...")
                 os.system("sudo systemctl restart photoframe.service")
             
             threading.Thread(target=perform_restart).start()
             
             return jsonify({"status": "success", "message": f"Update OK. Restarting...\n{output.decode('utf-8')}"})
+            
         except subprocess.CalledProcessError as e:
             return jsonify({"status": "error", "message": e.output.decode('utf-8')})
         except Exception as e:
