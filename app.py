@@ -482,6 +482,8 @@ def check_power_management():
                     
                     start_h = int(p_curr.get('active_start_hour', 5))
                     end_h = int(p_curr.get('active_end_hour', 22))
+                    # Reload interval from latest config in case user changed it during runtime
+                    interval = int(p_curr.get('interval_min', 60))
                     
                     now = datetime.datetime.now()
                     # Calculate 'Standard' next wake

@@ -109,7 +109,7 @@ class HardwareController:
             # Missing the mask causes 'Invalid request'
             resp = self.pisugar_command(f'rtc_alarm_set {iso_time} 127')
             
-            if resp and 'ok' in resp.lower():
+            if resp and ('ok' in resp.lower() or 'done' in resp.lower()):
                 self.pisugar_command('rtc_alarm_enable')
                 logger.info(f"RTC Alarm Set: {iso_time}")
                 log_hardware_event(f"RTC Set Success: {iso_time}")
