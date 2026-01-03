@@ -260,15 +260,34 @@ class EInkPhotoFrame:
         if not selected_photo:
             # Fallback logic
             pass
-                
-        if not selected_photo:
+            
+        # [Shuffle Logic]
+        shuffle_mode = self.config.get('shuffle_mode', False)
+        shuffle_playlist = self.config.get('shuffle_playlist', [])
+        
+        if shuffle_mode:
+            logger.info("🔀 Shuffle Mode Enabled")
+            # Filter playlist for existing files
+            valid_playlist = []
+            for p in shuffle_playlist:
+                full_p = os.path.join(self.photos_dir, p)
+                if os.path.exists(full_p):
+                    valid_playlist.append(full_p)
+            
+            if valid_playlist:
+                selected_photo = random.choice(valid_playlist)
+                logger.info(f"🎲 Randomly selected from playlist: {os.path.basename(selected_photo)}")
+            else:
+                logger.warning("Shuffle playlist empty or files missing. Falling back to all photos.")
+                all_photos = self.get_photo_list()
+                if all_photos:
+                    selected_photo = random.choice(all_photos)
+        
+        # If shuffle is OFF, check if we have a pinned photo (Already checked above)
+        elif not selected_photo:
+             # Standard fallback if no pinned photo
             photos = self.get_photo_list()
             if photos:
-                # Default to random or latest? User code used random.
-                # Project standard usually prefers latest.
-                # Let's stick to User's Random choice if untethered, 
-                # but App usually sets selected_photo if user clicks a file.
-                # If specific photo not selected, random is nice for a frame.
                 selected_photo = random.choice(photos)
         
         if selected_photo:
