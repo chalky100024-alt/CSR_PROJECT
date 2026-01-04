@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
     Modal, Tabs, TextInput, Button, Group, Stack, Text,
-    Select, PasswordInput, ScrollArea, Textarea, Divider
+    Select, PasswordInput, ScrollArea, Textarea, Divider, Loader
 } from '@mantine/core';
-import { IconMapPin, IconKey, IconDeviceDesktop, IconRefresh } from '@tabler/icons-react';
+import { IconMapPin, IconKey, IconDeviceDesktop, IconRefresh, IconCircleCheck, IconAlertCircle } from '@tabler/icons-react';
 import { getConfig, saveConfig, searchLocation, scanWifi, connectWifi, systemAction } from '../api';
 import { useLanguage } from '../context/LanguageContext';
 import type { Language } from '../translations';
@@ -65,6 +65,32 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
         alert(t('connect') + "...");
     };
 
+    // Update State
+    const [updateStatus, setUpdateStatus] = useState<'idle' | 'loading' | 'success' | 'uptodate' | 'error'>('idle');
+    const [updateMsg, setUpdateMsg] = useState('');
+
+    const handleUpdate = async () => {
+        setUpdateStatus('loading');
+        try {
+            const res = await systemAction('update');
+            await new Promise(r => setTimeout(r, 1000)); // Short wait
+
+            if (res && res.status === 'success') {
+                setUpdateStatus('success');
+                setUpdateMsg(res.message);
+            } else if (res && res.status === 'uptodate') {
+                setUpdateStatus('uptodate');
+                setUpdateMsg(res.message);
+            } else {
+                setUpdateStatus('error');
+                setUpdateMsg(res?.message || 'Unknown error');
+            }
+        } catch (e: any) {
+            setUpdateStatus('error');
+            setUpdateMsg(e.toString());
+        }
+    };
+
     return (
         <Modal opened={opened} onClose={onClose} title={t('settingsTitle')} size="lg">
             <Tabs value={activeTab} onChange={setActiveTab}>
@@ -83,21 +109,20 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                             rightSection={<IconMapPin size={16} />}
                         />
 
-                        <Group align="flex-end">
-                            <Select
-                                label={t('language')}
-                                data={[
-                                    { value: 'ko', label: '🇰🇷 한국어' },
-                                    { value: 'en', label: '🇺🇸 English' },
-                                    { value: 'ja', label: '🇯🇵 日本語' },
-                                    { value: 'zh', label: '🇨🇳 中文' },
-                                ]}
-                                value={language}
-                                onChange={(v) => setLanguage(v as Language)}
-                                allowDeselect={false}
-                                mb="md"
-                            />
+                        <Select
+                            label={t('language')}
+                            data={[
+                                { value: 'ko', label: '🇰🇷 한국어' },
+                                { value: 'en', label: '🇺🇸 English' },
+                                { value: 'ja', label: '🇯🇵 日本語' },
+                                { value: 'zh', label: '🇨🇳 中文' },
+                            ]}
+                            value={language}
+                            onChange={(v) => setLanguage(v as Language)}
+                            allowDeselect={false}
+                        />
 
+                        <Group align="flex-end">
                             <TextInput
                                 label={t('searchLoc')}
                                 placeholder={t('searchLocPlaceholder')}
@@ -280,11 +305,60 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                             </Text>
                         </Group>
 
+                        {/* Battery Estimator */}
+                        <Group justify="center" mt="md" p="md" bg="blue.0" style={{ borderRadius: 8, border: '1px solid #e7f5ff' }}>
+                            <Stack gap={0} align="center">
+                                <Text size="sm" fw={600} c="blue.8">{t('estRuntime')}</Text>
+                                <Text size="xl" fw={800} c="blue.9">
+                                    {(() => {
+                                        const startH = config.power_settings?.active_start_hour ?? 5;
+                                        const endH = config.power_settings?.active_end_hour ?? 22;
+                                        const interval = config.power_settings?.interval_min || 60;
+                                        const runtime = config.power_settings?.runtime_min || 3;
+
+                                        // Constants (Pi Zero 2W + PiSugar3)
+                                        const BATTERY_CAPACITY_MAH = 5000;
+                                        const EFFICIENCY = 0.9; // 90% usable
+                                        const CURRENT_ACTIVE_MA = 260; // WiFi + CPU + Display
+                                        const CURRENT_SLEEP_MA = 5;    // PiSugar RTC
+
+                                        // 1. Calculate Active Hours per day
+                                        let activeHours = endH - startH;
+                                        if (activeHours < 0) activeHours += 24;
+                                        if (activeHours === 0) activeHours = 24; // Interpret same start/end as 24h active? Or 0? Let's assume 24h if user sets 0-0. 
+                                        // Actually with <24 inputs it's usually defined range.
+
+                                        // 2. Calculate Active Minutes vs Sleep Minutes per day
+                                        // Within Active Hours, we cycle: (Runtime) + (Sleep Interval)
+                                        // Note: The 'interval' in my logic starts AFTER runtime.
+                                        // Cycle Length = runtime + interval
+                                        const cycleLength = runtime + interval;
+                                        const cyclesPerActivePeriod = (activeHours * 60) / cycleLength;
+
+                                        const dailyActiveMins = cyclesPerActivePeriod * runtime;
+                                        const dailySleepMins = (24 * 60) - dailyActiveMins;
+
+                                        // 3. Calculate Consumption
+                                        const dailyConsumption_mAh =
+                                            (dailyActiveMins / 60 * CURRENT_ACTIVE_MA) +
+                                            (dailySleepMins / 60 * CURRENT_SLEEP_MA);
+
+                                        // 4. Days
+                                        const usableCapacity = BATTERY_CAPACITY_MAH * EFFICIENCY;
+                                        const days = usableCapacity / dailyConsumption_mAh;
+
+                                        if (days > 365) return `1 Year +`;
+                                        return `${days.toFixed(1)} ${t('estDays')}`;
+                                    })()}
+                                </Text>
+                            </Stack>
+                        </Group>
+
                         <Text fw={700} mt="xl">{t('deviceControl')}</Text>
                         <Group>
                             <Button color="orange" onClick={() => systemAction('reboot')}>{t('reboot')}</Button>
                             <Button color="red" onClick={() => systemAction('shutdown')}>{t('shutdown')}</Button>
-                            <Button color="blue" onClick={() => systemAction('update')}>{t('update')}</Button>
+                            <Button color="blue" onClick={handleUpdate}>{t('update')}</Button>
                         </Group>
                     </Stack>
                 </Tabs.Panel>
@@ -294,6 +368,42 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                 <Button variant="default" onClick={onClose}>{t('cancel')}</Button>
                 <Button onClick={handleSave}>{t('saveChanges')}</Button>
             </Group>
+
+            {/* update feedback modal */}
+            <Modal opened={updateStatus !== 'idle'} onClose={() => { if (updateStatus !== 'loading') setUpdateStatus('idle'); }} title={t('update')} centered>
+                <Stack align="center" py="lg">
+                    {updateStatus === 'loading' && <Loader size="xl" />}
+                    {updateStatus === 'success' && <IconCircleCheck size={50} color="green" />}
+                    {updateStatus === 'uptodate' && <IconCircleCheck size={50} color="blue" />}
+                    {updateStatus === 'error' && <IconAlertCircle size={50} color="red" />}
+
+                    <Text size="lg" fw={700} mt="md">
+                        {updateStatus === 'loading' && t('updateInProgress')}
+                        {updateStatus === 'success' && t('updateComplete')}
+                        {updateStatus === 'uptodate' && t('updateUptodate')}
+                        {updateStatus === 'error' && t('updateError')}
+                    </Text>
+
+                    {updateStatus === 'success' && (
+                        <Text ta="center" size="sm" c="dimmed">{t('updateDesc')}</Text>
+                    )}
+                    {updateStatus === 'uptodate' && (
+                        <Text ta="center" size="sm" c="dimmed">{t('updateUptodateDesc')}</Text>
+                    )}
+                    {updateStatus === 'error' && (
+                        <Text ta="center" size="sm" c="red">{updateMsg}</Text>
+                    )}
+
+                    {updateStatus !== 'loading' && (
+                        <Button mt="md" fullWidth onClick={() => {
+                            setUpdateStatus('idle');
+                            if (updateStatus === 'success') window.location.reload();
+                        }}>
+                            {t('close')} {updateStatus === 'success' && `& ${t('refresh')}`}
+                        </Button>
+                    )}
+                </Stack>
+            </Modal>
         </Modal >
     );
 }
