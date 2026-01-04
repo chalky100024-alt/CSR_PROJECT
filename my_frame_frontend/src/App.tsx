@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AppShell, Container, Grid, Title, Group, Button, Select, Badge, Tooltip } from '@mantine/core';
 import { IconPhoto, IconSettings, IconBattery, IconBatteryCharging, IconBattery1, IconBattery2, IconBattery3, IconBattery4 } from '@tabler/icons-react';
-
+import { ModeSwitcher } from './components/ModeSwitcher';
 import { PreviewCard } from './components/PreviewCard';
 import { Gallery } from './components/Gallery';
 import { AIAtelier } from './components/AIAtelier';
@@ -146,18 +146,32 @@ function MainApp() {
                 <Button variant="default" radius="xl" leftSection={<IconSettings size={18} />} onClick={() => setSettingsOpen(true)}>
                   {t('settings')}
                 </Button>
-                {/* Mode Indicator */}
-                <Badge
-                  variant="dot"
-                  color={powerMode === 'operation' ? 'green' : 'orange'}
-                  size="lg"
-                >
-                  {powerMode === 'operation' ? 'AUTO MODE' : 'MANUAL'}
-                </Badge>
+                {/* Mode Indicator & Switcher */}
+                {/* Desktop Mode Switcher */}
+                <Group visibleFrom="sm">
+                  <ModeSwitcher
+                    currentMode={powerMode}
+                    onModeChange={(newMode) => {
+                      setPowerMode(newMode);
+                      window.location.reload();
+                    }}
+                    t={t}
+                  />
+                </Group>
+
               </Group>
 
               {/* Mobile Menu Button */}
               <Group hiddenFrom="sm">
+                <ModeSwitcher
+                  currentMode={powerMode}
+                  onModeChange={(newMode) => {
+                    setPowerMode(newMode);
+                    window.location.reload();
+                  }}
+                  t={t}
+                />
+
                 <Button variant="subtle" size="sm" p={0} onClick={() => setSettingsOpen(true)}>
                   <IconSettings size={24} />
                 </Button>

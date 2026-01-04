@@ -73,8 +73,11 @@ export const translations = {
         updateDesc: "최신 파일들을 받았습니다. 서비스 재시작 중입니다. 잠시 후 새로고침 해주세요.",
         updateUptodate: "최신 버전입니다",
         updateUptodateDesc: "업데이트할 내용이 없습니다.",
-        updateError: "업데이트 실패",
-        close: "닫기"
+        updateError: "업데이트 확인 실패",
+        close: "닫기",
+        // Mode Switcher
+        modeAutoLabel: "자동 (스케줄)",
+        modeManualLabel: "수동 (항상 켜짐)",
     },
     en: {
         appTitle: "MyFrame Studio",
@@ -146,8 +149,11 @@ export const translations = {
         updateDesc: "Latest files downloaded. Service restarting. Please refresh shortly.",
         updateUptodate: "Up to date",
         updateUptodateDesc: "Already on the latest version.",
-        updateError: "Update Failed",
-        close: "Close"
+        updateError: "Update Check Failed",
+        close: "Close",
+        // Mode Switcher
+        modeAutoLabel: "Auto (Schedule)",
+        modeManualLabel: "Manual (Always On)",
     },
     zh: {
         appTitle: "我的相框工作室",
@@ -219,8 +225,11 @@ export const translations = {
         updateDesc: "已下载最新文件。服务正在重启。请稍后刷新页面。",
         updateUptodate: "已是最新",
         updateUptodateDesc: "没有可更新的内容。",
-        updateError: "更新失败",
-        close: "关闭"
+        updateError: "更新检查失",
+        close: "关闭",
+        // Mode Switcher
+        modeAutoLabel: "自动 (计划)",
+        modeManualLabel: "手动 (常开)",
     },
     ja: {
         appTitle: "マイフレームスタジオ",
@@ -292,7 +301,12 @@ export const translations = {
         updateDesc: "最新ファイルを取得しました。サービスを再起動しています。しばらくしてから更新してください。",
         updateUptodate: "最新バージョンです",
         updateUptodateDesc: "アップデートはありません。",
-        updateError: "更新失敗",
-        close: "閉じる"
+        updateError: "アップデート確認失敗",
+        close: "閉じる",
+        // Mode Switcher
+        modeAutoShort: "自動모드",
+        modeManualShort: "手動모드",
+        modeAutoLabel: "自動 (スケジュール)",
+        modeManualLabel: "手動 (常時ON)",
     }
 };
