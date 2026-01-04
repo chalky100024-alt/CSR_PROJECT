@@ -22,7 +22,7 @@ def _get_hf_client():
     if not api_key:
         logger.error("❌ HF API Key가 없습니다.")
         return None
-    return InferenceClient(token=api_key)
+    return InferenceClient(token=api_key, timeout=20)
 
 def generate_image(prompt, style_preset, provider="huggingface", image_filenames=None):
     config = settings.load_config()
@@ -33,12 +33,19 @@ def generate_image(prompt, style_preset, provider="huggingface", image_filenames
     if provider == "huggingface":
         try:
             from deep_translator import GoogleTranslator
+            import socket
             if prompt and any(ord(c) > 127 for c in prompt): # Simple check if translation needed
-                translated = GoogleTranslator(source='auto', target='en').translate(prompt)
-                logger.info(f"🔤 Translate (HF): {prompt} -> {translated}")
-                prompt = translated
+                # Set specific timeout for translation only
+                old_timeout = socket.getdefaulttimeout()
+                socket.setdefaulttimeout(10)
+                try:
+                    translated = GoogleTranslator(source='auto', target='en').translate(prompt)
+                    logger.info(f"🔤 Translate (HF): {prompt} -> {translated}")
+                    prompt = translated
+                finally:
+                    socket.setdefaulttimeout(old_timeout)
         except Exception as e:
-            logger.warning(f"Translation failed: {e}")
+            logger.warning(f"Translation failed (Timeout/Net): {e}")
 
     # Style Mapping
     if style_preset == "anime style": 
