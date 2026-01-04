@@ -7,44 +7,51 @@ send_cmd() {
     echo "$1" | nc -w 1 $PISUGAR_SERVER $PORT
 }
 
-echo "🧪 PiSugar RTC Write Test"
+# Python helper to generate format
+gen_time() {
+    # $1: Format string (e.g. "%Y-%m-%dT%H:%M:%S")
+    # $2: UTC? (true/false)
+    CMD="import datetime; t = datetime.datetime.now()"
+    if [ "$2" == "true" ]; then
+        CMD="$CMD.astimezone(datetime.timezone.utc)"
+    else
+        CMD="$CMD.astimezone()"
+    fi
+    CMD="$CMD.strftime('$1')"
+    
+    # Handle %z colon hack if needed
+    python3 -c "$CMD"
+}
+
+echo "🧪 PiSugar RTC Format Brute-Force"
 echo "--------------------------------"
 
-# 1. Check current state
-echo "[1] Initial RTC:"
-send_cmd "get rtc_time"
-
-# 2. Prepare ISO Strings (Python style)
-# We use Python to generate the EXACT string we are using in the app to reproduce the bug
-ISO_NOW=$(python3 -c 'import datetime; t = datetime.datetime.now().astimezone(); s = t.strftime("%Y-%m-%dT%H:%M:%S%z"); print(s[:-2] + ":" + s[-2:] if s[-3] != ":" else s)')
-echo "[2] Generated ISO String: $ISO_NOW"
-
-# 3. Attempt Write
-echo "   -> Sending: rtc_time $ISO_NOW"
-RESP=$(send_cmd "rtc_time $ISO_NOW")
-echo "   -> Response: $RESP"
-
-sleep 2
-
-# 4. Verify
-echo "[3] Verified RTC (After Write):"
-send_cmd "get rtc_time"
-
-echo "--------------------------------"
-
-# 5. Test Alarm Write
-# Target: 1 hour later
-ISO_ALARM=$(python3 -c 'import datetime; t = datetime.datetime.now().astimezone() + datetime.timedelta(hours=1); s = t.strftime("%Y-%m-%dT%H:%M:%S%z"); print(s[:-2] + ":" + s[-2:] if s[-3] != ":" else s)')
-echo "[4] Generated Alarm String: $ISO_ALARM"
-
-echo "   -> Sending: rtc_alarm_set $ISO_ALARM 127"
-RESP=$(send_cmd "rtc_alarm_set $ISO_ALARM 127")
-echo "   -> Response: $RESP"
+# Format 1: ISO with Timezone (What we used)
+F1=$(python3 -c 'import datetime; s = datetime.datetime.now().astimezone().strftime("%Y-%m-%dT%H:%M:%S%z"); print(s[:-2] + ":" + s[-2:] if s[-3] != ":" else s)')
+echo "[Try 1] ISO w/ Colon TZ: $F1"
+echo "   -> $(send_cmd "rtc_time $F1")"
 
 sleep 1
 
-echo "[5] Verified Alarm (After Write):"
-send_cmd "get rtc_alarm_time"
+# Format 2: ISO No Timezone
+F2=$(python3 -c 'import datetime; print(datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"))')
+echo "[Try 2] ISO No TZ:       $F2"
+echo "   -> $(send_cmd "rtc_time $F2")"
+
+sleep 1
+
+# Format 3: ISO UTC (Z suffix)
+F3=$(python3 -c 'import datetime; print(datetime.datetime.now().astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))')
+echo "[Try 3] ISO UTC (Z):     $F3"
+echo "   -> $(send_cmd "rtc_time $F3")"
+
+sleep 1
+
+# Format 4: Space Separated
+F4=$(python3 -c 'import datetime; print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))')
+echo "[Try 4] Space Separator: $F4"
+echo "   -> $(send_cmd "rtc_time $F4")"
 
 echo "--------------------------------"
-echo "Done."
+echo "Current RTC Status:"
+send_cmd "get rtc_time"
