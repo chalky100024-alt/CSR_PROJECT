@@ -103,11 +103,31 @@ class HardwareController:
             if len(iso_time) > 5 and iso_time[-3] != ':':
                 iso_time = iso_time[:-2] + ':' + iso_time[-2:]
             
-            log_hardware_event(f"Attempting RTC Set: {iso_time}")
+            # [Fix] Force Sync RTC to System Time before setting alarm
+            # The RTC might be drifted (e.g. 2020 vs 2026), causing alarm failure.
+            self.pisugar_command(f'rtc_time {iso_time}') # iso_time is 'now' + minutes, wait... NO.
+            
+            # We need CURRENT time for sync, not target time.
+            # Reworking logic below:
+            
+            # 1. Sync RTC to NOW
+            now_iso = now.astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
+            if len(now_iso) > 5 and now_iso[-3] != ':':
+                now_iso = now_iso[:-2] + ':' + now_iso[-2:]
+            self.pisugar_command(f'rtc_time {now_iso}')
+            logger.info(f"RTC Synced to System Time: {now_iso}")
+
+            # 2. Calculate Target Time
+            # Re-calculate iso_time to be safe
+            target_iso = (now + datetime.timedelta(minutes=minutes)).astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
+            if len(target_iso) > 5 and target_iso[-3] != ':':
+                target_iso = target_iso[:-2] + ':' + target_iso[-2:]
+            
+            log_hardware_event(f"Attempting RTC Set: {target_iso}")
 
             # Use 'rtc_alarm_set' with REPEAT mask (127 = 0x7F = Every day)
             # Missing the mask causes 'Invalid request'
-            resp = self.pisugar_command(f'rtc_alarm_set {iso_time} 127')
+            resp = self.pisugar_command(f'rtc_alarm_set {target_iso} 127')
             
             if resp and ('ok' in resp.lower() or 'done' in resp.lower()):
                 self.pisugar_command('rtc_alarm_enable')
