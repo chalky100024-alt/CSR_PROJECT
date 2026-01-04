@@ -30,6 +30,10 @@ class HardwareController:
                 self.init_error = str(e)
                 logger.warning(f"E-Ink Driver Init Failed: {e}")
 
+        # [Auto Logic] Ensure RTC is consistent with System on Startup
+        if IS_RPI:
+            self.sync_rtc_from_system()
+
     def display_image(self, pil_image):
         """이미지를 E-Ink에 전송"""
         if not self.epd:
@@ -73,6 +77,42 @@ class HardwareController:
             logger.error(f"PiSugar Error: {e}")
             return None
 
+    def sync_rtc_from_system(self):
+        """시스템 시간을 RTC로 동기화 (단, 시스템 시간이 2025년 이후일 때만)"""
+        # --- Lifecycle logging helper (Embedded) ---
+        def log_hardware_event(msg):
+            try:
+                import datetime
+                with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lifecycle_log.txt'), 'a') as f:
+                    f.write(f"[{datetime.datetime.now()}] [HW] {msg}\n")
+            except: pass
+
+        if not IS_RPI: return
+
+        import datetime
+        now = datetime.datetime.now()
+        
+        # [Safety Check] Don't sync if system time is weird (e.g. 1970, 2020)
+        # Assuming current year is at least 2025
+        if now.year < 2025:
+            msg = f"Skipping RTC Sync: System time ({now.year}) seems invalid."
+            logger.warning(msg)
+            log_hardware_event(msg)
+            return
+
+        try:
+            # Format ISO 8601 with timezone
+            now_iso = now.astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
+            if len(now_iso) > 5 and now_iso[-3] != ':':
+                now_iso = now_iso[:-2] + ':' + now_iso[-2:]
+            
+            resp = self.pisugar_command(f'rtc_time {now_iso}')
+            msg = f"RTC Auto-Sync Performed: {now_iso} (Resp: {resp})"
+            logger.info(msg)
+            # log_hardware_event(msg) # Too verbose? Maybe ok.
+        except Exception as e:
+            logger.error(f"RTC Sync Failed: {e}")
+
     def set_rtc_alarm(self, minutes):
         """PiSugar RTC 알람 설정 (현재 시간 + minutes)"""
         # --- Lifecycle logging helper (Embedded) ---
@@ -88,38 +128,19 @@ class HardwareController:
             return True
         
         try:
-            # Clear previous
+            # 1. Force Sync RTC (Safety First)
+            self.sync_rtc_from_system()
+
+            # 2. Clear previous
             self.pisugar_command('rtc_alarm_disable')
             
             import datetime
             now = datetime.datetime.now()
             target = now + datetime.timedelta(minutes=minutes)
+            
+            # 3. Calculate Target Time
             # ISO 8601 format with timezone (Korean Time implies +09:00 locally)
-            # PiSugar Server needs accurate ISO string.
-            # Using astimezone() ensures we have the offset (e.g. +09:00) attached.
-            iso_time = target.astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
-            
-            # Format fix for python < 3.7 where %z might be +0900 instead of +09:00 (PiSugar expects colon)
-            if len(iso_time) > 5 and iso_time[-3] != ':':
-                iso_time = iso_time[:-2] + ':' + iso_time[-2:]
-            
-            # [Fix] Force Sync RTC to System Time before setting alarm
-            # The RTC might be drifted (e.g. 2020 vs 2026), causing alarm failure.
-            self.pisugar_command(f'rtc_time {iso_time}') # iso_time is 'now' + minutes, wait... NO.
-            
-            # We need CURRENT time for sync, not target time.
-            # Reworking logic below:
-            
-            # 1. Sync RTC to NOW
-            now_iso = now.astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
-            if len(now_iso) > 5 and now_iso[-3] != ':':
-                now_iso = now_iso[:-2] + ':' + now_iso[-2:]
-            self.pisugar_command(f'rtc_time {now_iso}')
-            logger.info(f"RTC Synced to System Time: {now_iso}")
-
-            # 2. Calculate Target Time
-            # Re-calculate iso_time to be safe
-            target_iso = (now + datetime.timedelta(minutes=minutes)).astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
+            target_iso = target.astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
             if len(target_iso) > 5 and target_iso[-3] != ':':
                 target_iso = target_iso[:-2] + ':' + target_iso[-2:]
             
