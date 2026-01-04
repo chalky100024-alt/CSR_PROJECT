@@ -101,15 +101,12 @@ class HardwareController:
             return
 
         try:
-            # Format ISO 8601 with timezone
-            now_iso = now.astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
-            if len(now_iso) > 5 and now_iso[-3] != ':':
-                now_iso = now_iso[:-2] + ':' + now_iso[-2:]
-            
-            resp = self.pisugar_command(f'rtc_time {now_iso}')
-            msg = f"RTC Auto-Sync Performed: {now_iso} (Resp: {resp})"
+            # Use specific PiSugar command to sync Pi Time -> RTC
+            # This avoids format issues with manual ISO strings
+            resp = self.pisugar_command('rtc_pi2rtc')
+            msg = f"RTC Auto-Sync Performed: rtc_pi2rtc (Resp: {resp})"
             logger.info(msg)
-            # log_hardware_event(msg) # Too verbose? Maybe ok.
+            # log_hardware_event(msg) 
         except Exception as e:
             logger.error(f"RTC Sync Failed: {e}")
 
