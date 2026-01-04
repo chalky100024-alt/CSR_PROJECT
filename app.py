@@ -108,15 +108,15 @@ def catch_all(path):
     if path.startswith('api/'):
         return jsonify({'error': 'Not found'}), 404
         
-    return render_template('index.html')
+    return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/index.html') # Legacy redirection
 def index_legacy():
-    return render_template('index.html')
+    return send_from_directory(app.static_folder, 'index.html')
 
 @app.route('/settings') # React Router handles this URL now, but initial load needs HTML
 def settings_page():
-    return render_template('index.html')
+    return send_from_directory(app.static_folder, 'index.html')
 
 
 @app.route('/api/get_config')
