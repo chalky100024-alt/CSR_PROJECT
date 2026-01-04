@@ -450,8 +450,17 @@ def check_power_management():
     import time
     time.sleep(5) 
     
+    # [DEBUG LOGGER INIT]
     try:
-        log_lifecycle_event(f"APP_STARTED | Mode Check Initiated")
+        from utils.logger import setup_debug_logger, check_internet_connection, log_debug
+        setup_debug_logger()
+        log_debug(f"APP_STARTED | Mode Check Initiated")
+        check_internet_connection() # Run Ping/HTTP Check
+    except Exception as e:
+        print(f"Logger Init Failed: {e}")
+        
+    try:
+        # log_lifecycle_event(f"APP_STARTED | Mode Check Initiated") # Replaced by log_debug
         
         cfg = settings.load_config()
         p_settings = cfg.get('power_settings', {})

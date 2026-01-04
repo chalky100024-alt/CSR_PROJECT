@@ -8,6 +8,11 @@ import logging
 import settings
 from huggingface_hub import InferenceClient # Official Library
 
+try:
+    from utils.logger import log_debug
+except ImportError:
+    log_debug = lambda msg, level='info': None
+
 logger = logging.getLogger(__name__)
 
 # --- Models ---
@@ -91,7 +96,11 @@ def generate_image(prompt, style_preset, provider="huggingface", image_filenames
         if not client: return None
 
         try:
+            log_debug(f"AI Gen Start: HuggingFace ({TEXT2IMG_MODEL})")
+            t0 = time.time()
             image = client.text_to_image(prompt=full_prompt, model=TEXT2IMG_MODEL)
+            dt = time.time() - t0
+            log_debug(f"AI Gen Success: {dt:.2f}s")
             return _save_result(image, "hf")
         except Exception as e:
             logger.error(f"❌ HF Failed: {e}")

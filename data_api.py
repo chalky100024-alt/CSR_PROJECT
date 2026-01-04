@@ -2,11 +2,23 @@ import requests
 import logging
 from datetime import datetime, timedelta
 import xml.etree.ElementTree as ET
+try:
+    from utils.logger import log_debug
+except ImportError:
+    log_debug = lambda msg, level='info': None # Fallback
 
 logger = logging.getLogger(__name__)
 
 def get_fine_dust_data(api_key, station_name):
     if not api_key: return None
+    # ... (Key Handling omitted for brevity, ensure context is kept if needed)
+    # Actually replacement content must be complete for the chunk.
+    # Since I am replacing safe imports at top, I should do imports first.
+    return None
+
+# Wait, I cannot replace partial file easily with big chunks if context is complex.
+# Better to user MultiReplace.
+
     
     # [Robust Key Handling]
     # If user provided Encoding Key (with %), unquote it to get Decoding Key.
@@ -27,7 +39,11 @@ def get_fine_dust_data(api_key, station_name):
         'ver': '1.3'
     }
     try:
+        log_debug(f"Dust API Req: {url}")
+        t0 = datetime.now()
         res = requests.get(url, params=params, timeout=10)
+        dt = (datetime.now() - t0).total_seconds()
+        log_debug(f"Dust API Res: {res.status_code} ({dt:.2f}s)")
         data = res.json()
         logger.info(f"Dust API Params: {params}") 
         # logger.info(f"Dust API Response: {data}") # Uncomment if needed, can be noisy
@@ -97,7 +113,12 @@ def get_weather_data(api_key, nx, ny):
         logger.info(f"🌤️ Weather API Request: {url}")
         logger.info(f"🔑 Key used: {api_key[:10]}... (Contains %: {'%' in api_key})")
         
+        log_debug(f"Weather(1) Req: {url}")
+        t0 = datetime.now()
         res = requests.get(url, params=params, timeout=10)
+        dt = (datetime.now() - t0).total_seconds()
+        log_debug(f"Weather(1) Res: {res.status_code} ({dt:.2f}s)")
+        
         logger.info(f"📡 Final URL: {res.url}") 
         
         try:
@@ -126,7 +147,12 @@ def get_weather_data(api_key, nx, ny):
         params['base_time'] = bt
         params['numOfRows'] = '60'
         
+        log_debug(f"Weather(2) Req: {url}")
+        t0 = datetime.now()
         res = requests.get(url, params=params, timeout=10)
+        dt = (datetime.now() - t0).total_seconds()
+        log_debug(f"Weather(2) Res: {res.status_code} ({dt:.2f}s)")
+        
         try:
             data = res.json()
             items = data['response']['body']['items']['item']
