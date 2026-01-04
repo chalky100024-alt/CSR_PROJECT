@@ -6,9 +6,10 @@ interface ModeSwitcherProps {
     currentMode: string;
     onModeChange: (newMode: string) => void;
     t: (key: any) => string;
+    compact?: boolean;
 }
 
-export function ModeSwitcher({ currentMode, onModeChange, t }: ModeSwitcherProps) {
+export function ModeSwitcher({ currentMode, onModeChange, t, compact = false }: ModeSwitcherProps) {
     const [loading, setLoading] = useState(false);
 
     const handleChange = async (value: string) => {
@@ -55,7 +56,7 @@ export function ModeSwitcher({ currentMode, onModeChange, t }: ModeSwitcherProps
                         label: (
                             <Group gap={5} wrap="nowrap">
                                 <IconMoonStars style={{ width: rem(16), height: rem(16) }} />
-                                <Text size="xs" fw={500} span>{t('modeAutoLabel')}</Text>
+                                <Text size="xs" fw={500} span>{compact ? t('modeAutoShort') : t('modeAutoLabel')}</Text>
                             </Group>
                         )
                     },
@@ -64,14 +65,14 @@ export function ModeSwitcher({ currentMode, onModeChange, t }: ModeSwitcherProps
                         label: (
                             <Group gap={5} wrap="nowrap">
                                 <IconSun style={{ width: rem(16), height: rem(16) }} />
-                                <Text size="xs" fw={500} span>{t('modeManualLabel')}</Text>
+                                <Text size="xs" fw={500} span>{compact ? t('modeManualShort') : t('modeManualLabel')}</Text>
                             </Group>
                         )
                     },
                 ]}
                 color={currentMode === 'operation' ? 'blue' : 'yellow'}
                 radius="xl"
-                size="sm"
+                size={compact ? "xs" : "sm"}
                 // Style to make it look prominent
                 styles={{
                     root: { border: '1px solid var(--mantine-color-default-border)' }

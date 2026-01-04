@@ -78,6 +78,8 @@ export const translations = {
         // Mode Switcher
         modeAutoLabel: "자동 (스케줄)",
         modeManualLabel: "수동 (항상 켜짐)",
+        modeAutoShort: "자동",
+        modeManualShort: "수동",
     },
     en: {
         appTitle: "MyFrame Studio",
@@ -154,6 +156,8 @@ export const translations = {
         // Mode Switcher
         modeAutoLabel: "Auto (Schedule)",
         modeManualLabel: "Manual (Always On)",
+        modeAutoShort: "Auto",
+        modeManualShort: "Manual",
     },
     zh: {
         appTitle: "我的相框工作室",
@@ -230,6 +234,8 @@ export const translations = {
         // Mode Switcher
         modeAutoLabel: "自动 (计划)",
         modeManualLabel: "手动 (常开)",
+        modeAutoShort: "自动",
+        modeManualShort: "手动",
     },
     ja: {
         appTitle: "マイフレームスタジオ",

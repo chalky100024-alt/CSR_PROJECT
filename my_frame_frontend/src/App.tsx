@@ -170,6 +170,7 @@ function MainApp() {
                     window.location.reload();
                   }}
                   t={t}
+                  compact={true}
                 />
 
                 <Button variant="subtle" size="sm" p={0} onClick={() => setSettingsOpen(true)}>
