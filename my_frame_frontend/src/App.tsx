@@ -121,7 +121,7 @@ function MainApp() {
             <Group h="100%" align="center" justify="space-between">
               <Group>
                 <IconPhoto size={28} color="#007AFF" />
-                <Title order={3} style={{ fontWeight: 600 }}>{t('appTitle')}</Title>
+                <Title order={3} style={{ fontWeight: 600 }} visibleFrom="xs">{t('appTitle')}</Title>
               </Group>
 
               {/* Desktop Menu */}
