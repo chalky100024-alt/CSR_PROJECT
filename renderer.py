@@ -173,11 +173,20 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
         p10 = dust_data.get('pm10')
         p25 = dust_data.get('pm25')
         
+        # Helper to safely format value
+        def fmt_dust(val):
+            return f"{val}" if val is not None else "--"
+            
         g10, _, c10 = get_dust_grade_info(p10, 0)
         g25, _, c25 = get_dust_grade_info(0, p25)
         
-        pm10_str = f"미세먼지 {p10}"
-        pm25_str = f"초미세 {p25}"
+        pm10_str = f"미세먼지 {fmt_dust(p10)}"
+        pm25_str = f"초미세 {fmt_dust(p25)}"
+        
+        # Override color if None
+        if p10 is None: c10 = (150, 150, 150)
+        if p25 is None: c25 = (150, 150, 150)
+        
         color_pm10 = c10
         color_pm25 = c25
 

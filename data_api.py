@@ -62,7 +62,7 @@ def get_fine_dust_data(api_key, station_name):
 
     def safe_int(val):
         try: return int(val)
-        except: return 0 # Default to 0 for "-" or invalid
+        except: return None # Return None for "-" or invalid (handled in renderer)
 
     try:
         res = fetch_with_retry(url, params, label="Dust API")
