@@ -26,17 +26,17 @@ def fetch_with_retry(url, params, retries=3, timeout=30, label="API"):
             if res.status_code == 200:
                 return res
             else:
-                 logger.warning(f"{label} returned status {res.status_code}. Retrying...")
+                 log_debug(f"{label} returned status {res.status_code}. Retrying...", level='warning')
                  
         except Exception as e:
-            logger.warning(f"{label} Attempt {i+1} Failed: {e}")
+            log_debug(f"{label} Attempt {i+1} Failed: {e}", level='warning')
             log_debug(f"{label} Error: {e}", level='warning')
         
         if i < retries - 1:
             time.sleep(2) # Wait 2s before retry
             
     # Final Attempt failed
-    logger.error(f"{label} Failed after {retries} attempts.")
+    log_debug(f"{label} Failed after {retries} attempts.", level='error')
     return None
 
 def get_fine_dust_data(api_key, station_name):
@@ -68,12 +68,12 @@ def get_fine_dust_data(api_key, station_name):
         res = fetch_with_retry(url, params, label="Dust API")
         if not res: return None
         data = res.json()
-        logger.info(f"Dust API Params: {params}") 
+        log_debug(f"Dust API Params: {params}") 
  
         items = data.get('response', {}).get('body', {}).get('items', [])
         
         # [DEBUG] Log the items content to see what's wrong
-        logger.info(f"Dust API Items: {items}") 
+        log_debug(f"Dust API Items: {items}") 
 
         if items:
             return {
@@ -82,12 +82,12 @@ def get_fine_dust_data(api_key, station_name):
                 'time': items[0].get('dataTime', '')
             }
         else:
-             logger.warning("Dust API: No items found in response.")
-             logger.warning(f"RAW RES: {res.text[:500]}") # Log first 500 chars
+             log_debug("Dust API: No items found in response.", level='warning')
+             log_debug(f"RAW RES: {res.text[:500]}", level='warning') # Log first 500 chars
              
     except Exception as e:
-        logger.error(f"Dust API Error: {e}")
-        try: logger.error(f"RAW RES (Error): {res.text[:1000]}")
+        log_debug(f"Dust API Error: {e}", level='error')
+        try: log_debug(f"RAW RES (Error): {res.text[:1000]}", level='error')
         except: pass
         
     return None
@@ -136,12 +136,12 @@ def get_weather_data(api_key, nx, ny):
         # We must append serviceKey manually if normal params fail.
         # But requests usually handles it. try manual string construction if fails.
         
-        logger.info(f"🌤️ Weather API Request: {url}")
-        logger.info(f"🔑 Key used: {api_key[:10]}... (Contains %: {'%' in api_key})")
+        log_debug(f"🌤️ Weather API Request: {url}")
+        log_debug(f"🔑 Key used: {api_key[:10]}... (Contains %: {'%' in api_key})")
         
         res = fetch_with_retry(url, params, label="Weather(1)")
         
-        logger.info(f"📡 Final URL: {res.url if res else 'None'}") 
+        log_debug(f"📡 Final URL: {res.url if res else 'None'}") 
         
         try:
             if not res: raise Exception("Weather(1) Fetch Failed")
@@ -149,8 +149,9 @@ def get_weather_data(api_key, nx, ny):
             items = data['response']['body']['items']['item']
         except: 
             # JSON Fail -> Try XML Fallback logic or just Log
-            logger.error(f"Weather JSON Parse Fail. Status: {res.status_code}")
-            logger.error(f"Raw Response: {res.text[:500]}") # Print first 500 chars
+            log_debug(f"Weather(1) Parse Fail. Raw: {res.text[:200] if res else 'NoRes'}", level='warning')
+            log_debug(f"Weather JSON Parse Fail. Status: {res.status_code}", level='error')
+            log_debug(f"Raw Response: {res.text[:500]}", level='error') # Print first 500 chars
             items = []
 
         for item in items:
