@@ -35,7 +35,7 @@ def get_fine_dust_data(api_key, station_name):
     try:
         log_debug(f"Dust API Req: {url}")
         t0 = datetime.now()
-        res = requests.get(url, params=params, timeout=10)
+        res = requests.get(url, params=params)
         dt = (datetime.now() - t0).total_seconds()
         log_debug(f"Dust API Res: {res.status_code} ({dt:.2f}s)")
         data = res.json()
@@ -109,7 +109,7 @@ def get_weather_data(api_key, nx, ny):
         
         log_debug(f"Weather(1) Req: {url}")
         t0 = datetime.now()
-        res = requests.get(url, params=params, timeout=10)
+        res = requests.get(url, params=params)
         dt = (datetime.now() - t0).total_seconds()
         log_debug(f"Weather(1) Res: {res.status_code} ({dt:.2f}s)")
         
@@ -143,7 +143,7 @@ def get_weather_data(api_key, nx, ny):
         
         log_debug(f"Weather(2) Req: {url}")
         t0 = datetime.now()
-        res = requests.get(url, params=params, timeout=10)
+        res = requests.get(url, params=params)
         dt = (datetime.now() - t0).total_seconds()
         log_debug(f"Weather(2) Res: {res.status_code} ({dt:.2f}s)")
         
