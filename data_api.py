@@ -11,14 +11,6 @@ logger = logging.getLogger(__name__)
 
 def get_fine_dust_data(api_key, station_name):
     if not api_key: return None
-    # ... (Key Handling omitted for brevity, ensure context is kept if needed)
-    # Actually replacement content must be complete for the chunk.
-    # Since I am replacing safe imports at top, I should do imports first.
-    return None
-
-# Wait, I cannot replace partial file easily with big chunks if context is complex.
-# Better to user MultiReplace.
-
     
     # [Robust Key Handling]
     # If user provided Encoding Key (with %), unquote it to get Decoding Key.
@@ -38,6 +30,8 @@ def get_fine_dust_data(api_key, station_name):
         'dataTerm': 'DAILY', 
         'ver': '1.3'
     }
+
+
     try:
         log_debug(f"Dust API Req: {url}")
         t0 = datetime.now()
