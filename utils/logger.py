@@ -16,8 +16,8 @@ def setup_debug_logger():
     
     # Check if handlers already exist to avoid duplication
     if not logger.handlers:
-        # File Handler (Overwrite mode 'w')
-        fh = logging.FileHandler(LOG_FILE, mode='w', encoding='utf-8')
+        # File Handler (Append mode 'a' for persistence)
+        fh = logging.FileHandler(LOG_FILE, mode='a', encoding='utf-8')
         fh.setLevel(logging.DEBUG)
         
         # Formatter
@@ -32,7 +32,9 @@ def setup_debug_logger():
         sh.setFormatter(formatter)
         logger.addHandler(sh)
         
-    logger.info("=== NETWORK DEBUG LOGGER INITIALIZED ===")
+    logger.info("\n" + "="*50)
+    logger.info("=== NEW SESSION STARTED (Persistent Log) ===")
+    logger.info("="*50)
     return logger
 
 def log_debug(msg, level='info'):
