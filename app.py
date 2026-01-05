@@ -233,9 +233,9 @@ def get_preview():
     api_key_kma = current_config.get('api_key_kma')
     api_key_air = current_config.get('api_key_air')
     
-    # Defaults (Mock)
-    w_data = {'temp': 24.5, 'weather_description': '맑음', 'rain_forecast': None}
-    d_data = {'pm10': 35, 'pm25': 20}
+    # Defaults (Align with Frame: Start as None)
+    w_data = None
+    d_data = None
     
     # Fetch Real Data if keys exist using data_api
     if api_key_kma:

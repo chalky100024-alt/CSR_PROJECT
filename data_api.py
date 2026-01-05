@@ -77,11 +77,11 @@ def get_fine_dust_data(api_key, station_name):
             }
         else:
              logger.warning("Dust API: No items found in response.")
+             logger.warning(f"RAW RES: {res.text[:500]}") # Log first 500 chars
              
     except Exception as e:
         logger.error(f"Dust API Error: {e}")
-        # Log response text if JSON parse failed
-        try: logger.error(f"Response Text: {res.text}")
+        try: logger.error(f"RAW RES (Error): {res.text[:1000]}")
         except: pass
         
     return None
