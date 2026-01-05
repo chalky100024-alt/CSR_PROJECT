@@ -60,20 +60,26 @@ def get_fine_dust_data(api_key, station_name):
         'pageNo': '1', 'stationName': station_name, 'dataTerm': 'DAILY', 'ver': '1.3'
     }
 
+    def safe_int(val):
+        try: return int(val)
+        except: return 0 # Default to 0 for "-" or invalid
+
     try:
         res = fetch_with_retry(url, params, label="Dust API")
         if not res: return None
         data = res.json()
         logger.info(f"Dust API Params: {params}") 
  
-        # logger.info(f"Dust API Response: {data}") # Uncomment if needed, can be noisy
-
         items = data.get('response', {}).get('body', {}).get('items', [])
+        
+        # [DEBUG] Log the items content to see what's wrong
+        logger.info(f"Dust API Items: {items}") 
+
         if items:
             return {
-                'pm10': int(items[0]['pm10Value']), 
-                'pm25': int(items[0]['pm25Value']),
-                'time': items[0]['dataTime']
+                'pm10': safe_int(items[0].get('pm10Value')), 
+                'pm25': safe_int(items[0].get('pm25Value')),
+                'time': items[0].get('dataTime', '')
             }
         else:
              logger.warning("Dust API: No items found in response.")
