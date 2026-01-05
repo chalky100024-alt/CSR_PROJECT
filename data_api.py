@@ -7,13 +7,47 @@ try:
 except ImportError:
     log_debug = lambda msg, level='info': None # Fallback
 
+import time
+
 logger = logging.getLogger(__name__)
+
+def fetch_with_retry(url, params, retries=3, timeout=30, label="API"):
+    """
+    Robust fetcher with retries and timeout.
+    """
+    for i in range(retries):
+        try:
+            log_debug(f"{label} Req (Attempt {i+1}): {url}")
+            t0 = datetime.now()
+            res = requests.get(url, params=params, timeout=timeout)
+            dt = (datetime.now() - t0).total_seconds()
+            log_debug(f"{label} Res: {res.status_code} ({dt:.2f}s)")
+            
+            if res.status_code == 200:
+                return res
+            else:
+                 logger.warning(f"{label} returned status {res.status_code}. Retrying...")
+                 
+        except Exception as e:
+            logger.warning(f"{label} Attempt {i+1} Failed: {e}")
+            log_debug(f"{label} Error: {e}", level='warning')
+        
+        if i < retries - 1:
+            time.sleep(2) # Wait 2s before retry
+            
+    # Final Attempt failed
+    logger.error(f"{label} Failed after {retries} attempts.")
+    return None
 
 def get_fine_dust_data(api_key, station_name):
     if not api_key: return None
     
+    # ... (Key Handling omitted, assume context fits)
+    # Re-insert key handling because replace_file_content needs context match
+    # Wait, I cannot skip context. I need to be precise.
+    # I will replace the imports + top of function to inject helper.
+    
     # [Robust Key Handling]
-    # If user provided Encoding Key (with %), unquote it to get Decoding Key.
     if '%' in api_key:
         try:
             from urllib.parse import unquote
@@ -22,24 +56,16 @@ def get_fine_dust_data(api_key, station_name):
 
     url = "http://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty"
     params = {
-        'serviceKey': api_key, 
-        'returnType': 'json', 
-        'numOfRows': '1', 
-        'pageNo': '1',
-        'stationName': station_name, 
-        'dataTerm': 'DAILY', 
-        'ver': '1.3'
+        'serviceKey': api_key, 'returnType': 'json', 'numOfRows': '1', 
+        'pageNo': '1', 'stationName': station_name, 'dataTerm': 'DAILY', 'ver': '1.3'
     }
 
-
     try:
-        log_debug(f"Dust API Req: {url}")
-        t0 = datetime.now()
-        res = requests.get(url, params=params)
-        dt = (datetime.now() - t0).total_seconds()
-        log_debug(f"Dust API Res: {res.status_code} ({dt:.2f}s)")
+        res = fetch_with_retry(url, params, label="Dust API")
+        if not res: return None
         data = res.json()
         logger.info(f"Dust API Params: {params}") 
+ 
         # logger.info(f"Dust API Response: {data}") # Uncomment if needed, can be noisy
 
         items = data.get('response', {}).get('body', {}).get('items', [])
@@ -107,15 +133,12 @@ def get_weather_data(api_key, nx, ny):
         logger.info(f"🌤️ Weather API Request: {url}")
         logger.info(f"🔑 Key used: {api_key[:10]}... (Contains %: {'%' in api_key})")
         
-        log_debug(f"Weather(1) Req: {url}")
-        t0 = datetime.now()
-        res = requests.get(url, params=params)
-        dt = (datetime.now() - t0).total_seconds()
-        log_debug(f"Weather(1) Res: {res.status_code} ({dt:.2f}s)")
+        res = fetch_with_retry(url, params, label="Weather(1)")
         
-        logger.info(f"📡 Final URL: {res.url}") 
+        logger.info(f"📡 Final URL: {res.url if res else 'None'}") 
         
         try:
+            if not res: raise Exception("Weather(1) Fetch Failed")
             data = res.json()
             items = data['response']['body']['items']['item']
         except: 
@@ -141,13 +164,10 @@ def get_weather_data(api_key, nx, ny):
         params['base_time'] = bt
         params['numOfRows'] = '60'
         
-        log_debug(f"Weather(2) Req: {url}")
-        t0 = datetime.now()
-        res = requests.get(url, params=params)
-        dt = (datetime.now() - t0).total_seconds()
-        log_debug(f"Weather(2) Res: {res.status_code} ({dt:.2f}s)")
+        res = fetch_with_retry(url, params, label="Weather(2)")
         
         try:
+            if not res: raise Exception("Weather(2) Fetch Failed")
             data = res.json()
             items = data['response']['body']['items']['item']
         except: items = []

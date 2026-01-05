@@ -27,7 +27,8 @@ def _get_hf_client():
     if not api_key:
         logger.error("❌ HF API Key가 없습니다.")
         return None
-    return InferenceClient(token=api_key)
+    # User Request: Timeout 30s
+    return InferenceClient(token=api_key, timeout=30)
 
 def generate_image(prompt, style_preset, provider="huggingface", image_filenames=None):
     config = settings.load_config()
