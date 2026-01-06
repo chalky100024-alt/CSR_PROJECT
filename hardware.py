@@ -101,8 +101,6 @@ class HardwareController:
             return
 
         try:
-
-        try:
             # Use specific PiSugar command to sync Pi Time -> RTC
             # This avoids format issues with manual ISO strings
             resp = self.pisugar_command('rtc_pi2rtc')
