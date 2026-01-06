@@ -94,7 +94,7 @@ def _load_weather_icons(icon_dir):
                 pass
     return icons
 
-def create_composed_image(image_path, weather_data, dust_data, layout_config=None, location_name="위치 미설정", batt_level=None):
+def create_composed_image(image_path, weather_data, dust_data, layout_config=None, location_name=""):
     # Defaults
     if layout_config is None: layout_config = {}
     
@@ -192,13 +192,8 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
 
     # Time
     now = datetime.now()
-    # User Req: "12/18 05:30 기준" format (Added Minutes)
-    time_str = now.strftime('%m/%d %H:%M 기준')
-    
-    # Battery Text
-    batt_str = ""
-    if batt_level is not None:
-        batt_str = f"Batt: {int(batt_level)}%"
+    # User Req: "12/18 05시 기준" format
+    time_str = now.strftime('%m/%d %H시 기준')
 
     # --- Layout Calculation ---
     current_y = padding
@@ -222,10 +217,6 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
 
     # Row 6 (Time)
     current_y += 5 + font_sm.getbbox(time_str)[3] + padding
-    
-    # Row 7 (Battery - Tiny)
-    if batt_str:
-        current_y += font_sm.getbbox(batt_str)[3] + 2
 
     box_h = int(current_y) # Dynamic Height
     box_w = card_w
@@ -309,11 +300,6 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
 
     # Row 6: Time
     draw.text((cx + 5, cy), time_str, font=font_sm, fill=(120,120,120))
-    current_y_draw = cy + 5 + font_sm.getbbox(time_str)[3] + padding
-
-    # Row 7: Battery (Tiny)
-    if batt_str:
-        draw.text((cx + 5, current_y_draw), batt_str, font=font_sm, fill=(100,100,100))
 
     final_image = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
     
