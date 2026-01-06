@@ -178,18 +178,12 @@ def api_save_config():
     if should_refresh:
         def refresh_task():
             try:
-                print("DEBUG: Starting background refresh task...")
-                # 2. Refresh
-                pf = photo_frame.EInkPhotoFrame()
-                # Ensure we strictly follow display logic
-                # Pass explicit photo_path if selected_photo is in config
-                print(f"DEBUG: Calling pf.refresh_display(target_photo={force_photo})")
-                pf.refresh_display(target_photo=force_photo)
-                print("DEBUG: pf.refresh_display() completed.")
+                print("DEBUG: Restarting service to apply changes...")
+                # Avoid GPIO Busy error by restarting the main service
+                # The service will load the new config and update the display on boot
+                os.system("sudo systemctl restart photoframe.service")
             except Exception as e:
-                print(f"Refresh failed: {e}")
-                import traceback
-                traceback.print_exc()
+                print(f"Service restart failed: {e}")
                 
         threading.Thread(target=refresh_task).start()
     
