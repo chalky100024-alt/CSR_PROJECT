@@ -344,12 +344,14 @@ def render_dashboard(weather_data, dust_data, layout_config, location_name, batt
 
 
     # Row 6: Time
-        if rain_widget:
-            rx = 20 
-            ry = DISPLAY_HEIGHT - 100 - 20
-            final_image.paste(rain_widget, (rx, ry), rain_widget)
-            
-    return final_image, box_x, box_y, box_w, box_h
+    draw.text((cx + 5, current_y_draw), time_str, font=font_sm, fill=(120,120,120))
+    current_y_draw += font_sm.getbbox(time_str)[3] + padding
+
+    # Row 7: Battery (Tiny)
+    if batt_str:
+        draw.text((cx + 5, current_y_draw), batt_str, font=font_sm, fill=(100,100,100))
+
+    return overlay
 
 def create_rain_widget(weather_data):
     """
