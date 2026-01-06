@@ -184,10 +184,6 @@ class EInkPhotoFrame:
             d_data = self.get_fine_dust_data()
             w_data = self.get_weather_data()
             
-            # [NEW] Battery Check
-            batt_status = self.hw.get_battery_status()
-            batt_level = batt_status.get('level') if batt_status else None
-            
             # 설정 및 위치 이름 로드
             layout_config = self.config.get('layout', {})
             location_name = self.config.get('location', {}).get('name', '')
@@ -198,8 +194,7 @@ class EInkPhotoFrame:
                 w_data, 
                 d_data, 
                 layout_config, 
-                location_name,
-                batt_level=batt_level
+                location_name
             )
 
             # [중요] 웹 미리보기 저장
