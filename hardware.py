@@ -94,10 +94,23 @@ class HardwareController:
         
         # [Safety Check] Don't sync if system time is weird (e.g. 1970, 2020)
         # Assuming current year is at least 2025
-        if now.year < 2025:
             msg = f"Skipping RTC Sync: System time ({now.year}) seems invalid."
             logger.warning(msg)
             log_hardware_event(msg)
+            return
+
+    def get_battery_level(self):
+        """PiSugar 배터리 잔량(%) 조회"""
+        try:
+            # Command: 'get battery' -> Response: "battery: 85.3"
+            res = self.pisugar_command('get battery')
+            if res and 'battery:' in res:
+                # Parse "battery: 85.392..."
+                val_str = res.split(':')[1].strip()
+                return float(val_str)
+        except Exception as e:
+            logger.error(f"Battery Check Error: {e}")
+        return None
             return
 
         try:

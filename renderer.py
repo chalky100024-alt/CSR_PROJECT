@@ -94,24 +94,59 @@ def _load_weather_icons(icon_dir):
                 pass
     return icons
 
-def create_composed_image(image_path, weather_data, dust_data, layout_config=None, location_name=""):
+def create_composed_image(image_path, weather_data, dust_data, layout_config=None, 
+                         location_name="위치 미설정",
+                         batt_level=None): # Added Battery Level
+    """
+    Main entry point to creating the final image.
+    1. Loads background image (resizes/crops to fit).
+    2. Renders dashboard overlay (weather, dust, etc).
+    3. Composites them.
+    4. Returns final PIL Image (RGB).
+    """
+    
+    # 1. Background
+    try:
+        if image_path and os.path.exists(image_path):
+            bg_img = Image.open(image_path)
+        else:
+            bg_img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), (200, 200, 200))
+    except Exception as e:
+        logger.error(f"Error loading background image {image_path}: {e}")
+        bg_img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), (200, 200, 200))
+        
+    bg_img = resize_image_fill(bg_img)
+    bg_img = enhance_image(bg_img)
+    
+    # 2. Render Dashboard (Transparent Layer)
+    dashboard = render_dashboard(weather_data, dust_data, layout_config, location_name, batt_level)
+    
+    # 3. Composite
+    final_image = Image.alpha_composite(bg_img.convert('RGBA'), dashboard).convert('RGB')
+    
+    # [Rain Widget Composite]
+    if weather_data:
+        rain_widget = create_rain_widget(weather_data)
+        if rain_widget:
+            rx = 20 
+            ry = DISPLAY_HEIGHT - 100 - 20
+            final_image.paste(rain_widget, (rx, ry), rain_widget)
+            
+    # The original function returned box_x, box_y, box_w, box_h.
+    # If these are still needed, render_dashboard should return them.
+    # For now, assuming only the final image is needed from this function.
+    return final_image
+
+def render_dashboard(weather_data, dust_data, layout_config, location_name, batt_level=None):
+    """
+    Draws the translucent widget box with info.
+    Returns a RGBA Image same size as screen (mostly transparent).
+    """
     # Defaults
     if layout_config is None: layout_config = {}
     
-    # Load Image
-    try:
-        if image_path and os.path.exists(image_path):
-            img = Image.open(image_path)
-        else:
-            img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), (200, 200, 200))
-    except:
-        img = Image.new('RGB', (DISPLAY_WIDTH, DISPLAY_HEIGHT), (200, 200, 200))
-        
-    img = resize_image_fill(img)
-    img = enhance_image(img)
-    
-    # Overlay
-    overlay = Image.new('RGBA', (DISPLAY_WIDTH, DISPLAY_HEIGHT), (255, 255, 255, 0))
+    # Create transparent canvas
+    overlay = Image.new('RGBA', (DISPLAY_WIDTH, DISPLAY_HEIGHT), (0,0,0,0))
     draw = ImageDraw.Draw(overlay)
 
     # --- [Apple-like Vertical Widget Layout] ---
@@ -124,6 +159,7 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
     card_w = int(220 * widget_scale) 
     padding = int(15 * widget_scale)
     line_spacing = int(5 * widget_scale)
+    margin_inner = padding + 5 # For text offset from left edge of card
 
     # Fonts
     s = widget_scale * font_scale
@@ -192,8 +228,13 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
 
     # Time
     now = datetime.now()
-    # User Req: "12/18 05시 기준" format
-    time_str = now.strftime('%m/%d %H시 기준')
+    # User Req: "12/18 05:30 기준" format (Added Minutes)
+    time_str = now.strftime('%m/%d %H:%M 기준')
+    
+    # Battery Text
+    batt_str = ""
+    if batt_level is not None:
+        batt_str = f"Batt: {int(batt_level)}%"
 
     # --- Layout Calculation ---
     current_y = padding
@@ -217,6 +258,10 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
 
     # Row 6 (Time)
     current_y += 5 + font_sm.getbbox(time_str)[3] + padding
+    
+    # Row 7 (Battery - Tiny)
+    if batt_str:
+        current_y += font_sm.getbbox(batt_str)[3] + 2
 
     box_h = int(current_y) # Dynamic Height
     box_w = card_w
@@ -255,57 +300,50 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
                            outline=None)
     
     cx = box_x + padding
-    cy = box_y + padding
+    current_y_draw = box_y + padding
 
     # Row 1: Icon + Temp
     if w_icon:
         # Paste with alpha
         if w_icon.mode != 'RGBA': w_icon = w_icon.convert('RGBA')
-        overlay.paste(w_icon, (cx, cy), w_icon) # Changed base_img to overlay
+        overlay.paste(w_icon, (cx, current_y_draw), w_icon) # Changed base_img to overlay
         
         temp_x = cx + w_icon.width + 10
-        temp_y = cy + (w_icon.height - font_xl.getbbox(temp_str)[3]) // 2 - 5
+        temp_y = current_y_draw + (w_icon.height - font_xl.getbbox(temp_str)[3]) // 2 - 5
         draw.text((temp_x, temp_y), temp_str, font=font_xl, fill=(0,0,0))
-        cy += max(w_icon.height, font_xl.getbbox(temp_str)[3]) + line_spacing
+        current_y_draw += max(w_icon.height, font_xl.getbbox(temp_str)[3]) + line_spacing
     else:
-        draw.text((cx, cy), temp_str, font=font_xl, fill=(0,0,0))
-        cy += font_xl.getbbox(temp_str)[3] + line_spacing
+        draw.text((cx, current_y_draw), temp_str, font=font_xl, fill=(0,0,0))
+        current_y_draw += font_xl.getbbox(temp_str)[3] + line_spacing
 
     # Row 2: Desc
-    draw.text((cx + 5, cy), desc_str, font=font_lg, fill=(50,50,50))
-    cy += font_lg.getbbox(desc_str)[3] + (line_spacing * 2)
+    draw.text((cx + 5, current_y_draw), desc_str, font=font_lg, fill=(50,50,50))
+    current_y_draw += font_lg.getbbox(desc_str)[3] + (line_spacing * 2)
 
     # Row 3: Dust PM10
     dot_r = int(5 * widget_scale)
-    draw.text((cx + 5, cy), pm10_str, font=font_md, fill=(60,60,60))
+    draw.text((cx + 5, current_y_draw), pm10_str, font=font_md, fill=(60,60,60))
     txt_w = font_md.getlength(pm10_str)
     dot_cx = cx + 5 + txt_w + 15
-    dot_cy = cy + (font_md.getbbox("A")[3] // 2) + 2
+    dot_cy = current_y_draw + (font_md.getbbox("A")[3] // 2) + 2
     draw.ellipse([dot_cx - dot_r, dot_cy - dot_r, dot_cx + dot_r, dot_cy + dot_r], fill=color_pm10)
-    cy += font_md.getbbox(pm10_str)[3] + line_spacing
+    current_y_draw += font_md.getbbox(pm10_str)[3] + line_spacing
 
     # Row 4: Dust PM2.5
-    draw.text((cx + 5, cy), pm25_str, font=font_md, fill=(60,60,60))
+    draw.text((cx + 5, current_y_draw), pm25_str, font=font_md, fill=(60,60,60))
     txt_w = font_md.getlength(pm25_str)
     dot_cx = cx + 5 + txt_w + 15
-    dot_cy = cy + (font_md.getbbox("A")[3] // 2) + 2
+    dot_cy = current_y_draw + (font_md.getbbox("A")[3] // 2) + 2
     draw.ellipse([dot_cx - dot_r, dot_cy - dot_r, dot_cx + dot_r, dot_cy + dot_r], fill=color_pm25)
-    cy += font_md.getbbox(pm25_str)[3] + (line_spacing * 2)
+    current_y_draw += font_md.getbbox(pm25_str)[3] + (line_spacing * 2)
 
     # Row 5: Umbrella (Removed)
     # if umbrella_msg:
-    #     draw.text((cx + 5, cy), umbrella_msg, font=font_sm, fill=(0,0,200))
-    #     cy += font_sm.getbbox(umbrella_msg)[3] + line_spacing
+    #     draw.text((cx + 5, current_y_draw), umbrella_msg, font=font_sm, fill=(0,0,200))
+    #     current_y_draw += font_sm.getbbox(umbrella_msg)[3] + line_spacing
 
 
     # Row 6: Time
-    draw.text((cx + 5, cy), time_str, font=font_sm, fill=(120,120,120))
-
-    final_image = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
-    
-    # [Rain Widget Composite]
-    if weather_data:
-        rain_widget = create_rain_widget(weather_data)
         if rain_widget:
             rx = 20 
             ry = DISPLAY_HEIGHT - 100 - 20
