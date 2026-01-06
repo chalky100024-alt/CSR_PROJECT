@@ -94,10 +94,23 @@ class HardwareController:
         
         # [Safety Check] Don't sync if system time is weird (e.g. 1970, 2020)
         # Assuming current year is at least 2025
+        if now.year < 2025:
             msg = f"Skipping RTC Sync: System time ({now.year}) seems invalid."
             logger.warning(msg)
             log_hardware_event(msg)
             return
+
+        try:
+
+        try:
+            # Use specific PiSugar command to sync Pi Time -> RTC
+            # This avoids format issues with manual ISO strings
+            resp = self.pisugar_command('rtc_pi2rtc')
+            msg = f"RTC Auto-Sync Performed: rtc_pi2rtc (Resp: {resp})"
+            logger.info(msg)
+            # log_hardware_event(msg) 
+        except Exception as e:
+            logger.error(f"RTC Sync Failed: {e}")
 
     def get_battery_level(self):
         """PiSugar 배터리 잔량(%) 조회"""
@@ -111,17 +124,6 @@ class HardwareController:
         except Exception as e:
             logger.error(f"Battery Check Error: {e}")
         return None
-            return
-
-        try:
-            # Use specific PiSugar command to sync Pi Time -> RTC
-            # This avoids format issues with manual ISO strings
-            resp = self.pisugar_command('rtc_pi2rtc')
-            msg = f"RTC Auto-Sync Performed: rtc_pi2rtc (Resp: {resp})"
-            logger.info(msg)
-            # log_hardware_event(msg) 
-        except Exception as e:
-            logger.error(f"RTC Sync Failed: {e}")
 
     def set_rtc_alarm(self, minutes):
         """PiSugar RTC 알람 설정 (현재 시간 + minutes)"""
