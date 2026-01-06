@@ -119,7 +119,7 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
     bg_img = enhance_image(bg_img)
     
     # 2. Render Dashboard (Transparent Layer)
-    dashboard = render_dashboard(weather_data, dust_data, layout_config, location_name, batt_level)
+    dashboard, bx, by, bw, bh = render_dashboard(weather_data, dust_data, layout_config, location_name, batt_level)
     
     # 3. Composite
     final_image = Image.alpha_composite(bg_img.convert('RGBA'), dashboard).convert('RGB')
@@ -132,10 +132,8 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
             ry = DISPLAY_HEIGHT - 100 - 20
             final_image.paste(rain_widget, (rx, ry), rain_widget)
             
-    # The original function returned box_x, box_y, box_w, box_h.
-    # If these are still needed, render_dashboard should return them.
-    # For now, assuming only the final image is needed from this function.
-    return final_image
+    # Return full tuple as expected by app.py
+    return final_image, bx, by, bw, bh
 
 def render_dashboard(weather_data, dust_data, layout_config, location_name, batt_level=None):
     """
@@ -351,7 +349,7 @@ def render_dashboard(weather_data, dust_data, layout_config, location_name, batt
     if batt_str:
         draw.text((cx + 5, current_y_draw), batt_str, font=font_sm, fill=(100,100,100))
 
-    return overlay
+    return overlay, box_x, box_y, box_w, box_h
 
 def create_rain_widget(weather_data):
     """
