@@ -192,8 +192,8 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
 
     # Time
     now = datetime.now()
-    # User Req: "12/18 05시 기준" format
-    time_str = now.strftime('%m/%d %H시 기준')
+    # User Req: "12/18 05:30 기준" format
+    time_str = now.strftime('%m/%d %H:%M 기준')
 
     # --- Layout Calculation ---
     current_y = padding
