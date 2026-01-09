@@ -110,6 +110,17 @@ class HardwareController:
         except Exception as e:
             logger.error(f"RTC Sync Failed: {e}")
 
+    def sync_system_from_rtc(self):
+        """RTC 시간으로 시스템 시간 동기화 (부팅 시 필수)"""
+        if not IS_RPI: return
+
+        try:
+            # PiSugar command to sync RTC -> Pi
+            resp = self.pisugar_command('rtc_rtc2pi')
+            logger.info(f"System Time Restored from RTC: {resp}")
+        except Exception as e:
+            logger.error(f"Failed to restore time from RTC: {e}")
+
     def set_rtc_alarm(self, minutes):
         """PiSugar RTC 알람 설정 (현재 시간 + minutes)"""
         # --- Lifecycle logging helper (Embedded) ---

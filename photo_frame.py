@@ -321,6 +321,10 @@ class EInkPhotoFrame:
         """메인 실행 로직 (Standalone)"""
         if not self.init_display(): return
 
+        # [Time Fix] Force Sync System Time from RTC immediately
+        logger.info("Initializing Time from RTC...")
+        self.hw.sync_system_from_rtc()
+
         self.refresh_display()
 
         if self.is_preview_mode:
