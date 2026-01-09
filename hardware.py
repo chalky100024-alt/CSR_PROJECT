@@ -31,8 +31,11 @@ class HardwareController:
                 logger.warning(f"E-Ink Driver Init Failed: {e}")
 
         # [Auto Logic] Ensure RTC is consistent with System on Startup
+        # DANGEROUS: System time might be wrong (fake-hwclock). Do NOT overwrite RTC.
+        # Instead, we should ideally sync System FROM RTC, but let's leave that to explicit calls.
         if IS_RPI:
-            self.sync_rtc_from_system()
+            # self.sync_rtc_from_system() # Removed to prevent poisoning RTC with stale system time
+            pass
 
     def display_image(self, pil_image):
         """이미지를 E-Ink에 전송"""

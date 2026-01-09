@@ -249,6 +249,11 @@ class EInkPhotoFrame:
 
     def refresh_display(self, target_photo=None):
         """Alias for standard run/update used by app.py"""
+        # [CRITICAL] Ensure System Time is synced from RTC before drawing
+        # This fixes the "Old Time displayed on Boot" issue
+        if hasattr(self.hw, 'sync_system_from_rtc'):
+            self.hw.sync_system_from_rtc()
+            
         self.config = settings.load_config() # Reload latest config
         
         # Support Selected Photo Logic
