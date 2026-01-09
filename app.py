@@ -148,6 +148,12 @@ def api_save_config():
     # Merge update
     for key, value in data.items():
         current[key] = value
+            
+    # [Fix Manual Transfer] If user selects a specific photo, disable shuffle mode automatically
+    # This ensures the selected photo survives the service restart
+    if 'selected_photo' in data and data['selected_photo']:
+        current['shuffle_mode'] = False
+        print(f"Manual photo selected: {data['selected_photo']} -> Auto-disabling Shuffle Mode.")
 
     # [Auto-Update Station Name]
     # User Request: "If I change region, station should update automatically"
