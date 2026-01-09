@@ -329,6 +329,35 @@ class EInkPhotoFrame:
             return
 
         logger.info("🔋 배터리 모드: 5초 후 시스템을 안전하게 종료합니다 (PiSugar).")
+        
+        # [CRITICAL UPDATE] Set Next Wake Alarm before Shutdown
+        try:
+            interval = int(self.config.get('interval_min', 60))
+            start_h = int(self.config.get('active_start_hour', 5))
+            end_h = int(self.config.get('active_end_hour', 22))
+            
+            now = datetime.now()
+            next_wake = now + timedelta(minutes=interval)
+            
+            # Night Mode Logic
+            if next_wake.hour >= end_h or (next_wake.hour < start_h and next_wake.day == now.day):
+                target_day = now.date()
+                if now.hour >= end_h: target_day += timedelta(days=1)
+                final_wake = datetime.combine(target_day, datetime.min.time().replace(hour=start_h))
+                if final_wake < now: final_wake += timedelta(days=1)
+                next_wake = final_wake
+                logger.info(f"Night Mode Active. Sleeping until {next_wake}")
+
+            diff_seconds = (next_wake - now).total_seconds()
+            rtc_minutes = int(diff_seconds / 60)
+            if rtc_minutes < 1: rtc_minutes = 1
+            
+            logger.info(f"Setting RTC Alarm for {rtc_minutes} minutes later.")
+            self.hw.set_rtc_alarm(rtc_minutes)
+            
+        except Exception as e:
+            logger.error(f"Failed to set RTC alarm: {e}")
+
         time.sleep(5)
         os.system("sudo shutdown now")
 
