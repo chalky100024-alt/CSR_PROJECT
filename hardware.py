@@ -31,8 +31,10 @@ class HardwareController:
                 logger.warning(f"E-Ink Driver Init Failed: {e}")
 
         # [Auto Logic] Ensure RTC is consistent with System on Startup
+        # [Auto Logic] Ensure RTC is consistent with System on Startup
         if IS_RPI:
-            self.sync_rtc_from_system()
+            # Use RTC -> System sync (Safe) instead of System -> RTC (Dangerous on boot)
+            self.sync_system_from_rtc()
 
     def display_image(self, pil_image):
         """이미지를 E-Ink에 전송"""
