@@ -181,21 +181,30 @@ class EInkPhotoFrame:
             logger.info(f"Processing: {os.path.basename(image_path)}")
 
             # 데이터 로드
+            logger.info("Fetching Fine Dust Data...")
             d_data = self.get_fine_dust_data()
+            logger.info("Fetching Weather Data...")
             w_data = self.get_weather_data()
+            logger.info(f"Data Fetch Complete. Dust: {bool(d_data)}, Weather: {bool(w_data)}")
             
             # 설정 및 위치 이름 로드
             layout_config = self.config.get('layout', {})
             location_name = self.config.get('location', {}).get('name', '')
 
             # [핵심] Renderer 모듈 사용 (Web Preview와 동일한 로직)
-            final_img, _, _, _, _ = renderer.create_composed_image(
-                image_path, 
-                w_data, 
-                d_data, 
-                layout_config, 
-                location_name
-            )
+            logger.info("Starting Renderer...")
+            try:
+                final_img, _, _, _, _ = renderer.create_composed_image(
+                    image_path, 
+                    w_data, 
+                    d_data, 
+                    layout_config, 
+                    location_name
+                )
+                logger.info("Renderer Success.")
+            except Exception as e:
+                logger.error(f"Renderer Failed: {e}", exc_info=True)
+                raise e
 
             # [중요] 웹 미리보기 저장
             preview_path = settings.PREVIEW_PATH
@@ -208,7 +217,7 @@ class EInkPhotoFrame:
 
             # E-Ink 전송
             if self.epd:
-                logger.info("Updating E-Ink...")
+                logger.info("Updating E-Ink Display...")
                 try:
                     self.epd.init()
                     final_quantized = final_img.quantize(palette=self.get_7color_palette(), method=Image.FLOYDSTEINBERG)
