@@ -65,17 +65,25 @@ class HardwareController:
             if cmd == 'get battery_power_plugged': return "battery_power_plugged: true"
             return "ok"
             
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(2)
-                s.connect(('127.0.0.1', 8423))
-                s.sendall(cmd.encode())
-                response = s.recv(1024).decode('utf-8').strip()
-                logger.debug(f"PiSugar CMD: {cmd} -> {response}")
-                return response
-        except Exception as e:
-            logger.error(f"PiSugar Error: {e}")
-            return None
+        # Retry logic for I/O errors (e.g. os error 5)
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.settimeout(2)
+                    s.connect(('127.0.0.1', 8423))
+                    s.sendall(cmd.encode())
+                    response = s.recv(1024).decode('utf-8').strip()
+                    if attempt > 0:
+                        logger.info(f"PiSugar CMD Retry Success ({attempt+1}/{max_retries}): {cmd}")
+                    return response
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"PiSugar IO Error (Attempt {attempt+1}/{max_retries}): {e}. Retrying in 1s...")
+                    time.sleep(1)
+                else:
+                    logger.error(f"PiSugar Error after {max_retries} attempts: {e}")
+                    return None
 
     def sync_rtc_from_system(self):
         """시스템 시간을 RTC로 동기화 (단, 시스템 시간이 2025년 이후일 때만)"""
