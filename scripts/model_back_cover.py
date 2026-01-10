@@ -14,6 +14,12 @@ base_thickness = 2.0  # Thickness of the bottom floor
 internal_depth = 22.0 
 outer_height = internal_depth + base_thickness
 
+# Battery Dimensions (User Provided)
+batt_w = 56.0
+batt_l = 68.0
+batt_tolerance = 1.0 # Extra gap
+holder_wall_h = 4.0 # Height of the battery retention wall
+
 # Magnet Dimensions (Rectangular)
 magnet_length = 18.0
 magnet_width = 5.0
@@ -75,62 +81,34 @@ for name, spec in magnet_defs.items():
     back_cover = back_cover.difference(mag_tool)
 
 
-# --- 4. Pi Zero & PiSugar Mounts (Standoffs) ---
-print("3. Creating Mounting Standoffs for Pi Zero...")
-# Pi Zero Dimensions: 65mm x 30mm
-# Mounting Holes: 58mm x 23mm (M2.5 screws)
-# Center the Pi in the middle of the case
-pi_w, pi_h = 65.0, 30.0
-hole_dist_x = 58.0
-hole_dist_y = 23.0
+# --- 4. Battery Holder (Frame) ---
+print("3. Creating Battery Holder (68x56mm)...")
+# Since Battery (68x56) is larger than Pi Zero Mounting Holes (58x23), 
+# standard standoffs would penetrate the battery. 
+# Strategy: Create a "Tray" for the battery to sit in. 
+# The Pi will ride on top of the battery (PiSugar style).
 
-# Center of case
-cx = outer_width / 2
-cy = outer_length / 2
+# Holder Walls (Rim)
+holder_inner_w = batt_w + batt_tolerance
+holder_inner_l = batt_l + batt_tolerance
+holder_thickness = 2.0
 
-# Standoff positions (4 corners)
-standoff_positions = [
-    [cx - hole_dist_x/2, cy - hole_dist_y/2],
-    [cx + hole_dist_x/2, cy - hole_dist_y/2],
-    [cx - hole_dist_x/2, cy + hole_dist_y/2],
-    [cx + hole_dist_x/2, cy + hole_dist_y/2],
-]
+# Create simple 4-wall frame centered
+holder_box_outer = trimesh.creation.box(bounds=[
+    [cx - holder_inner_w/2 - holder_thickness, cy - holder_inner_l/2 - holder_thickness, base_thickness],
+    [cx + holder_inner_w/2 + holder_thickness, cy + holder_inner_l/2 + holder_thickness, base_thickness + holder_wall_h]
+])
 
-standoff_height = 8.0 # Raise Pi 8mm to fit Battery underneath?
-# If battery is 5000mAh, it might be thick (10mm). 
-# Let's make standoffs 10mm tall to be safe.
-standoff_height = 10.0 
-standoff_radius = 2.5 # 5mm diameter pillar
-screw_hole_radius = 1.1 # for M2.5 screw (2.2mm dia hole usually fine for tapping)
+holder_box_inner = trimesh.creation.box(bounds=[
+    [cx - holder_inner_w/2, cy - holder_inner_l/2, base_thickness],
+    [cx + holder_inner_w/2, cy + holder_inner_l/2, base_thickness + holder_wall_h + 1]
+])
 
-standoffs = []
-for pos in standoff_positions:
-    # Cylinder Standoff
-    # trimesh creates cylinder centered at (0,0,0) by default? No, it's Z aligned.
-    # We need to move it to (pos[0], pos[1], base_thickness + height/2)
-    
-    # 1. Solid Pillar
-    pillar = trimesh.creation.cylinder(radius=standoff_radius, height=standoff_height)
-    # Move to correct Z (sitting on floor)
-    # Floor is at Z=base_thickness. Pillar center Z is height/2. 
-    # So Z = base_thickness + height/2
-    z_pos = base_thickness + (standoff_height / 2)
-    
-    matrix = trimesh.transformations.translation_matrix([pos[0], pos[1], z_pos])
-    pillar.apply_transform(matrix)
-    
-    # 2. Screw Hole (Subtraction)
-    hole = trimesh.creation.cylinder(radius=screw_hole_radius, height=standoff_height + 2) # +2 for clearance
-    hole.apply_transform(matrix)
-    
-    # 3. Final Standoff = Pillar - Hole
-    final_standoff = pillar.difference(hole)
-    standoffs.append(final_standoff)
+battery_holder = holder_box_outer.difference(holder_box_inner)
+back_cover = back_cover.union(battery_holder)
+print("   - Battery Holder Attached.")
 
-# Union all standoffs to the case
-print("   - Attaching 4 standoffs...")
-for s in standoffs:
-    back_cover = back_cover.union(s)
+# (Removed conflicting Pi Zero Standoffs)
 
 # --- 5. USB Port Cutout (Optional/Estimating) ---
 # Pi Zero USB ports are on the bottom edge (when landscape).
