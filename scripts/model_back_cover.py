@@ -81,53 +81,105 @@ for name, spec in magnet_defs.items():
     back_cover = back_cover.difference(mag_tool)
 
 
-# --- 4. PiSugar Holder & Flexure Button ---
-print("3. Creating PiSugar Holder (Top Usage) & Reset Button...")
+# --- 4. Side-by-Side Compartments (PiSugar + Battery) ---
+print("3. Creating Dual Compartments (PiSugar Left, Battery Right)...")
 
-# Updated Parameters from User
-# PiSugar Size: 65mm (Width/X) x 57mm (Height/Y)
-batt_w = 65.0
-batt_l = 57.0 
-batt_tolerance = 0.5 
-holder_wall_h = 10.0 
+# Define Center References (Fixed NameError)
+cx = outer_width / 2
+cy = outer_length / 2
 
-# 1. Base Wall
-holder_inner_w = batt_w + batt_tolerance
-holder_inner_l = batt_l + batt_tolerance
-holder_thickness = 2.0
+# Dims
+sugar_w = 65.0  # Width (X)
+sugar_l = 57.0  # Height (Y)
+batt_w = 68.0   # Width (X)
+batt_l = 56.0   # Height (Y)
+wall_h = 10.0
+gap = 10.0      # Wire gap between them
 
-# [Position Adjustment]
-# User request: "Use USB-C port at Left-Top (8~15mm) as Frame Charging Port"
-# To make this accessible, we must MOVE the PiSugar to the Top Edge of the case.
-holder_cx = cx
-# Top of holder = Top of Case Wall
-# cy is center (55). Top is 110. Wall is 2.
-# Top Inside = 108.
-# Holder Center Y = 108 - (inner_l / 2)
-holder_cy = (outer_length - wall_thickness) - (holder_inner_l / 2)
+# Layout Strategy:
+# 1. PiSugar: Top-Left aligned.
+#    - Left Edge = wall_thickness + 2mm margin
+#    - Top Edge = outer_length - wall_thickness - 2mm margin
+# 2. Battery: Top-Right aligned (relative to PiSugar)
+#    - Left Edge = PiSugar Right + gap
 
-print(f"   - Moving Holder to Top Edge: CY={holder_cy:.1f}")
+margin_x = 5.0 # Margin from Case Left Wall
+margin_y = 5.0 # Margin from Case Top Wall
 
-holder_box_outer = trimesh.creation.box(bounds=[
-    [holder_cx - holder_inner_w/2 - holder_thickness, holder_cy - holder_inner_l/2 - holder_thickness, base_thickness],
-    [holder_cx + holder_inner_w/2 + holder_thickness, holder_cy + holder_inner_l/2 + holder_thickness, base_thickness + holder_wall_h]
+# --- A. PiSugar Holder (Left) ---
+sugar_x_center = wall_thickness + margin_x + (sugar_w / 2)
+sugar_y_center = (outer_length - wall_thickness - margin_y) - (sugar_l / 2)
+
+p_inner_w = sugar_w + 0.5
+p_inner_l = sugar_l + 0.5
+p_wall = 2.0
+
+sugar_box_outer = trimesh.creation.box(bounds=[
+    [sugar_x_center - p_inner_w/2 - p_wall, sugar_y_center - p_inner_l/2 - p_wall, base_thickness],
+    [sugar_x_center + p_inner_w/2 + p_wall, sugar_y_center + p_inner_l/2 + p_wall, base_thickness + wall_h]
 ])
-
-holder_box_inner = trimesh.creation.box(bounds=[
-    [holder_cx - holder_inner_w/2, holder_cy - holder_inner_l/2, base_thickness],
-    [holder_cx + holder_inner_w/2, holder_cy + holder_inner_l/2, base_thickness + holder_wall_h + 1]
+sugar_box_inner = trimesh.creation.box(bounds=[
+    [sugar_x_center - p_inner_w/2, sugar_y_center - p_inner_l/2, base_thickness],
+    [sugar_x_center + p_inner_w/2, sugar_y_center + p_inner_l/2, base_thickness + wall_h + 1]
 ])
+sugar_frame = sugar_box_outer.difference(sugar_box_inner)
+back_cover = back_cover.union(sugar_frame)
 
-holder_frame = holder_box_outer.difference(holder_box_inner)
-back_cover = back_cover.union(holder_frame)
+# --- B. Battery Holder (Right) ---
+# Start X = PiSugar Right Wall + Gap
+batt_start_x = (sugar_x_center + p_inner_w/2 + p_wall) + gap
+batt_x_center = batt_start_x + (batt_w / 2)
+batt_y_center = sugar_y_center # Align centers vertically (Top alignment similar)
 
-# 2. Reset Button (Flexure)
-# Location: 15mm from Top, 10mm from Left (relative to PiSugar)
-# Relative to New Holder Position
+b_inner_w = batt_w + 1.0 # Loose fit
+b_inner_l = batt_l + 1.0
+b_wall = 2.0
 
-# Button Position
-btn_x = (holder_cx - holder_inner_w/2) + 10.0
-btn_y = (holder_cy + holder_inner_l/2) - 15.0
+batt_box_outer = trimesh.creation.box(bounds=[
+    [batt_x_center - b_inner_w/2 - b_wall, batt_y_center - b_inner_l/2 - b_wall, base_thickness],
+    [batt_x_center + b_inner_w/2 + b_wall, batt_y_center + b_inner_l/2 + b_wall, base_thickness + wall_h]
+])
+batt_box_inner = trimesh.creation.box(bounds=[
+    [batt_x_center - b_inner_w/2, batt_y_center - b_inner_l/2, base_thickness],
+    [batt_x_center + b_inner_w/2, batt_y_center + b_inner_l/2, base_thickness + wall_h + 1]
+])
+batt_frame = batt_box_outer.difference(batt_box_inner)
+back_cover = back_cover.union(batt_frame)
+
+
+# --- 5. USB-C Charging Port (Top Left) ---
+# Location: 8mm ~ 15mm from Left of PiSugar PCB.
+# PiSugar Left Edge = sugar_x_center - (sugar_w / 2)
+sugar_left_edge_x = sugar_x_center - (sugar_w / 2)
+
+port_start = 8.0
+port_end = 15.0
+port_w = (port_end - port_start) + 2.0 # 9mm
+port_center_offset = (port_start + port_end) / 2
+
+port_x = sugar_left_edge_x + port_center_offset
+port_y = outer_length # On the Case Wall
+port_z = base_thickness + wall_h + 1.0 # Rim height
+
+print(f"   - Cutting USB-C Port at X={port_x:.1f}")
+
+usb_tool = trimesh.creation.box(extents=[port_w, 20.0, 6.0]) # Changed port_width to port_w
+usb_tool.apply_transform(trimesh.transformations.translation_matrix([port_x, outer_length, port_z]))
+back_cover = back_cover.difference(usb_tool)
+
+
+# --- 6. Reset Button (Right Side of PiSugar) ---
+# User: "Reset button is Right side... 15mm from Top, 10mm from Left (of switch?)"
+# Correction: "Reset to Right, Charging to Left".
+# Let's place the button on the RIGHT side of the PiSugar PCB area.
+# X = PiSugar Right Edge - 10mm? 
+# Use "10mm from Left" logic mirrored?
+# Let's place it at: X = sugar_left_edge_x + 55mm (Near right edge of 65mm PCB)
+# Y = sugar_top_edge_y - 15mm.
+sugar_top_edge_y = sugar_y_center + (sugar_l / 2)
+
+btn_x = sugar_left_edge_x + 55.0 
+btn_y = sugar_top_edge_y - 15.0
 
 print(f"   - Creating Button at X={btn_x:.1f}, Y={btn_y:.1f}")
 
@@ -135,9 +187,6 @@ print(f"   - Creating Button at X={btn_x:.1f}, Y={btn_y:.1f}")
 btn_radius = 4.0
 slot_width = 1.0
 nub_height = 1.5 
-
-# ... (Flexure Logic Same) ...
-# Need to replace cx/cy with btn_x/btn_y in logic below (It uses btn_x/btn_y already)
 
 slot_outer_r = btn_radius + slot_width
 slot_inner_r = btn_radius
@@ -149,6 +198,7 @@ ring_tool = trimesh.creation.cylinder(radius=slot_outer_r, height=base_thickness
 inner_tool = trimesh.creation.cylinder(radius=slot_inner_r - 0.2, height=base_thickness + 4.0) 
 ring_cutout = ring_tool.difference(inner_tool)
 
+# Hinge at TOP (towards case wall)
 hinge = trimesh.creation.box(extents=[4.0, slot_width * 3, base_thickness + 2.0])
 hinge.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y + btn_radius, base_thickness/2]))
 
@@ -165,40 +215,10 @@ flex_cut = trimesh.creation.box(extents=[4.0, slot_width * 4, 1.0])
 flex_cut.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y + btn_radius, 0.5]))
 back_cover = back_cover.difference(flex_cut)
 
-# 3. USB-C Charging Port Cutout
-# Location: Left-Top Edge. 8mm to 15mm from Left.
-# Dims: width=7mm (15-8). Let's make it 9mm for wiggle room.
-# Height: USB-C is 3.2mm. Make slot 5mm.
-# Depth: Through the Case Top Wall and Holder Top Wall.
-
-# Port Center X (relative to PiSugar Left)
-# PiSugar Left = holder_cx - holder_inner_w/2
-port_start = 8.0
-port_end = 15.0
-port_center_offset = (port_start + port_end) / 2
-port_width = (port_end - port_start) + 2.0 # +2mm tolerance = 9mm
-
-port_x = (holder_cx - holder_inner_w/2) + port_center_offset
-port_y = outer_length # Center of cutout on the WALL (Border)
-port_z = base_thickness + holder_wall_h # Top of Holder Wall (PiSugar sits here?)
-# Wait, PiSugar (PCB) sits ON TOP of battery?
-# If holder walls are 10mm high, and battery is inside...
-# The PiSugar PCB rests ON the wall rim? OR inside?
-# If it rests on the rim, the USB port is at Z = base + 10mm + PCB_Thickness/2.
-# Let's align cutout to Z = base + 10mm + 1.5mm.
-port_z_center = base_thickness + holder_wall_h + 1.0
-
-print(f"   - Cutting USB-C Port at X={port_x:.1f}, Z={port_z_center:.1f}")
-
-# Create Cutout Box
-# Length(Y) needs to pierce Case Wall (2mm) + Holder Wall (2mm) + Gap
-usb_tool = trimesh.creation.box(extents=[port_width, 20.0, 6.0]) # 6mm high slot
-usb_tool.apply_transform(trimesh.transformations.translation_matrix([port_x, outer_length, port_z_center]))
-
-back_cover = back_cover.difference(usb_tool)
+print("   - Flexure Button Created (Right Side).")
 
 
-# --- 5. USB Port Cutout (Optional/Estimating) ---
+# --- 7. USB Port Cutout (Optional/Estimating) ---
 # Pi Zero USB ports are on the bottom edge (when landscape).
 # Assuming Pi is centered. 
 # We need a slot on the "Bottom" wall (Y=0 side? No, depends on orientation)
