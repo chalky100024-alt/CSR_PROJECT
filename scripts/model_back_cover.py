@@ -82,32 +82,40 @@ for name, spec in magnet_defs.items():
 
 
 # --- 4. PiSugar Holder & Flexure Button ---
-print("3. Creating PiSugar Holder (65x57mm) & Reset Button...")
+print("3. Creating PiSugar Holder (Top Usage) & Reset Button...")
 
 # Updated Parameters from User
 # PiSugar Size: 65mm (Width/X) x 57mm (Height/Y)
 batt_w = 65.0
 batt_l = 57.0 
-# Note: User said "65mm Wide, 57mm High" (Landscape).
-# Code variable naming: batt_w (X size), batt_l (Y size).
-# Confirming orientation aligns with X-axis (180mm).
-
-batt_tolerance = 0.5 # Snug fit
-holder_wall_h = 10.0 # Clear PiSugar height
+batt_tolerance = 0.5 
+holder_wall_h = 10.0 
 
 # 1. Base Wall
 holder_inner_w = batt_w + batt_tolerance
 holder_inner_l = batt_l + batt_tolerance
 holder_thickness = 2.0
 
+# [Position Adjustment]
+# User request: "Use USB-C port at Left-Top (8~15mm) as Frame Charging Port"
+# To make this accessible, we must MOVE the PiSugar to the Top Edge of the case.
+holder_cx = cx
+# Top of holder = Top of Case Wall
+# cy is center (55). Top is 110. Wall is 2.
+# Top Inside = 108.
+# Holder Center Y = 108 - (inner_l / 2)
+holder_cy = (outer_length - wall_thickness) - (holder_inner_l / 2)
+
+print(f"   - Moving Holder to Top Edge: CY={holder_cy:.1f}")
+
 holder_box_outer = trimesh.creation.box(bounds=[
-    [cx - holder_inner_w/2 - holder_thickness, cy - holder_inner_l/2 - holder_thickness, base_thickness],
-    [cx + holder_inner_w/2 + holder_thickness, cy + holder_inner_l/2 + holder_thickness, base_thickness + holder_wall_h]
+    [holder_cx - holder_inner_w/2 - holder_thickness, holder_cy - holder_inner_l/2 - holder_thickness, base_thickness],
+    [holder_cx + holder_inner_w/2 + holder_thickness, holder_cy + holder_inner_l/2 + holder_thickness, base_thickness + holder_wall_h]
 ])
 
 holder_box_inner = trimesh.creation.box(bounds=[
-    [cx - holder_inner_w/2, cy - holder_inner_l/2, base_thickness],
-    [cx + holder_inner_w/2, cy + holder_inner_l/2, base_thickness + holder_wall_h + 1]
+    [holder_cx - holder_inner_w/2, holder_cy - holder_inner_l/2, base_thickness],
+    [holder_cx + holder_inner_w/2, holder_cy + holder_inner_l/2, base_thickness + holder_wall_h + 1]
 ])
 
 holder_frame = holder_box_outer.difference(holder_box_inner)
@@ -115,51 +123,32 @@ back_cover = back_cover.union(holder_frame)
 
 # 2. Reset Button (Flexure)
 # Location: 15mm from Top, 10mm from Left (relative to PiSugar)
-# Top-Left defined as:
-# Top = cy + batt_l/2 = cy + 28.5
-# Left = cx - batt_w/2 = cx - 32.5
+# Relative to New Holder Position
 
 # Button Position
-btn_x = (cx - holder_inner_w/2) + 10.0
-btn_y = (cy + holder_inner_l/2) - 15.0
+btn_x = (holder_cx - holder_inner_w/2) + 10.0
+btn_y = (holder_cy + holder_inner_l/2) - 15.0
 
 print(f"   - Creating Button at X={btn_x:.1f}, Y={btn_y:.1f}")
 
-# Flexure Design:
-# A circular pad (radius 4mm) surrounded by a 'C' shaped slot.
-# Or a 'U' slot.
-# Slot Width: 1.0mm
-# Button Diameter: 6.0mm
+# Flexure Design Parameters
 btn_radius = 4.0
 slot_width = 1.0
-nub_height = 1.5 # Height of the nub pushing the switch (on inside)
+nub_height = 1.5 
 
-# A. The Slot (Cutout)
-# Create a Ring/Arc cutout
-# Simpler: Create a Cylinder (Outer) - Cylinder (Inner) -> Tube?
-# If we cut a full circle, the button falls out.
-# tailored 'C' shape: 270 degrees.
-# Trimesh doesn't have easy Arc primitives.
-# Workaround: Difference of Cylinders + Union of "Bridge"
+# ... (Flexure Logic Same) ...
+# Need to replace cx/cy with btn_x/btn_y in logic below (It uses btn_x/btn_y already)
 
 slot_outer_r = btn_radius + slot_width
 slot_inner_r = btn_radius
 
-# Cut Cylinder
 cut_cyl = trimesh.creation.cylinder(radius=slot_outer_r, height=base_thickness + 2.0)
 cut_cyl.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y, base_thickness/2]))
 
-# Keep Cylinder (The button itself, effectively)
-# Actually, we subtract the "Ring" area.
-# Ring = OuterCyl - InnerCyl.
 ring_tool = trimesh.creation.cylinder(radius=slot_outer_r, height=base_thickness + 2.0)
-inner_tool = trimesh.creation.cylinder(radius=slot_inner_r - 0.2, height=base_thickness + 4.0) # 0.2 clearance
+inner_tool = trimesh.creation.cylinder(radius=slot_inner_r - 0.2, height=base_thickness + 4.0) 
 ring_cutout = ring_tool.difference(inner_tool)
 
-# Add a "Bridge" to prevent button falling out (The Hinge)
-# Bridge width: 3mm approx.
-# Position: Towards the "Top" (or direction of least stress).
-# Let's put hinge at TOP (+Y relative to button).
 hinge = trimesh.creation.box(extents=[4.0, slot_width * 3, base_thickness + 2.0])
 hinge.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y + btn_radius, base_thickness/2]))
 
@@ -168,24 +157,46 @@ final_cutout.apply_transform(trimesh.transformations.translation_matrix([btn_x, 
 
 back_cover = back_cover.difference(final_cutout)
 
-# B. The Tactile Nub (Inside)
-# Small cylinder on top of the button pad to press the switch.
 nub = trimesh.creation.cylinder(radius=1.5, height=nub_height)
-# Position: On top of the floor (base_thickness), centered on button
 nub.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y, base_thickness + (nub_height/2)]))
-
 back_cover = back_cover.union(nub)
 
-# C. Thinning the Hinged Area (Optional)
-# Make the button pad slightly thinner from the OUTSIDE to identify it?
-# Or thinning the hinge from inside for flexibility?
-# PLA is stiff. 2mm hinge is very stiff.
-# Let's cut a "Flex Groove" on the Hinge from the bottom (Z=0).
-flex_cut = trimesh.creation.box(extents=[4.0, slot_width * 4, 1.0]) # Cut 1mm deep
-flex_cut.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y + btn_radius, 0.5])) # Z=0.5 center means cut 0 to 1.0
+flex_cut = trimesh.creation.box(extents=[4.0, slot_width * 4, 1.0])
+flex_cut.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y + btn_radius, 0.5]))
 back_cover = back_cover.difference(flex_cut)
 
-print("   - Flexure Button Created.")
+# 3. USB-C Charging Port Cutout
+# Location: Left-Top Edge. 8mm to 15mm from Left.
+# Dims: width=7mm (15-8). Let's make it 9mm for wiggle room.
+# Height: USB-C is 3.2mm. Make slot 5mm.
+# Depth: Through the Case Top Wall and Holder Top Wall.
+
+# Port Center X (relative to PiSugar Left)
+# PiSugar Left = holder_cx - holder_inner_w/2
+port_start = 8.0
+port_end = 15.0
+port_center_offset = (port_start + port_end) / 2
+port_width = (port_end - port_start) + 2.0 # +2mm tolerance = 9mm
+
+port_x = (holder_cx - holder_inner_w/2) + port_center_offset
+port_y = outer_length # Center of cutout on the WALL (Border)
+port_z = base_thickness + holder_wall_h # Top of Holder Wall (PiSugar sits here?)
+# Wait, PiSugar (PCB) sits ON TOP of battery?
+# If holder walls are 10mm high, and battery is inside...
+# The PiSugar PCB rests ON the wall rim? OR inside?
+# If it rests on the rim, the USB port is at Z = base + 10mm + PCB_Thickness/2.
+# Let's align cutout to Z = base + 10mm + 1.5mm.
+port_z_center = base_thickness + holder_wall_h + 1.0
+
+print(f"   - Cutting USB-C Port at X={port_x:.1f}, Z={port_z_center:.1f}")
+
+# Create Cutout Box
+# Length(Y) needs to pierce Case Wall (2mm) + Holder Wall (2mm) + Gap
+usb_tool = trimesh.creation.box(extents=[port_width, 20.0, 6.0]) # 6mm high slot
+usb_tool.apply_transform(trimesh.transformations.translation_matrix([port_x, outer_length, port_z_center]))
+
+back_cover = back_cover.difference(usb_tool)
+
 
 # --- 5. USB Port Cutout (Optional/Estimating) ---
 # Pi Zero USB ports are on the bottom edge (when landscape).
