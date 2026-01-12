@@ -17,6 +17,9 @@ print("=== 🧪 PiSugar Alarm Test ===")
 now = datetime.datetime.now().astimezone()
 print(f"Current Time: {now}")
 
+# Target: +2 minutes
+target = now + datetime.timedelta(minutes=2)
+
 # Format: ISO 8601 with timezone (No Colon in TZ)
 # Standard Python %z gives +0900. Previous code manually added ':'.
 # Maybe PiSugar wants +0900?
