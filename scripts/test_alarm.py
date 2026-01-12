@@ -15,7 +15,12 @@ def send_cmd(cmd):
 
 print("=== 🧪 PiSugar Alarm Test ===")
 print("-" * 30)
-# 1. Get Current RTC Time directly from Device
+# PROBE: Check available commands to find valid timer options
+print("🔍 Probing Server Commands ('help')...")
+print(send_cmd("help"))
+print(send_cmd("List"))
+print(send_cmd("?"))
+print("-" * 30)
 rtc_raw = send_cmd("get rtc_time")
 print(f"Device RTC Time Raw: '{rtc_raw}'")
 
