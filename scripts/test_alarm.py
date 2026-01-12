@@ -34,20 +34,33 @@ print(f"Sending CMD: '{cmd}'")
 resp = send_cmd(cmd)
 print(f"Response:    '{resp}'")
 
+if "ok" in resp.lower() or "done" in resp.lower() or "success" in resp.lower():
+    print("✅ Alarm Set Command ACCEPTED")
+    # Enable FIRST before checking flag
+    send_cmd("rtc_alarm_enable")
+    print("✅ Alarm Enabled Signal Sent")
+else:
+    print("❌ Alarm Set Command FAILED (Check syntax or connection)")
+    exit(1)
+
 print("-" * 30)
 print("Checking Flag...")
 flag = send_cmd("get rtc_alarm_flag")
 print(f"Alarm Flag:  {flag}")
 
-time_chk = send_cmd("get rtc_alarm_time")
+# Retry reading time to avoid I/O error
+time_chk = "Error"
+for i in range(3):
+    time_chk = send_cmd("get rtc_alarm_time")
+    if "Error" not in time_chk and "I/O" not in time_chk:
+        break
+    time.sleep(0.5)
+
 print(f"Alarm Time:  {time_chk}")
 
-if "ok" in resp.lower() or "done" in resp.lower() or "success" in resp.lower():
-    print("✅ Alarm Set Command ACCEPTED")
-    # Enable
-    send_cmd("rtc_alarm_enable")
-    print("✅ Alarm Enabled")
+if "true" in flag.lower():
+    print("🎉 SUCCESS: Alarm is SET and ENABLED.")
 else:
-    print("❌ Alarm Set Command FAILED (Check syntax or connection)")
+    print("⚠️ WARNING: Alarm is set but Flag is FALSE. (Maybe enable failed?)")
 
 print("=============================")
