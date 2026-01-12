@@ -179,8 +179,8 @@ class HardwareController:
             resp = self.pisugar_command(f'rtc_alarm_set {target_iso} 127')
             
             if resp and ('ok' in resp.lower() or 'done' in resp.lower()):
-                self.pisugar_command('rtc_alarm_enable')
-                logger.info(f"RTC Alarm Set: {target_iso}")
+                # Command accepted (rtc_alarm_set automatically enables alarm)
+                logger.info(f"RTC Alarm Set (Enabled): {target_iso}")
                 log_hardware_event(f"RTC Set Success: {target_iso}")
                 return True
             
