@@ -62,23 +62,22 @@ print(f"Response:    '{resp}'")
 
 if "ok" in resp.lower() or "done" in resp.lower() or "success" in resp.lower():
     print("✅ Alarm Set Command ACCEPTED")
-    # Enable FIRST before checking flag
-    # CAPTURE RESPONSE to see if this command actually exists
-    enable_resp = send_cmd("rtc_alarm_enable")
-    print(f"Enable CMD Response: '{enable_resp}'")
-    
-    if "invalid" in enable_resp.lower():
-        print("❌ 'rtc_alarm_enable' command is INVALID. Trying 'rtc_alarm_set ... enable'?")
-    
-    print("✅ Alarm Enabled Signal Sent")
+    # rtc_alarm_enable is INVALID. rtc_alarm_set AUTO-ENABLES.
+    # We should check "get rtc_alarm_enabled" to verify.
 else:
     print("❌ Alarm Set Command FAILED (Check syntax or connection)")
     exit(1)
 
 print("-" * 30)
-print("Checking Flag...")
+print("Checking Status...")
+
+# Check ENABLED status (True = Active, False = Disabled)
+enabled_status = send_cmd("get rtc_alarm_enabled")
+print(f"Alarm Enabled: {enabled_status}")
+
+# Check FLAG (True = Fired/IRQ, False = Waiting)
 flag = send_cmd("get rtc_alarm_flag")
-print(f"Alarm Flag:  {flag}")
+print(f"Alarm Flag:  {flag} (False means Waiting/Pending)")
 
 # Retry reading time to avoid I/O error
 time_chk = "Error"
@@ -90,9 +89,9 @@ for i in range(3):
 
 print(f"Alarm Time:  {time_chk}")
 
-if "true" in flag.lower():
-    print("🎉 SUCCESS: Alarm is SET and ENABLED.")
+if "true" in enabled_status.lower():
+    print("🎉 SUCCESS: Alarm is ACTIVE (Enabled=True).")
 else:
-    print("⚠️ WARNING: Alarm is set but Flag is FALSE. (Maybe enable failed?)")
+    print("⚠️ WARNING: Alarm is set but ENABLED is FALSE.")
 
 print("=============================")
