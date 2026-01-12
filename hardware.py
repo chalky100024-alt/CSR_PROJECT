@@ -157,16 +157,16 @@ class HardwareController:
             target = now + datetime.timedelta(minutes=minutes)
             
             # 3. Calculate Target Time
-            # ISO 8601 format with timezone (Korean Time implies +09:00 locally)
-            target_iso = target.astimezone().strftime("%Y-%m-%dT%H:%M:%S%z")
-            if len(target_iso) > 5 and target_iso[-3] != ':':
-                target_iso = target_iso[:-2] + ':' + target_iso[-2:]
+            # USE UTC ISO (Z Suffix) to avoid timezone parsing issues on PiSugar
+            # USE Repeat=0 (One-Shot) to prevent Date reverting to 2000
+            target_utc = target.astimezone(datetime.timezone.utc)
+            target_iso = target_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
             
-            log_hardware_event(f"Attempting RTC Set: {target_iso}")
+            log_hardware_event(f"Attempting RTC Set (UTC): {target_iso}")
 
-            # Use 'rtc_alarm_set' with REPEAT mask (127 = 0x7F = Every day)
-            # Missing the mask causes 'Invalid request'
-            resp = self.pisugar_command(f'rtc_alarm_set {target_iso} 127')
+            # Use 'rtc_alarm_set' with REPEAT=0 (One-Shot)
+            # This is critical for Firmware compatibility (Year 2026 support)
+            resp = self.pisugar_command(f'rtc_alarm_set {target_iso} 0')
             
             if resp and ('ok' in resp.lower() or 'done' in resp.lower()):
                 self.pisugar_command('rtc_alarm_enable')
