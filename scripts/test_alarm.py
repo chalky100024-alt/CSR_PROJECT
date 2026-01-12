@@ -20,12 +20,12 @@ print(f"Current Time: {now}")
 # Target: +2 minutes
 target = now + datetime.timedelta(minutes=2)
 
-# Format: ISO 8601 with timezone (No Colon in TZ)
-# Standard Python %z gives +0900. Previous code manually added ':'.
-# Maybe PiSugar wants +0900?
-target_iso = target.strftime("%Y-%m-%dT%H:%M:%S%z")
+# Format: UTC ISO 8601 (Z suffix)
+# Force UTC to avoid timezone parsing issues on hardware
+target_utc = target.astimezone(datetime.timezone.utc)
+target_iso = target_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-print(f"Target Time:  {target_iso} (No Colon in TZ)")
+print(f"Target Time (UTC): {target_iso}")
 
 # standard command with REPEAT=0 (One-Shot)
 cmd = f"rtc_alarm_set {target_iso} 0"
