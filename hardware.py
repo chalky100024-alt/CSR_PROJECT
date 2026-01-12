@@ -77,6 +77,12 @@ class HardwareController:
                     s.connect(('127.0.0.1', 8423))
                     s.sendall(cmd.encode())
                     response = s.recv(1024).decode('utf-8').strip()
+                    
+                    # [Robustness Fix] Check if response itself contains an error
+                    # verification: "I/O error" or "Invalid request" should trigger retry or be handled
+                    if "error" in response.lower():
+                        raise Exception(f"Server returned error: {response}")
+
                     if attempt > 0:
                         logger.info(f"PiSugar CMD Retry Success ({attempt+1}/{max_retries}): {cmd}")
                     return response
@@ -86,7 +92,8 @@ class HardwareController:
                     time.sleep(0.2) # Reduced from 1s -> 0.2s
                 else:
                     logger.error(f"PiSugar Error after {max_retries} attempts: {e}")
-                    return None
+                    # Return the error response string if available, or None
+                    return str(e) if "Server returned error" in str(e) else None
 
     def sync_rtc_from_system(self):
         """시스템 시간을 RTC로 동기화 (단, 시스템 시간이 2025년 이후일 때만)"""
