@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { AppShell, Container, Grid, Title, Group, Button, Select, Badge, Tooltip } from '@mantine/core';
-import { IconPhoto, IconSettings, IconBattery, IconBatteryCharging, IconBattery1, IconBattery2, IconBattery3, IconBattery4 } from '@tabler/icons-react';
+import { AppShell, Container, Grid, Group, Button, Select, Badge, Tooltip } from '@mantine/core';
+import { IconSettings, IconBattery, IconBatteryCharging, IconBattery1, IconBattery2, IconBattery3, IconBattery4 } from '@tabler/icons-react';
 import { ModeSwitcher } from './components/ModeSwitcher';
 import { PreviewCard } from './components/PreviewCard';
 import { Gallery } from './components/Gallery';
@@ -126,11 +126,7 @@ function MainApp() {
           }}
         >
           <Container size="xl" h="100%">
-            <Group h="100%" align="center" justify="space-between" wrap="nowrap">
-              <Group wrap="nowrap">
-                <IconPhoto size={28} color="#007AFF" />
-                <Title order={3} style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{t('appTitle')} (v2)</Title>
-              </Group>
+            <Group h="100%" align="center" justify="flex-end" wrap="nowrap">
 
               {/* Right Side Actions */}
               <Group wrap="nowrap">
