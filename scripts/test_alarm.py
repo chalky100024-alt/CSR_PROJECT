@@ -19,16 +19,14 @@ print(f"Current Time: {now}")
 
 # Target: +2 minutes
 target = now + datetime.timedelta(minutes=2)
-# Format: ISO 8601 with timezone (e.g., 2026-01-12T22:40:00+09:00)
-target_iso = target.strftime("%Y-%m-%dT%H:%M:%S%z")
-# Insert colon in timezone if needed (+0900 -> +09:00)
-if len(target_iso) > 5 and target_iso[-3] != ':':
-    target_iso = target_iso[:-2] + ':' + target_iso[-2:]
+# Format: ISO 8601 Naive (No Timezone) - Try to fix "Year 2000" bug
+# The hardware might be choking on the "+09:00" suffix
+target_iso = target.strftime("%Y-%m-%dT%H:%M:%S")
 
-print(f"Target Time:  {target_iso}")
+print(f"Target Time:  {target_iso} (Naive)")
 
-# standard command WITHOUT repeat argument (Try to force One-Shot Date)
-cmd = f"rtc_alarm_set {target_iso}"
+# standard command with REPEAT=0 (One-Shot)
+cmd = f"rtc_alarm_set {target_iso} 0"
 print(f"Sending CMD: '{cmd}'")
 
 resp = send_cmd(cmd)
