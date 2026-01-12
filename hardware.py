@@ -32,9 +32,9 @@ class HardwareController:
 
         # [Auto Logic] Ensure RTC is consistent with System on Startup
         # [Auto Logic] Ensure RTC is consistent with System on Startup
-        if IS_RPI:
-            # Use RTC -> System sync (Safe) instead of System -> RTC (Dangerous on boot)
-            self.sync_system_from_rtc()
+        # REMOVED: Syncing every time __init__ is called is invalid and causes lag.
+        # System time should be trusted after initial boot sync.
+        pass
 
     def display_image(self, pil_image):
         """이미지를 E-Ink에 전송"""
@@ -68,11 +68,12 @@ class HardwareController:
             return "ok"
             
         # Retry logic for I/O errors (e.g. os error 5)
+        # OPTIMIZED: Reduce timeout/sleep to prevent UI Lag
         max_retries = 3
         for attempt in range(max_retries):
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.settimeout(2)
+                    s.settimeout(0.5) # Reduced from 2s -> 0.5s (Localhost should be fast)
                     s.connect(('127.0.0.1', 8423))
                     s.sendall(cmd.encode())
                     response = s.recv(1024).decode('utf-8').strip()
@@ -81,8 +82,8 @@ class HardwareController:
                     return response
             except Exception as e:
                 if attempt < max_retries - 1:
-                    logger.warning(f"PiSugar IO Error (Attempt {attempt+1}/{max_retries}): {e}. Retrying in 1s...")
-                    time.sleep(1)
+                    logger.warning(f"PiSugar IO Error (Attempt {attempt+1}/{max_retries}): {e}. Retrying...")
+                    time.sleep(0.2) # Reduced from 1s -> 0.2s
                 else:
                     logger.error(f"PiSugar Error after {max_retries} attempts: {e}")
                     return None
