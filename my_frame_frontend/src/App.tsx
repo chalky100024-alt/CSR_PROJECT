@@ -28,7 +28,15 @@ function BatteryStatus() {
     return () => clearInterval(interval);
   }, []);
 
-  if (!battery) return null;
+  // Show placeholder if loading
+  if (!battery) {
+    return (
+      <Group gap={4} mr="xs">
+        <IconBattery size={20} color="gray" style={{ opacity: 0.5 }} />
+        <Badge variant="light" color="gray" size="sm">...</Badge>
+      </Group>
+    );
+  }
 
   // Determine Icon
   let Icon = IconBattery;
