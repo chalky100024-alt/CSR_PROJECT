@@ -27,8 +27,9 @@ target_iso = target_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 print(f"Target Time (UTC): {target_iso}")
 
-# standard command with REPEAT=0 (One-Shot)
-cmd = f"rtc_alarm_set {target_iso} 0"
+# standard command with REPEAT=127 (Daily)
+# This prevents the "Past Date" disable issue
+cmd = f"rtc_alarm_set {target_iso} 127"
 print(f"Sending CMD: '{cmd}'")
 
 resp = send_cmd(cmd)
