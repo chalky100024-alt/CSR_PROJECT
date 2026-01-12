@@ -191,12 +191,19 @@ def api_save_config():
     if should_refresh:
         def refresh_task():
             try:
-                print("DEBUG: Restarting service to apply changes...")
-                # Avoid GPIO Busy error by restarting the main service
-                # The service will load the new config and update the display on boot
-                os.system("sudo systemctl restart photoframe.service")
+                print("DEBUG: Triggering Direct Display Refresh...")
+                # DIRECT UPDATE: Don't restart service (kills web server). 
+                # Just invoke the update logic directly.
+                pf = photo_frame.EInkPhotoFrame()
+                
+                # Force the selected photo if provided, otherwise standard refresh
+                target = data.get('selected_photo')
+                pf.refresh_display(target_photo=target)
+                print("DEBUG: Direct Display Refresh Completed.")
             except Exception as e:
-                print(f"Service restart failed: {e}")
+                print(f"Display Refresh Failed: {e}")
+                import traceback
+                traceback.print_exc()
                 
         threading.Thread(target=refresh_task).start()
     
