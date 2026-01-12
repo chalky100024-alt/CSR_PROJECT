@@ -157,16 +157,16 @@ class HardwareController:
             target = now + datetime.timedelta(minutes=minutes)
             
             # 3. Calculate Target Time
-            # USE UTC ISO (Z Suffix) to avoid timezone parsing issues on PiSugar
-            # USE Repeat=0 (One-Shot) to prevent Date reverting to 2000
+            # USE UTC ISO (Z Suffix) to satisfy Parser Syntax
+            # USE Repeat=127 (Daily) to ignore Date (since HW resets to 2000) and ensure wakeup
             target_utc = target.astimezone(datetime.timezone.utc)
             target_iso = target_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
             
-            log_hardware_event(f"Attempting RTC Set (UTC): {target_iso}")
+            log_hardware_event(f"Attempting RTC Set (UTC+Daily): {target_iso}")
 
-            # Use 'rtc_alarm_set' with REPEAT=0 (One-Shot)
-            # This is critical for Firmware compatibility (Year 2026 support)
-            resp = self.pisugar_command(f'rtc_alarm_set {target_iso} 0')
+            # Use 'rtc_alarm_set' with REPEAT=127 (Every Day)
+            # This ensures it fires at HH:MM:SS regardless of the Date
+            resp = self.pisugar_command(f'rtc_alarm_set {target_iso} 127')
             
             if resp and ('ok' in resp.lower() or 'done' in resp.lower()):
                 self.pisugar_command('rtc_alarm_enable')
