@@ -155,18 +155,27 @@ class HardwareController:
             
             import datetime
             now = datetime.datetime.now()
-            target = now + datetime.timedelta(minutes=minutes)
+            # 3. Calculate Target Time using 'MIMIC Strategy'
+            # (Fetch device logic to use its exact format)
+            rtc_raw = self.pisugar_command('get rtc_time') # e.g. "rtc_time: 2026-01-12T23:33:38.000+09:00"
             
-            # 3. Calculate Target Time
-            # USE UTC ISO (Z Suffix) to satisfy Parser Syntax
-            # USE Repeat=127 (Daily) to ignore Date (since HW resets to 2000) and ensure wakeup
-            target_utc = target.astimezone(datetime.timezone.utc)
-            target_iso = target_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+            # Parse Hardware Time
+            current_hw_dt = datetime.datetime.now().astimezone() # Fallback
+            if rtc_raw and "iso" in rtc_raw or "rtc_time" in rtc_raw:
+                 try:
+                     clean_str = rtc_raw.split(":", 1)[1].strip() if ":" in rtc_raw else rtc_raw.strip()
+                     current_hw_dt = datetime.datetime.fromisoformat(clean_str)
+                 except: pass # Keep fallback
             
-            log_hardware_event(f"Attempting RTC Set (UTC+Daily): {target_iso}")
+            target_hw_dt = current_hw_dt + datetime.timedelta(minutes=minutes)
+            
+            # Format back EXACTLY (isoformat with milliseconds usually matches PiSugar)
+            # This avoids UTC/Timezone conversion mismatches
+            target_iso = target_hw_dt.isoformat(timespec='milliseconds')
+            
+            log_hardware_event(f"Attempting RTC Set (Mimic): {target_iso}")
 
             # Use 'rtc_alarm_set' with REPEAT=127 (Every Day)
-            # This ensures it fires at HH:MM:SS regardless of the Date
             resp = self.pisugar_command(f'rtc_alarm_set {target_iso} 127')
             
             if resp and ('ok' in resp.lower() or 'done' in resp.lower()):
