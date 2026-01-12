@@ -476,6 +476,21 @@ def check_power_management():
     try:
         # log_lifecycle_event(f"APP_STARTED | Mode Check Initiated") # Replaced by log_debug
         
+        # [Time Fix] Force Sync System Time from RTC on Boot (Background)
+        # We removed this from HardwareController.__init__ to prevent UI Lag.
+        # So we MUST do it here once.
+        try:
+             # Create ephemeral HW instance just for sync if needed, 
+             # or use the global 'hw' object if thread-safe
+             # Using global 'hw' defined at top of app.py
+             print("🕒 Syncing System Time from RTC...")
+             hw.sync_system_from_rtc()
+             print(f"🕒 Time Synced. Current System Time: {datetime.datetime.now()}")
+             log_lifecycle_event(f"Time Synced from RTC: {datetime.datetime.now()}")
+        except Exception as e:
+             print(f"RTC Sync Failed: {e}")
+             log_lifecycle_event(f"RTC Sync Failed: {e}")
+
         cfg = settings.load_config()
         p_settings = cfg.get('power_settings', {})
         mode = p_settings.get('mode', 'settings')
