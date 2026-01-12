@@ -126,16 +126,18 @@ function MainApp() {
           }}
         >
           <Container size="xl" h="100%">
-            <Group h="100%" align="center" justify="space-between">
-              <Group>
+            <Group h="100%" align="center" justify="space-between" wrap="nowrap">
+              <Group wrap="nowrap">
                 <IconPhoto size={28} color="#007AFF" />
-                <Title order={3} style={{ fontWeight: 600 }} visibleFrom="xs">{t('appTitle')}</Title>
+                <Title order={3} style={{ fontWeight: 600, whiteSpace: 'nowrap' }} visibleFrom="xs">{t('appTitle')}</Title>
               </Group>
 
               {/* Right Side Actions */}
-              <Group>
-                {/* Always Visible Battery */}
-                <BatteryStatus />
+              <Group wrap="nowrap">
+                {/* Always Visible Battery - Prevent Shrinking */}
+                <div style={{ flexShrink: 0 }}>
+                  <BatteryStatus />
+                </div>
 
                 {/* Desktop Menu Items */}
                 <Group visibleFrom="sm">
