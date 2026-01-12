@@ -4,12 +4,17 @@ echo "Date: $(date)"
 echo "----------------------------------------"
 
 # 1. Check Custom Lifecycle Log
-echo "📄 [lifecycle_log.txt] (Last 20 lines)"
+echo "📄 [lifecycle_log.txt] (Full Content)"
 if [ -f ../lifecycle_log.txt ]; then
-    tail -n 20 ../lifecycle_log.txt
+    cat ../lifecycle_log.txt
 else
     echo "❌ lifecyle_log.txt not found!"
 fi
+echo "----------------------------------------"
+
+# 1.5 Check System Boot History
+echo "🖥️ [System Boot History]"
+last reboot | head -n 5
 echo "----------------------------------------"
 
 # 2. Check PiSugar RTC & Alarm
