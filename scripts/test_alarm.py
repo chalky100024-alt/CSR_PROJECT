@@ -14,22 +14,42 @@ def send_cmd(cmd):
         return f"Error: {e}"
 
 print("=== 🧪 PiSugar Alarm Test ===")
-now = datetime.datetime.now().astimezone()
-print(f"Current Time: {now}")
+print("-" * 30)
+# 1. Get Current RTC Time directly from Device
+rtc_raw = send_cmd("get rtc_time")
+print(f"Device RTC Time Raw: '{rtc_raw}'")
 
-# Target: +2 minutes
-target = now + datetime.timedelta(minutes=2)
+if "iso" in rtc_raw or "rtc_time" in rtc_raw:
+    # Cleanup prefix "rtc_time: " if present
+    if ":" in rtc_raw: 
+        rtc_val = rtc_raw.split(":", 1)[1].strip() 
+    else: 
+        rtc_val = rtc_raw.strip()
+else:
+    # Fallback if get failed
+    rtc_val = datetime.datetime.now().astimezone().isoformat()
 
-# Format: UTC ISO 8601 (Z suffix)
-# Force UTC to avoid timezone parsing issues on hardware
-target_utc = target.astimezone(datetime.timezone.utc)
-target_iso = target_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
+print(f"Device RTC Time Val: '{rtc_val}'")
 
-print(f"Target Time (UTC): {target_iso}")
+# 2. Parse it to add 2 minutes
+# The device format is likely: 2026-01-12T23:33:38.000+09:00
+# We need to preserve this structure EXACTLY.
+try:
+    # Try parsing full ISO
+    cur_dt = datetime.datetime.fromisoformat(rtc_val)
+except:
+    # Fallback to local
+    cur_dt = datetime.datetime.now().astimezone()
+
+target_dt = cur_dt + datetime.timedelta(minutes=2)
+
+# 3. Format back EXACTLY like input (ISO with T, .000 ms, and Timezone)
+# Python isoformat() usually does this well
+target_str = target_dt.isoformat(timespec='milliseconds')
+print(f"Target Time (Mimic): {target_str}")
 
 # standard command with REPEAT=127 (Daily)
-# This prevents the "Past Date" disable issue
-cmd = f"rtc_alarm_set {target_iso} 127"
+cmd = f"rtc_alarm_set {target_str} 127"
 print(f"Sending CMD: '{cmd}'")
 
 resp = send_cmd(cmd)
