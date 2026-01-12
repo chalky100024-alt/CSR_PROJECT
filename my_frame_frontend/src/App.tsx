@@ -132,31 +132,44 @@ function MainApp() {
                 <Title order={3} style={{ fontWeight: 600 }} visibleFrom="xs">{t('appTitle')}</Title>
               </Group>
 
-              {/* Desktop Menu */}
-              <Group visibleFrom="sm">
-                {/* Battery Status */}
+              {/* Right Side Actions */}
+              <Group>
+                {/* Always Visible Battery */}
                 <BatteryStatus />
 
-                <Select
-                  data={[
-                    { value: 'ko', label: '🇰🇷 한국어' },
-                    { value: 'en', label: '🇺🇸 English' },
-                    { value: 'ja', label: '🇯🇵 日本語' },
-                    { value: 'zh', label: '🇨🇳 中文' },
-                  ]}
-                  value={language}
-                  onChange={(v) => setLanguage(v as Language)}
-                  w={120}
-                  size="xs"
-                  radius="md"
-                  allowDeselect={false}
-                />
-                <Button variant="default" radius="xl" leftSection={<IconSettings size={18} />} onClick={() => setSettingsOpen(true)}>
-                  {t('settings')}
-                </Button>
-                {/* Mode Indicator & Switcher */}
-                {/* Desktop Mode Switcher */}
+                {/* Desktop Menu Items */}
                 <Group visibleFrom="sm">
+                  <Select
+                    data={[
+                      { value: 'ko', label: '🇰🇷 한국어' },
+                      { value: 'en', label: '🇺🇸 English' },
+                      { value: 'ja', label: '🇯🇵 日本語' },
+                      { value: 'zh', label: '🇨🇳 中文' },
+                    ]}
+                    value={language}
+                    onChange={(v) => setLanguage(v as Language)}
+                    w={120}
+                    size="xs"
+                    radius="md"
+                    allowDeselect={false}
+                  />
+                  <Button variant="default" radius="xl" leftSection={<IconSettings size={18} />} onClick={() => setSettingsOpen(true)}>
+                    {t('settings')}
+                  </Button>
+                  <Group>
+                    <ModeSwitcher
+                      currentMode={powerMode}
+                      onModeChange={(newMode) => {
+                        setPowerMode(newMode);
+                        window.location.reload();
+                      }}
+                      t={t}
+                    />
+                  </Group>
+                </Group>
+
+                {/* Mobile Menu Items */}
+                <Group hiddenFrom="sm">
                   <ModeSwitcher
                     currentMode={powerMode}
                     onModeChange={(newMode) => {
@@ -164,27 +177,13 @@ function MainApp() {
                       window.location.reload();
                     }}
                     t={t}
+                    compact={true}
                   />
+
+                  <Button variant="subtle" size="sm" p={0} onClick={() => setSettingsOpen(true)}>
+                    <IconSettings size={24} />
+                  </Button>
                 </Group>
-
-              </Group>
-
-              {/* Mobile Menu Button */}
-              <Group hiddenFrom="sm">
-                <BatteryStatus />
-                <ModeSwitcher
-                  currentMode={powerMode}
-                  onModeChange={(newMode) => {
-                    setPowerMode(newMode);
-                    window.location.reload();
-                  }}
-                  t={t}
-                  compact={true}
-                />
-
-                <Button variant="subtle" size="sm" p={0} onClick={() => setSettingsOpen(true)}>
-                  <IconSettings size={24} />
-                </Button>
               </Group>
             </Group>
           </Container>
