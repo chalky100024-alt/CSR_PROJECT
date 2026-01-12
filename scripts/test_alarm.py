@@ -63,7 +63,13 @@ print(f"Response:    '{resp}'")
 if "ok" in resp.lower() or "done" in resp.lower() or "success" in resp.lower():
     print("✅ Alarm Set Command ACCEPTED")
     # Enable FIRST before checking flag
-    send_cmd("rtc_alarm_enable")
+    # CAPTURE RESPONSE to see if this command actually exists
+    enable_resp = send_cmd("rtc_alarm_enable")
+    print(f"Enable CMD Response: '{enable_resp}'")
+    
+    if "invalid" in enable_resp.lower():
+        print("❌ 'rtc_alarm_enable' command is INVALID. Trying 'rtc_alarm_set ... enable'?")
+    
     print("✅ Alarm Enabled Signal Sent")
 else:
     print("❌ Alarm Set Command FAILED (Check syntax or connection)")
