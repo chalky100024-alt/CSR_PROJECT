@@ -27,8 +27,8 @@ if len(target_iso) > 5 and target_iso[-3] != ':':
 
 print(f"Target Time:  {target_iso}")
 
-# standard command
-cmd = f"rtc_alarm_set {target_iso} 127"
+# standard command with REPEAT=0 (One-Shot) to preserve Date
+cmd = f"rtc_alarm_set {target_iso} 0"
 print(f"Sending CMD: '{cmd}'")
 
 resp = send_cmd(cmd)
