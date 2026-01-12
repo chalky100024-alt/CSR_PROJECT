@@ -94,7 +94,7 @@ def _load_weather_icons(icon_dir):
                 pass
     return icons
 
-def create_composed_image(image_path, weather_data, dust_data, layout_config=None, location_name="위치 미설정"):
+def create_composed_image(image_path, weather_data, dust_data, layout_config=None, location_name="위치 미설정", batt_info=None):
     # Defaults
     if layout_config is None: layout_config = {}
     
@@ -194,6 +194,9 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
     now = datetime.now()
     # User Req: "12/18 05:30 기준" format
     time_str = now.strftime('%m/%d %H:%M 기준')
+    
+    # Battery String (Optional in Main Widget, typically not shown but can be added if needed)
+    # User only requested Popup.
 
     # --- Layout Calculation ---
     current_y = padding
@@ -310,6 +313,25 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
             rx = 20 
             ry = DISPLAY_HEIGHT - 100 - 20
             final_image.paste(rain_widget, (rx, ry), rain_widget)
+
+    # [Battery Low Widget Composite]
+    if batt_info:
+        batt_widget = create_battery_alert_widget(batt_info)
+        if batt_widget:
+            # Place above Rain Widget or at bottom if no rain widget
+            # Let's stack them or place in similar spot (Rain check might already trigger)
+            # If both exist, maybe stack?
+            # For now, put it slightly higher if RAIN exists? Or just override.
+            # Let's put it on the LEFT bottom, similar to rain.
+            # If Rain exists, move Battery UP?
+            has_rain = (weather_data and create_rain_widget(weather_data) is not None)
+            
+            bx = 20
+            by = DISPLAY_HEIGHT - 100 - 20
+            if has_rain:
+                by -= (100 + 10) # Move up by widget height + margin
+                
+            final_image.paste(batt_widget, (bx, by), batt_widget)
             
     return final_image, box_x, box_y, box_w, box_h
 
@@ -358,6 +380,39 @@ def create_rain_widget(weather_data):
     
     # Draw Text (Blue/Dark Blue for visibility)
     draw.text((tx, ty), message, font=font_large, fill=(0, 50, 150))
+    
+    return img
+
+def create_battery_alert_widget(batt_info):
+    """
+    Creates a popup if battery is < 15% and NOT charging
+    """
+    level = batt_info.get('level', 100)
+    charging = batt_info.get('charging', False)
+    
+    if level >= 15 or charging:
+        return None
+        
+    message = f"🪫 배터리 부족 ({int(level)}%), 충전해 주세요!"
+    
+    w_h = 100
+    w_w = DISPLAY_WIDTH - 40
+    
+    img = Image.new('RGBA', (w_w, w_h), (255, 255, 255, 0))
+    draw = ImageDraw.Draw(img)
+    
+    # Background (Red tint/White)
+    draw.rounded_rectangle([0, 0, w_w, w_h], radius=30, fill=(255, 240, 240, 240)) # Light Red Hue
+    
+    font_large = get_font(40)
+    text_w = font_large.getlength(message)
+    text_h = font_large.getbbox(message)[3]
+    
+    tx = (w_w - text_w) / 2
+    ty = (w_h - text_h) / 2 - 5
+    
+    # Red Warning Text
+    draw.text((tx, ty), message, font=font_large, fill=(200, 0, 0))
     
     return img
 

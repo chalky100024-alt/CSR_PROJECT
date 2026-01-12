@@ -163,6 +163,7 @@ function MainApp() {
 
               {/* Mobile Menu Button */}
               <Group hiddenFrom="sm">
+                <BatteryStatus />
                 <ModeSwitcher
                   currentMode={powerMode}
                   onModeChange={(newMode) => {

@@ -109,6 +109,13 @@ class EInkPhotoFrame:
                 self.epd = None
         else:
             logger.warning("⚠️ Waveshare 라이브러리를 찾을 수 없어 미리보기 모드로 전환합니다.")
+            
+        # Hardware Controller Init
+        try:
+            self.hw = hardware.HardwareController()
+        except Exception as e:
+            logger.error(f"Hardware Logic Init Failed: {e}")
+            self.hw = None
 
     def get_7color_palette(self):
         standard_7_colors = [0, 0, 0, 255, 255, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 165, 0]
@@ -185,6 +192,16 @@ class EInkPhotoFrame:
             d_data = self.get_fine_dust_data()
             logger.info("Fetching Weather Data...")
             w_data = self.get_weather_data()
+            
+            # Fetch Battery Data
+            batt_info = None
+            if self.hw:
+                try:
+                    batt_info = self.hw.get_battery_status()
+                    logger.info(f"Battery Info: {batt_info}")
+                except Exception as e:
+                    logger.warning(f"Failed to fetch battery info: {e}")
+
             logger.info(f"Data Fetch Complete. Dust: {bool(d_data)}, Weather: {bool(w_data)}")
             
             # 설정 및 위치 이름 로드
@@ -199,7 +216,8 @@ class EInkPhotoFrame:
                     w_data, 
                     d_data, 
                     layout_config, 
-                    location_name
+                    location_name,
+                    batt_info  # Passed to renderer
                 )
                 logger.info("Renderer Success.")
             except Exception as e:
