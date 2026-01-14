@@ -117,10 +117,10 @@ def create_unibody_frame():
     # Previous X was cx - 35. Let's keep it to allow room for battery on right.
     ps_cx = cx - 35.0
     
-    # Standard Pi Zero Mounts: 58mm x 23mm -> NO! User wanted PiSugar Spec (57.5 x 48.8)
+    # Standard Pi Zero Mounts: 57.5 x 48.8
     standoff_dx = 57.5 
     standoff_dy = 48.8
-    standoff_h = 5.0
+    standoff_h = 12.0 # User Request: 12mm Height
     
     standoffs = []
     # 4 Holes (User Request: "4 holes")
@@ -142,11 +142,11 @@ def create_unibody_frame():
     for s in standoffs: body = body.union(s)
     
     # 2. Battery Walls (Right Side)
-    # User Request: "Position slightly lower"
-    # Previously was aligned with PiSugar (Top). Now moving back to Center?
-    # Or just slightly down? Let's move it to Center Y (cy) which is "Lower" than Top.
+    # User Request: "Position slightly higher" (Higher than Center)
+    # Center = cy. Top = ps_cy.
+    # Let's move it UP by 15mm from Center.
     batt_cx = cx + 35.0
-    batt_cy = cy # Centered vertically
+    batt_cy = cy + 15.0 
     
     bw_th = 1.5
     b_outer = trimesh.creation.box(extents=[batt_w + bw_th*2, batt_h + bw_th*2, comp_wall_h])
@@ -185,10 +185,14 @@ def create_unibody_frame():
         m_cut.apply_transform(trimesh.transformations.translation_matrix([mx, my, dim[2]/2 - 0.1]))
         body = body.difference(m_cut)
         
-    # 2. USB Port (Top Wall) - UPDATED SIZE
+    # 2. USB Port (Top Wall) - UPDATED SIZE & HEIGHT
     # User Request: 13mm (W) x 6mm (H)
+    # Align Height with "Top of Standoffs".
+    # PCB sits ON standoff (Z = floor_z + standoff_h).
+    # USB Port sits ON PCB.
+    # Center of Port (Height 6mm) is PCB_Surface + 3mm.
     port_x = (ps_cx + sugar_w/2) - 11.5
-    port_z_center = floor_z + comp_wall_h + 2.0 
+    port_z_center = floor_z + standoff_h + 3.0 
     
     # Cutout
     usb_cut = trimesh.creation.box(extents=[13.0, 10.0, 6.0]) # W=13, Depth=10, H=6
