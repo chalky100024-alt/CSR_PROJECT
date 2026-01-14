@@ -50,7 +50,33 @@ def create_unibody_frame():
     # ------------------------------------------
     print("   [Front] Cutting Window & Rails...")
     
-    # 1. Viewing Window (160x97)
+    # 1. ADD INTERNAL RAIL BLOCKS (Critical Fix)
+    # The box inner width (176mm) is wider than the slot (170mm).
+    # Without these blocks, the slot cuts air and screen falls in.
+    # We add 8mm wide blocks on Left/Right walls to narrow the opening to 160mm (Window Width).
+    # Then we cut the 170mm Slot INTO these blocks, creating a 5mm "U-Channel".
+    
+    rail_block_w = 8.0
+    rail_block_z = 3.0 # Thickness of the backing rail (how strong it is) -> User said "1.2mm plate"? 
+    # Let's make it robust (full depth of slot + backing).
+    # It needs to exist from Front Face down to some depth.
+    # Front Face Z = total_depth.
+    # We place blocks flush with Front Face (internal).
+    
+    # Left Block
+    b_left = trimesh.creation.box(bounds=[
+        [wall_thickness, 0, total_depth - 10.0], # Start 10mm deep
+        [wall_thickness + rail_block_w, outer_length, total_depth - 1.5] # Touch Front Face
+    ])
+    # Right Block
+    b_right = trimesh.creation.box(bounds=[
+        [outer_width - wall_thickness - rail_block_w, 0, total_depth - 10.0],
+        [outer_width - wall_thickness, outer_length, total_depth - 1.5]
+    ])
+    
+    body = body.union([b_left, b_right])
+    
+    # 2. Viewing Window (160x97)
     window_w = 160.0
     window_l = 97.0
     wx_min = (outer_width - window_w) / 2
@@ -62,7 +88,7 @@ def create_unibody_frame():
     ])
     body = body.difference(window_cutter)
     
-    # 2. Card Slot Cutter (The Slide-in Mechanism)
+    # 3. Card Slot Cutter (The Slide-in Mechanism)
     # Rail inside the tub walls.
     # Slot Width: 170mm (5mm wider than window on each side -> Rails)
     slot_w = 170.0
@@ -91,7 +117,7 @@ def create_unibody_frame():
     ])
     
     body = body.difference(slot_cutter)
-    print("   [Front] Slide-in Slot Created.")
+    print("   [Front] Side Rails & Slot Created.")
 
     # ------------------------------------------
     # C. Back Features (Mounts on Floor)
