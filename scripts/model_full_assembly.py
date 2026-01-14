@@ -66,7 +66,7 @@ def create_unibody_frame():
     # Rail inside the tub walls.
     # Slot Width: 170mm (5mm wider than window on each side -> Rails)
     slot_w = 170.0
-    slot_gap_z = 2.0 # Thickness of the slot gap (screen thickness + tolerance)
+    slot_gap_z = 1.2 # User Request: 1.2mm Gap (Tight fit for 1mm screen)
     
     # Position: Just behind the Front Face
     # Front Face starts at Z = total_depth - 1.5
