@@ -5,10 +5,11 @@ import numpy as np
 # 1. Configuration & Dimensions
 # ==========================================
 outer_width = 180.0
-outer_length = 110.0
+outer_length = 115.0 # User Request: Extended to allow bottom wall thickness for cable groove
 total_depth = 40.0   # User Request: Increase Depth for 20mm Internal Clearance
 wall_thickness = 2.0
 floor_thickness = 2.0 # Back wall thickness
+bottom_wall_th = 7.0 # User Request: Thicker bottom wall (5mm groove + 2mm solid)
 
 # Components (PiSugar)
 sugar_w = 65.0
@@ -37,8 +38,10 @@ def create_unibody_frame():
     # User said "One container... front has screen slot".
     # Effectively, we hollow the INSIDE.
     
+    # Y-Min: bottom_wall_th (7.0mm) instead of wall_thickness (2.0)
+    # This shifts the internal floor plan up in Y.
     hollow = trimesh.creation.box(bounds=[
-        [wall_thickness, wall_thickness, floor_thickness],
+        [wall_thickness, bottom_wall_th, floor_thickness],
         [outer_width - wall_thickness, outer_length - wall_thickness, total_depth - 1.5] # Leave 1.5mm Front Face
     ])
     
@@ -106,7 +109,9 @@ def create_unibody_frame():
     # Needs to cut Bottom Rail (start a bit higher than wall?)
     # Wall is at Y=0. Window starts at Y=6.5.
     # Rail Groove should start at Y=wall_thickness + 1.0 (approx 3.0)
-    sy_min = wall_thickness + 1.5 
+    # Sy Min must take Bottom Wall into account.
+    # Bottom Wall = 7.0. Rail Groove start = 7.0 + 1.5 = 8.5.
+    sy_min = bottom_wall_th + 1.5 
     
     # Top Entry: MUST cut through the Top Wall (Y=outer_length)
     sy_max = outer_length + 5.0 
@@ -127,16 +132,8 @@ def create_unibody_frame():
     rc_x_center = outer_width / 2
     rc_y_max = sy_min # Top of groove = Bottom of Slot
     rc_y_min = sy_min - ribbon_h # Bottom of groove (Might cut through outer wall)
-    
-    ribbon_cut = trimesh.creation.box(bounds=[
-        [rc_x_center - ribbon_w/2, rc_y_min, slot_z_start],
-        [rc_x_center + ribbon_w/2, rc_y_max, slot_z_end] # Same Z as slot? Or deeper Z? 
-        # Usually ribbon curls IN. Maybe cut Z deeper too?
-        # User only said "Groove". I'll keep Z same as slot to start.
-        # Actually, if it curls IN, we should cut inwards (Z-).
-        # Let's cut Z through to the inside (Total Z range of slot + extra inward?)
-        # Let's just match slot Z for now to make the "hole" in the ledge.
-    ])
+    # Global Y=3.5 is INSIDE the 7.0mm wall. (0 to 7.0).
+    # So 0 to 3.5 remains solid. NO HOLE. Confirmed.
     
     # Extend Z slightly inwards to allow cable to enter case?
     # Slot is at Z ~ 37-38. Inside is Z < 37.
