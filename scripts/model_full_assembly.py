@@ -183,27 +183,26 @@ def create_unibody_frame():
     
     body = body.union(b_outer.difference(b_inner))
     
-    # 3. Wire Cutout for Battery (User Request: "Break the wall for wires")
+    # 3. Wire Cutout for Battery (User Request: "Left Wall, Lowest part, 10mm")
     # Correct Logic: Cut ONLY the wall, not the floor.
-    # We want a pass-through from Battery area to Board area (Left side).
-    # Wall X position: Left wall of battery box.
-    # Cut dimensions: 5mm wide (Y-axis width since wall runs along Y? No, Left wall runs along Y).
-    # Wait, Left Wall is a wall in the Y-direction (Side wall).
-    # So we cut a chunk of it.
+    # Location: Bottom of the Left Wall.
     
-    wire_width_y = 5.0  # Width of the opening along the wall
-    wire_depth_x = 10.0 # Thickness of cut (to fully sever wall)
-    wire_height_z = comp_wall_h + 2.0 # Higher than wall
+    wire_width_y = 10.0  # User Request: 10mm
+    wire_depth_x = 10.0 # Thickness of cut
+    wire_height_z = comp_wall_h + 2.0 
     
     wire_cutter = trimesh.creation.box(extents=[wire_depth_x, wire_width_y, wire_height_z])
     
     # Position:
-    # X: Centered on the Left Wall. Left Wall X ~= batt_cx - batt_w/2
+    # X: Left Wall
     wc_x = batt_cx - (batt_w/2) - bw_th
-    # Y: Center of Battery (batt_cy)
-    wc_y = batt_cy
-    # Z: Sitting ON the floor (floor_z + height/2). 
-    # Must NOT go below floor_z.
+    # Y: Lowest part (Bottom Edge of Inner Box)
+    # Inner Box Y range: [batt_cy - batt_h/2, batt_cy + batt_h/2]
+    # We want the 10mm cut to be at the start (Bottom).
+    # Center of cutter = Start + Width/2
+    wc_y = (batt_cy - batt_h/2) + (wire_width_y / 2)
+    
+    # Z: Sitting ON the floor
     wc_z = floor_z + (wire_height_z / 2)
     
     wire_cutter.apply_transform(trimesh.transformations.translation_matrix([wc_x, wc_y, wc_z]))
