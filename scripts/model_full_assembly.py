@@ -207,7 +207,7 @@ def create_unibody_frame():
     # Specs
     btn_rad = 4.0
     slot = 1.0
-    nub_h = 1.5
+    nub_h = 10.0 # User Request: 10mm Height to reach PCB
     
     # A. Ring Cut (Cut through floor)
     ring = trimesh.creation.cylinder(radius=btn_rad + slot, height=floor_thickness + 2)
