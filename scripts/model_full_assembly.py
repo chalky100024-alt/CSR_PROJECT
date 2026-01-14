@@ -117,7 +117,40 @@ def create_unibody_frame():
     ])
     
     body = body.difference(slot_cutter)
-    print("   [Front] Side Rails & Slot Created.")
+    
+    # 4. Ribbon Cable Relief (User Request: "Bottom Center, 35mm wide, 5mm deep groove")
+    # Screen cable comes out of bottom. Needs space so it's not crushed.
+    # Cut into the "Floor" of the slot (sy_min).
+    ribbon_w = 35.0
+    ribbon_h = 5.0 # "Depth" of groove (Y-direction down)
+    
+    rc_x_center = outer_width / 2
+    rc_y_max = sy_min # Top of groove = Bottom of Slot
+    rc_y_min = sy_min - ribbon_h # Bottom of groove (Might cut through outer wall)
+    
+    ribbon_cut = trimesh.creation.box(bounds=[
+        [rc_x_center - ribbon_w/2, rc_y_min, slot_z_start],
+        [rc_x_center + ribbon_w/2, rc_y_max, slot_z_end] # Same Z as slot? Or deeper Z? 
+        # Usually ribbon curls IN. Maybe cut Z deeper too?
+        # User only said "Groove". I'll keep Z same as slot to start.
+        # Actually, if it curls IN, we should cut inwards (Z-).
+        # Let's cut Z through to the inside (Total Z range of slot + extra inward?)
+        # Let's just match slot Z for now to make the "hole" in the ledge.
+    ])
+    
+    # Extend Z slightly inwards to allow cable to enter case?
+    # Slot is at Z ~ 37-38. Inside is Z < 37.
+    # If we cut the ledge, the cable falls INTO the case (Z < Slot).
+    # So we should extend the cutter Z range to 0 (or deep inside).
+    # To Ensure connection to inside.
+    ribbon_cut = trimesh.creation.box(bounds=[
+        [rc_x_center - ribbon_w/2, rc_y_min, floor_thickness], # Go all the way to floor?
+        [rc_x_center + ribbon_w/2, rc_y_max, slot_z_end]
+    ])
+    
+    body = body.difference(ribbon_cut)
+    
+    print("   [Front] Side Rails & Slot & Ribbon Relief Created.")
 
     # ------------------------------------------
     # C. Back Features (Mounts on Floor)
