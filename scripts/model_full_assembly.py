@@ -142,12 +142,11 @@ def create_unibody_frame():
     for s in standoffs: body = body.union(s)
     
     # 2. Battery Walls (Right Side)
-    # Align Y with PiSugar or Centered?
-    # Let's align Y with PiSugar to keep them tidy at top?
-    # Or keep centered Y? User didn't complain about battery.
-    # But if Pi is at Top, Battery should probably be at Top too for cable reach.
+    # User Request: "Position slightly lower"
+    # Previously was aligned with PiSugar (Top). Now moving back to Center?
+    # Or just slightly down? Let's move it to Center Y (cy) which is "Lower" than Top.
     batt_cx = cx + 35.0
-    batt_cy = ps_cy # Align with Pi
+    batt_cy = cy # Centered vertically
     
     bw_th = 1.5
     b_outer = trimesh.creation.box(extents=[batt_w + bw_th*2, batt_h + bw_th*2, comp_wall_h])
@@ -188,12 +187,6 @@ def create_unibody_frame():
         
     # 2. USB Port (Top Wall) - UPDATED SIZE
     # User Request: 13mm (W) x 6mm (H)
-    # Aligned with PiSugar/Board.
-    # Previous X alignment: (ps_cx + sugar_w/2) - 11.5
-    # Since we moved PiSugar, ps_cx is new, but relative logic holds.
-    # We should ensure this matches the Type-C port location on Pi.
-    # Assuming the previous offset was roughly correct for "Right Edge" placement.
-    # Or should we center it? User said "connect to charging port".
     port_x = (ps_cx + sugar_w/2) - 11.5
     port_z_center = floor_z + comp_wall_h + 2.0 
     
@@ -203,15 +196,43 @@ def create_unibody_frame():
     body = body.difference(usb_cut)
     
     # 3. Reset Button (Back Face Flexure)
-    # Left of PiSugar
+    # Restore Flexure Mechanism (Ring Cut + Nub)
     btn_x = (ps_cx - sugar_w/2) + 10.0
-    btn_y = (ps_cy + sugar_l/2) - 15.0 # Approx logic
+    btn_y = (ps_cy + sugar_l/2) - 15.0 
     
-    # Position Update: ps_cy changed, so btn_y automatically moves up with board. Good.
+    # Specs
+    btn_rad = 4.0
+    slot = 1.0
+    nub_h = 1.5
     
-    btn_hole = trimesh.creation.cylinder(radius=3.0, height=floor_thickness + 2)
-    btn_hole.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y, floor_thickness/2]))
-    body = body.difference(btn_hole)
+    # A. Ring Cut (Cut through floor)
+    ring = trimesh.creation.cylinder(radius=btn_rad + slot, height=floor_thickness + 2)
+    ring.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y, floor_thickness/2]))
+    inner = trimesh.creation.cylinder(radius=btn_rad, height=floor_thickness + 2)
+    inner.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y, floor_thickness/2]))
+    cut = ring.difference(inner)
+    
+    # B. Hinge (Top side - keeps button attached to body)
+    hinge = trimesh.creation.box(extents=[6.0, 3.0, floor_thickness + 2])
+    hinge.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y + btn_rad, floor_thickness/2]))
+    
+    final_cut = cut.difference(hinge)
+    body = body.difference(final_cut)
+    
+    # C. Nub (Pushed button part - protrudes outwards? Or inwards?)
+    # Usually protrudes OUT for finger press, or IN to hit switch?
+    # Logic in back_cover: nub at z = base + nub_h/2. -> "Inside" the box (Z+).
+    # Ah, the button press is EXTERNAL, pushing the nub INTERNAL to hit the switch.
+    # So Nub should be on the INSIDE face (Z = floor_thickness).
+    nub = trimesh.creation.cylinder(radius=1.5, height=nub_h)
+    nub.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y, floor_thickness + nub_h/2]))
+    body = body.union(nub)
+    
+    # D. Groove (Tactile mark on outside?)
+    # logic: Z = 0.4. Outside face is Z=0.
+    groove = trimesh.creation.box(extents=[6.0, 2.0, 0.8])
+    groove.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y + btn_rad, 0.4]))
+    body = body.difference(groove)
     
     return body
 
