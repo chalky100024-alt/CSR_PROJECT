@@ -283,8 +283,22 @@ def create_unibody_frame():
     
     # 3. Reset Button (Back Face Flexure)
     # Restore Flexure Mechanism (Ring Cut + Nub)
-    btn_x = (ps_cx - sugar_w/2) + 10.0
-    btn_y = (ps_cy + sugar_l/2) - 15.0 
+    # User Request: "8mm horizontal, 12mm vertical from Left Standoff Center"
+    # Assuming Top-Left Standoff (near Reset).
+    
+    # Calculate Top-Left Standoff Position
+    # ps_cx is center of mounting group? No, ps_cx is center of board area.
+    # Standoffs defined as: ps_cx + (sx * dx/2), ps_cy + (sy * dy/2)
+    # Top-Left: sx=-1, sy=1 (if Y-up is Top)
+    
+    st_tl_x = ps_cx - (standoff_dx / 2)
+    st_tl_y = ps_cy + (standoff_dy / 2)
+    
+    # Apply User Offsets
+    # "8mm horizontal" -> Right (+8.0)
+    # "12mm vertical" -> Down (-12.0)
+    btn_x = st_tl_x + 8.0
+    btn_y = st_tl_y - 12.0
     
     # Specs
     btn_rad = 4.0
