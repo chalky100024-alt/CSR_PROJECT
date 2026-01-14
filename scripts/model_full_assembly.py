@@ -6,7 +6,7 @@ import numpy as np
 # ==========================================
 outer_width = 180.0
 outer_length = 110.0
-total_depth = 35.0   # Total Thickness (Back to Front)
+total_depth = 40.0   # User Request: Increase Depth for 20mm Internal Clearance
 wall_thickness = 2.0
 floor_thickness = 2.0 # Back wall thickness
 
