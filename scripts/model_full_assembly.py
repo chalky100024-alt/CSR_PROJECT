@@ -104,35 +104,50 @@ def create_unibody_frame():
     cx = outer_width / 2
     cy = outer_length / 2
     
-    # 1. PiSugar Standoffs (Left Side)
-    # Shift logic from previous: Pi -35mm, Batt +35mm
-    ps_cx = cx - 35.0
-    ps_cy = cy
+    # 1. PiSugar Standoffs (Left Side -> Moved to TOP)
+    # User Request: "Attached to the top so it can connect to charging port"
     
-    standoff_dist = 58.0 # X-dist
+    # Y-Position: Align Top Edge of PiSugar with Top Wall (minus gap)
+    # PiSugar Length = 56.5. Top Wall Y = outer_length (110).
+    # Margin = 1.0mm
+    ps_top_y = outer_length - wall_thickness - 1.0
+    ps_cy = ps_top_y - (sugar_l / 2)
+    
+    # X-Position: Keep at Left (cx - 35) or user said "one container... put board...".
+    # Previous X was cx - 35. Let's keep it to allow room for battery on right.
+    ps_cx = cx - 35.0
+    
+    # Standard Pi Zero Mounts: 58mm x 23mm
+    standoff_dx = 58.0 
+    standoff_dy = 23.0
     standoff_h = 5.0
     
     standoffs = []
-    # Holes for standoff screws
-    for sign in [-1, 1]:
-        hx = ps_cx + (sign * standoff_dist / 2)
-        hy = ps_cy 
-        
-        # Post
-        post = trimesh.creation.cylinder(radius=2.5, height=standoff_h)
-        post.apply_transform(trimesh.transformations.translation_matrix([hx, hy, floor_z + standoff_h/2]))
-        
-        # Hole
-        hole = trimesh.creation.cylinder(radius=1.1, height=standoff_h + 5)
-        hole.apply_transform(trimesh.transformations.translation_matrix([hx, hy, floor_z + standoff_h/2]))
-        
-        standoffs.append(post.difference(hole))
+    # 4 Holes (User Request: "4 holes")
+    for sx in [-1, 1]:
+        for sy in [-1, 1]:
+            hx = ps_cx + (sx * standoff_dx / 2)
+            hy = ps_cy + (sy * standoff_dy / 2)
+            
+            # Post
+            post = trimesh.creation.cylinder(radius=2.5, height=standoff_h)
+            post.apply_transform(trimesh.transformations.translation_matrix([hx, hy, floor_z + standoff_h/2]))
+            
+            # Hole (Screw thread size, approx 2.2mm dia -> 1.1 rad)
+            hole = trimesh.creation.cylinder(radius=1.1, height=standoff_h + 5)
+            hole.apply_transform(trimesh.transformations.translation_matrix([hx, hy, floor_z + standoff_h/2]))
+            
+            standoffs.append(post.difference(hole))
         
     for s in standoffs: body = body.union(s)
     
     # 2. Battery Walls (Right Side)
+    # Align Y with PiSugar or Centered?
+    # Let's align Y with PiSugar to keep them tidy at top?
+    # Or keep centered Y? User didn't complain about battery.
+    # But if Pi is at Top, Battery should probably be at Top too for cable reach.
     batt_cx = cx + 35.0
-    batt_cy = cy
+    batt_cy = ps_cy # Align with Pi
     
     bw_th = 1.5
     b_outer = trimesh.creation.box(extents=[batt_w + bw_th*2, batt_h + bw_th*2, comp_wall_h])
@@ -171,13 +186,19 @@ def create_unibody_frame():
         m_cut.apply_transform(trimesh.transformations.translation_matrix([mx, my, dim[2]/2 - 0.1]))
         body = body.difference(m_cut)
         
-    # 2. USB Port (Top Wall)
-    # Aligned with PiSugar Right Edge
-    # PiSugar Right Edge X approx = ps_cx + (sugar_w/2)
+    # 2. USB Port (Top Wall) - UPDATED SIZE
+    # User Request: 13mm (W) x 6mm (H)
+    # Aligned with PiSugar/Board.
+    # Previous X alignment: (ps_cx + sugar_w/2) - 11.5
+    # Since we moved PiSugar, ps_cx is new, but relative logic holds.
+    # We should ensure this matches the Type-C port location on Pi.
+    # Assuming the previous offset was roughly correct for "Right Edge" placement.
+    # Or should we center it? User said "connect to charging port".
     port_x = (ps_cx + sugar_w/2) - 11.5
-    port_z_center = floor_z + comp_wall_h + 2.0 # Approx height of USB port on Pi
+    port_z_center = floor_z + comp_wall_h + 2.0 
     
-    usb_cut = trimesh.creation.box(extents=[10.0, 10.0, 5.0]) # W, Depth(Cut through wall), H
+    # Cutout
+    usb_cut = trimesh.creation.box(extents=[13.0, 10.0, 6.0]) # W=13, Depth=10, H=6
     usb_cut.apply_transform(trimesh.transformations.translation_matrix([port_x, outer_length, port_z_center]))
     body = body.difference(usb_cut)
     
@@ -186,10 +207,8 @@ def create_unibody_frame():
     btn_x = (ps_cx - sugar_w/2) + 10.0
     btn_y = (ps_cy + sugar_l/2) - 15.0 # Approx logic
     
-    # Simple Hole (User wanted robust hole, not complex flexure maybe? 
-    # But code had flexure. Let's do a simple hole for "RESET" access)
-    # User said "reset button magnet groove".
-    # I'll cut a hole through the floor.
+    # Position Update: ps_cy changed, so btn_y automatically moves up with board. Good.
+    
     btn_hole = trimesh.creation.cylinder(radius=3.0, height=floor_thickness + 2)
     btn_hole.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y, floor_thickness/2]))
     body = body.difference(btn_hole)
