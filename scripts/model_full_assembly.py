@@ -117,9 +117,9 @@ def create_unibody_frame():
     # Previous X was cx - 35. Let's keep it to allow room for battery on right.
     ps_cx = cx - 35.0
     
-    # Standard Pi Zero Mounts: 58mm x 23mm
-    standoff_dx = 58.0 
-    standoff_dy = 23.0
+    # Standard Pi Zero Mounts: 58mm x 23mm -> NO! User wanted PiSugar Spec (57.5 x 48.8)
+    standoff_dx = 57.5 
+    standoff_dy = 48.8
     standoff_h = 5.0
     
     standoffs = []
