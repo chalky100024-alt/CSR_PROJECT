@@ -22,7 +22,13 @@ print("========================================")
 print(f"1. Firmware Version:   {send_cmd('get version')}")
 print(f"2. Model:              {send_cmd('get model')}")
 
-# 2. Current RTC State
+# 2. Battery & Power
+print("\n[Power State]")
+print(f"   Battery:            {send_cmd('get battery')}")
+print(f"   Battery Voltage:    {send_cmd('get battery_voltage')}")
+print(f"   Power Plugged:      {send_cmd('get battery_power_plugged')}")
+
+# 3. Current RTC State
 print("\n[Current RTC State]")
 rtc_time = send_cmd('get rtc_time')
 print(f"   RTC Time:           {rtc_time}")
@@ -33,7 +39,20 @@ print(f"   Alarm Enabled:      {enabled}")
 flag = send_cmd('get rtc_alarm_flag')
 print(f"   Alarm Flag:         {flag}")
 
-# 3. Test Set (Mimic Strategy + 127)
+# 4. System Log Analysis (Historical)
+print("\n[System Log Analysis - Last 5 RTC Events]")
+try:
+    # Try grabbing recent RTC related logs from syslog
+    import subprocess
+    cmd = "grep -ia 'rtc' /var/log/syslog | tail -n 5"
+    logs = subprocess.getoutput(cmd)
+    if not logs:
+        logs = "[No matching logs found in syslog]"
+    print(logs)
+except Exception as e:
+    print(f"   Could not read syslog: {e}")
+
+# 5. Test Set Output
 print("\n[Test: Set Alarm (+2 min, Repeat=127)]")
 try:
     if "iso" in rtc_time or "rtc_time" in rtc_time:
