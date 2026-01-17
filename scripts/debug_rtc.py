@@ -42,15 +42,17 @@ print(f"   Alarm Flag:         {flag}")
 # 4. System Log Analysis (Historical)
 print("\n[System Log Analysis - Last 5 RTC Events]")
 try:
-    # Try grabbing recent RTC related logs from syslog
+    # Try grabbing recent RTC related logs using journalctl (standard on RPi)
     import subprocess
-    cmd = "grep -ia 'rtc' /var/log/syslog | tail -n 5"
+    # Search global journal for 'rtc' (case insensitive), last 15 lines
+    cmd = "journalctl | grep -i 'rtc' | tail -n 15"
     logs = subprocess.getoutput(cmd)
+    
     if not logs:
-        logs = "[No matching logs found in syslog]"
+        logs = "[No matching logs found in journalctl]"
     print(logs)
 except Exception as e:
-    print(f"   Could not read syslog: {e}")
+    print(f"   Could not read journalctl: {e}")
 
 # 5. Test Set Output
 print("\n[Test: Set Alarm (+2 min, Repeat=127)]")
