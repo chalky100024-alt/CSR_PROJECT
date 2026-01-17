@@ -44,12 +44,13 @@ print("\n[System Log Analysis - Last 5 RTC Events]")
 try:
     # Try grabbing recent RTC related logs using journalctl (standard on RPi)
     import subprocess
-    # Search global journal for 'rtc' (case insensitive), last 15 lines
-    cmd = "journalctl | grep -i 'rtc' | tail -n 15"
+    # Search global journal for 'rtc' (case insensitive) since 2026-01-16
+    # User requested history from "the day before yesterday" (failure was on 16th)
+    cmd = "journalctl --since '2026-01-16 00:00:00' | grep -i 'rtc' | tail -n 50"
     logs = subprocess.getoutput(cmd)
     
     if not logs:
-        logs = "[No matching logs found in journalctl]"
+        logs = "[No matching logs found in journalctl since 2026-01-16]"
     print(logs)
 except Exception as e:
     print(f"   Could not read journalctl: {e}")
