@@ -53,10 +53,8 @@ target_dt = cur_dt + datetime.timedelta(minutes=2)
 target_str = target_dt.isoformat(timespec='milliseconds')
 print(f"Target Time (Mimic): {target_str}")
 
-# standard command with REPEAT=0 (One-Shot)
-# We believe repeat=0 is the correct mode for specific dates, 
-# and previous failures were due to Date Format, which Mimic fixes.
-cmd = f"rtc_alarm_set {target_str} 0"
+# standard command with REPEAT=127 (Daily) - RESTORED
+cmd = f"rtc_alarm_set {target_str} 127"
 print(f"Sending CMD: '{cmd}'")
 
 resp = send_cmd(cmd)

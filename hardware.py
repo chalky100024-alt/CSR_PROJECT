@@ -182,9 +182,9 @@ class HardwareController:
             
             log_hardware_event(f"Attempting RTC Set (Mimic): {target_iso}")
 
-            # Use 'rtc_alarm_set' with REPEAT=0 (One-Shot)
-            # REPEAT=127 (Daily) caused missed alarms. One-Shot is reliable for strict Date+Time.
-            resp = self.pisugar_command(f'rtc_alarm_set {target_iso} 0')
+            # Use 'rtc_alarm_set' with REPEAT=127 (Every Day) - RESTORED
+            # User reported repeat=0 failed. Reverting to previous "Daily" logic.
+            resp = self.pisugar_command(f'rtc_alarm_set {target_iso} 127')
             
             if resp and ('ok' in resp.lower() or 'done' in resp.lower()):
                 # Command accepted (rtc_alarm_set automatically enables alarm)
