@@ -392,7 +392,8 @@ def system_action():
         
         # Immediate Effect if switching TO operation
         if new_mode == 'operation':
-             threading.Thread(target=check_power_management).start()
+             # Use the lightweight logic, NOT the startup check (which sleeps 5s and pings google)
+             threading.Thread(target=apply_power_mode_logic).start()
              
         return jsonify({"status": "success", "mode": new_mode})
         
@@ -459,12 +460,12 @@ def log_lifecycle_event(event):
 
 # --- [Startup Logic for Power Management] ---
 def check_power_management():
-    """Check mode and schedule shutdown if needed"""
+    """Run ONCE at Startup: Check internet, setup logs, then apply power logic"""
     # 1. Provide delay for network/system stabilization
     import time
     time.sleep(5) 
     
-    # [DEBUG LOGGER INIT]
+    # [DEBUG LOGGER INIT] - Only needed at startup
     try:
         from utils.logger import setup_debug_logger, check_internet_connection, log_debug
         setup_debug_logger()
@@ -472,38 +473,38 @@ def check_power_management():
         check_internet_connection() # Run Ping/HTTP Check
     except Exception as e:
         print(f"Logger Init Failed: {e}")
-        
-    try:
-        # log_lifecycle_event(f"APP_STARTED | Mode Check Initiated") # Replaced by log_debug
-        
-        # [Time Fix] Force Sync System Time from RTC on Boot (Background)
-        # We removed this from HardwareController.__init__ to prevent UI Lag.
-        # So we MUST do it here once.
-        try:
-             # Create ephemeral HW instance just for sync if needed, 
-             # or use the global 'hw' object if thread-safe
-             # Using global 'hw' defined at top of app.py
-             print("🕒 Syncing System Time from RTC...")
-             hw.sync_system_from_rtc()
-             print(f"🕒 Time Synced. Current System Time: {datetime.datetime.now()}")
-             log_lifecycle_event(f"Time Synced from RTC: {datetime.datetime.now()}")
-        except Exception as e:
-             print(f"RTC Sync Failed: {e}")
-             log_lifecycle_event(f"RTC Sync Failed: {e}")
 
+    # [Time Fix] Force Sync System Time from RTC on Boot
+    try:
+         print("🕒 Syncing System Time from RTC...")
+         hw.sync_system_from_rtc()
+         print(f"🕒 Time Synced. Current System Time: {datetime.datetime.now()}")
+         log_lifecycle_event(f"Time Synced from RTC: {datetime.datetime.now()}")
+    except Exception as e:
+         print(f"RTC Sync Failed: {e}")
+         log_lifecycle_event(f"RTC Sync Failed: {e}")
+
+    # Proceed to apply logic
+    apply_power_mode_logic()
+
+def apply_power_mode_logic():
+    """
+    Core Power Logic: Checks 'mode' and schedules shutdown or cancels it.
+    Lightweight: No internet checks or heavy initialization.
+    """
+    try:
         cfg = settings.load_config()
         p_settings = cfg.get('power_settings', {})
         mode = p_settings.get('mode', 'settings')
         
-        log_lifecycle_event(f"Current Mode: {mode}")
+        log_lifecycle_event(f"Applying Power Mode: {mode}")
 
         if mode == 'operation':
-            interval = int(p_settings.get('interval_min', 60))
+            # Setup variables
             runtime = int(p_settings.get('runtime_min', 3))
+            print(f"🚀 Operation Mode Detected. Runtime: {runtime}m")
             
-            print(f"🚀 Operation Mode Detected. Runtime: {runtime}m, Next Wakeup: {interval}m")
-            
-            # [CRITICAL] Refresh Screen on Boot
+            # [CRITICAL] Refresh Screen on Boot/Mode Change
             def display_update_task():
                 try:
                     log_lifecycle_event("Display Update Started")
@@ -511,9 +512,7 @@ def check_power_management():
                     pf.refresh_display()
                     log_lifecycle_event("Display Update Completed")
                 except Exception as e:
-                    err = f"Display Update Failed: {e}"
-                    print(err)
-                    log_lifecycle_event(err)
+                    print(f"Display Update Failed: {e}")
             
             threading.Thread(target=display_update_task).start()
 
@@ -523,54 +522,34 @@ def check_power_management():
                     time.sleep(runtime * 60)
                     
                     # Check Mode AGAIN before shutting down (Safety)
+                    # (Re-load config to ensure we don't shut down if user switched back to Manual)
                     current_cfg = settings.load_config()
-                    p_curr = current_cfg.get('power_settings', {})
-                    if p_curr.get('mode') != 'operation':
+                    if current_cfg.get('power_settings', {}).get('mode') != 'operation':
                         msg = "🛑 Shutdown Aborted: Mode changed to Settings."
                         print(msg)
                         log_lifecycle_event(msg)
                         return
 
-                    # --- [Smart Wakeup Calculation] ---
-                    # Logic: Calculate standard next wakeup (now + interval)
-                    # If it falls within Sleep Time (Wait, logic is simpler: If next time is > End Hour, set to Tomorrow Start Hour)
-                    # If current time is < Start Hour, set to Today Start Hour (Shouldn't happen if shutdown logic works, but for safety)
-                    
+                    # ... (Existing Shutdown Calculation Logic) ...
+                    p_curr = current_cfg.get('power_settings', {})
                     start_h = int(p_curr.get('active_start_hour', 5))
                     end_h = int(p_curr.get('active_end_hour', 22))
-                    # Reload interval from latest config in case user changed it during runtime
                     interval = int(p_curr.get('interval_min', 60))
                     
                     now = datetime.datetime.now()
-                    # Calculate 'Standard' next wake
                     next_wake = now + datetime.timedelta(minutes=interval)
-                    
-                    # Determine 'Safe' Next Wake
                     final_wake_time = next_wake
                     
-                    # Case 1: Next wake is after End Hour of TODAY (Go to sleep until tmrw start)
-                    # Example: End=22. Next=22:30. -> Tomorrow 05:00
+                    # Night Mode Logic
                     if next_wake.hour >= end_h or (next_wake.hour < start_h and next_wake.day == now.day): 
-                        # Note: The 'next_wake.hour < start_h' part covers if we are running at 3AM for some reason
-                         
-                        # Calculate Tomorrow's Start Time
-                        # If next_wake is already tomorrow (e.g. 00:30), we just set hour to start_h
-                        # If next_wake is today (23:00), we add 1 day and set hour
-                        
                         target_day = now.date() 
-                        if now.hour >= end_h: 
-                            target_day += datetime.timedelta(days=1)
-                        
+                        if now.hour >= end_h: target_day += datetime.timedelta(days=1)
                         target_dt = datetime.datetime.combine(target_day, datetime.time(hour=start_h, minute=0))
-                        
-                        # If target_dt is in past (e.g. we are running at 3AM and Start is 5AM, target is Today 5AM)
-                        if target_dt < now:
-                             target_dt += datetime.timedelta(days=1)
-                             
+                        if target_dt < now: target_dt += datetime.timedelta(days=1)
                         final_wake_time = target_dt
                         log_lifecycle_event(f"Night Mode Active ({end_h}h ~ {start_h}h). Sleeping until {final_wake_time}")
                     
-                    # Calculate minutes difference for RTC
+                    # Calculate minutes
                     diff_seconds = (final_wake_time - now).total_seconds()
                     rtc_minutes = int(diff_seconds / 60)
                     if rtc_minutes < 1: rtc_minutes = 1 # Minimum 1 min
@@ -594,8 +573,7 @@ def check_power_management():
                         crit_msg = "❌ CRITICAL: RTC Alarm Failed 3 times. Shutting down anyway to save battery."
                         print(crit_msg)
                         log_lifecycle_event(crit_msg)
-                        # Potential: Send emergency notification if wifi is on?
-                        
+
                     hw.schedule_shutdown(delay=5)
                 except Exception as e:
                     err = f"CRITICAL: Shutdown Thread Crashed: {e}"
