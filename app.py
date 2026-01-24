@@ -575,16 +575,26 @@ def check_power_management():
                     rtc_minutes = int(diff_seconds / 60)
                     if rtc_minutes < 1: rtc_minutes = 1 # Minimum 1 min
                     
-                    msg = f"💤 Setting RTC Alarm (+{rtc_minutes}m) & Shutting Down..."
-                    print(msg)
-                    log_lifecycle_event(msg)
+                    # Add Retry Logic for RTC Alarm
+                    alarm_success = False
+                    for attempt in range(1, 4):
+                        print(f"💤 Setting RTC Alarm (Attempt {attempt}/3)...")
+                        if hw.set_rtc_alarm(rtc_minutes):
+                            print(f"✅ RTC Alarm Set Success (Attempt {attempt})")
+                            log_lifecycle_event(f"RTC Alarm Set Success (Att {attempt})")
+                            alarm_success = True
+                            break
+                        else:
+                            err_msg = f"⚠️ RTC Alarm Set FAILED (Attempt {attempt}). Retrying..."
+                            print(err_msg)
+                            log_lifecycle_event(err_msg)
+                            time.sleep(2) # Wait 2s before retry
                     
-                    if hw.set_rtc_alarm(rtc_minutes):
-                        print("✅ RTC Alarm Set.")
-                        log_lifecycle_event("RTC Alarm Set Success")
-                    else:
-                        print("❌ RTC Alarm Failed (Mock or Error).")
-                        log_lifecycle_event("RTC Alarm Set FAILED")
+                    if not alarm_success:
+                        crit_msg = "❌ CRITICAL: RTC Alarm Failed 3 times. Shutting down anyway to save battery."
+                        print(crit_msg)
+                        log_lifecycle_event(crit_msg)
+                        # Potential: Send emergency notification if wifi is on?
                         
                     hw.schedule_shutdown(delay=5)
                 except Exception as e:
