@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { SimpleGrid, Card, Image, Button, Group, Text, FileButton, LoadingOverlay } from '@mantine/core';
+import { useState, useEffect, useRef } from 'react';
+import { SimpleGrid, Card, Image, Button, Group, Text, LoadingOverlay } from '@mantine/core';
 import { IconTrash, IconUpload, IconCheck } from '@tabler/icons-react';
 import { fetchPhotos, deletePhotos, uploadPhoto, getPhotoUrl } from '../api';
 import { useLanguage } from '../context/LanguageContext';
@@ -21,6 +21,7 @@ export function Gallery({ selectedPhoto, onSelectPhoto, shuffleMode, shufflePlay
     const [selectedForDelete, setSelectedForDelete] = useState<Set<string>>(new Set());
     const [uploading, setUploading] = useState(false);
     const [loading, setLoading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const loadPhotos = async () => {
         setLoading(true);
@@ -82,9 +83,22 @@ export function Gallery({ selectedPhoto, onSelectPhoto, shuffleMode, shufflePlay
                         {shuffleMode ? "🔀 Shuffle ON" : "➡️ Shuffle OFF"}
                     </Button>
 
-                    <FileButton onChange={handleUpload} accept="image/png,image/jpeg,image/heic" multiple>
-                        {(props) => <Button {...props} size="xs" variant="light" leftSection={<IconUpload size={14} />}>{t('uploadBtn')}</Button>}
-                    </FileButton>
+                    <Button size="xs" variant="light" leftSection={<IconUpload size={14} />} onClick={() => fileInputRef.current?.click()}>
+                        {t('uploadBtn')}
+                    </Button>
+                    <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        style={{ display: 'none' }} 
+                        accept="image/png,image/jpeg,image/heic" 
+                        multiple 
+                        onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                                handleUpload(Array.from(e.target.files));
+                            }
+                            e.target.value = ''; // Reset
+                        }} 
+                    />
                     <Button
                         size="xs"
                         color={deleteMode ? 'red' : 'gray'}
