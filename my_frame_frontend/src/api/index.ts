@@ -80,7 +80,7 @@ export const connectWifi = async (ssid: string, password: string) => {
     return res.data;
 };
 
-export const systemAction = async (action: 'reboot' | 'shutdown' | 'update') => {
+export const systemAction = async (action: 'reboot' | 'shutdown' | 'update' | 'toggle_mode') => {
     const res = await api.get(`/api/system?action=${action}`);
     return res.data;
 };

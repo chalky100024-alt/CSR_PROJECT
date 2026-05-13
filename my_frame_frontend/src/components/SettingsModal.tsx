@@ -297,12 +297,25 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                             />
                         </Group>
                         <Group justify="space-between" align="center" mt="xs" p="xs" bg="gray.1" style={{ borderRadius: 8 }}>
-                            <Text size="sm">{t('currentMode')}: <b>{config.power_settings?.mode?.toUpperCase() || 'SETTINGS'}</b></Text>
-                            <Text size="xs" c="dimmed">
-                                {config.power_settings?.mode === 'operation'
-                                    ? t('modeOperation')
-                                    : t('modeSettings')}
-                            </Text>
+                            <Stack gap={0}>
+                                <Text size="sm">{t('currentMode')}: <b>{config.power_settings?.mode?.toUpperCase() || 'SETTINGS'}</b></Text>
+                                <Text size="xs" c="dimmed">
+                                    {config.power_settings?.mode === 'operation'
+                                        ? t('modeOperation')
+                                        : t('modeSettings')}
+                                </Text>
+                            </Stack>
+                            <Button size="xs" variant="light" onClick={async () => {
+                                const res = await systemAction('toggle_mode');
+                                if (res && res.status === 'success') {
+                                    setConfig({
+                                        ...config,
+                                        power_settings: { ...config.power_settings, mode: res.mode }
+                                    });
+                                }
+                            }}>
+                                {config.power_settings?.mode === 'operation' ? 'Manual(수동)로 전환' : 'Auto(자동)로 전환'}
+                            </Button>
                         </Group>
 
                         {/* Battery Estimator */}

@@ -17,5 +17,9 @@ export default defineConfig({
         secure: false,
       }
     }
+  },
+  build: {
+    outDir: '../my_frame_web/static',
+    emptyOutDir: true,
   }
 })

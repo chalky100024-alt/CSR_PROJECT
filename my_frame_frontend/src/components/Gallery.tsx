@@ -31,10 +31,13 @@ export function Gallery({ selectedPhoto, onSelectPhoto, shuffleMode, shufflePlay
 
     useEffect(() => { loadPhotos(); }, []);
 
-    const handleUpload = async (file: File | null) => {
-        if (!file) return;
+    const handleUpload = async (payload: File | File[] | null) => {
+        if (!payload) return;
         setUploading(true);
-        await uploadPhoto(file);
+        const files = Array.isArray(payload) ? payload : [payload];
+        for (const file of files) {
+            await uploadPhoto(file);
+        }
         await loadPhotos();
         setUploading(false);
     };
@@ -79,7 +82,7 @@ export function Gallery({ selectedPhoto, onSelectPhoto, shuffleMode, shufflePlay
                         {shuffleMode ? "🔀 Shuffle ON" : "➡️ Shuffle OFF"}
                     </Button>
 
-                    <FileButton onChange={handleUpload} accept="image/png,image/jpeg,image/heic">
+                    <FileButton onChange={handleUpload} accept="image/png,image/jpeg,image/heic" multiple>
                         {(props) => <Button {...props} size="xs" variant="light" leftSection={<IconUpload size={14} />}>{t('uploadBtn')}</Button>}
                     </FileButton>
                     <Button

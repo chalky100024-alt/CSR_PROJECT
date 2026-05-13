@@ -6,7 +6,7 @@ import numpy as np
 # ==========================================
 outer_width = 180.0
 outer_length = 115.0 # User Request: Extended to allow bottom wall thickness for cable groove
-total_depth = 40.0   # User Request: Increase Depth for 20mm Internal Clearance
+total_depth = 30.0   # User Request: Reduced Depth by 10mm (was 40.0)
 wall_thickness = 2.0
 floor_thickness = 2.0 # Back wall thickness
 bottom_wall_th = 7.0 # User Request: Thicker bottom wall (5mm groove + 2mm solid)
@@ -14,7 +14,7 @@ bottom_wall_th = 7.0 # User Request: Thicker bottom wall (5mm groove + 2mm solid
 # Components (PiSugar)
 sugar_w = 65.0
 sugar_l = 56.5 
-batt_w, batt_h = 66.0, 55.0 # Battery
+batt_w, batt_h = 70.0, 59.0 # Battery (Increased by 4mm each)
 comp_wall_h = 8.0 # Height of internal retention walls
 magnet_dims = [18.0, 5.0, 1.6]
 
@@ -93,9 +93,9 @@ def create_unibody_frame():
     
     # 3. Card Slot Cutter (The Slide-in Mechanism)
     # Rail inside the tub walls.
-    # Slot Width: 170mm (5mm wider than window on each side -> Rails)
-    slot_w = 170.0
-    slot_gap_z = 1.2 # User Request: 1.2mm Gap (Tight fit for 1mm screen)
+    # Slot Width: 174mm (Was 170mm, widened by 4mm total -> 2mm each side)
+    slot_w = 174.0
+    slot_gap_z = 2.4 # User Request: 2.4mm Gap (Doubled thickness)
     
     # Position: Just behind the Front Face
     # Front Face starts at Z = total_depth - 1.5
@@ -173,17 +173,21 @@ def create_unibody_frame():
     # Previous X was cx - 35. Let's keep it to allow room for battery on right.
     ps_cx = cx - 35.0
     
-    # Standard Pi Zero Mounts: 57.5 x 48.8
+    # Pi Zero Mounts (Original was 48.8, new requirement is 23.0)
     standoff_dx = 57.5 
-    standoff_dy = 48.8
-    standoff_h = 12.0 # User Request: 12mm Height
+    standoff_dy = 23.0 
+    standoff_h = 6.0 # User Request: Halved from 12mm to 6mm Height
+    
+    # User Request: Move entire pillar group 10mm downwards (away from top wall)
+    top_standoff_y = (ps_cy + (48.8 / 2)) - 10.0
+    bottom_standoff_y = top_standoff_y - standoff_dy
+    y_positions = [bottom_standoff_y, top_standoff_y]
     
     standoffs = []
     # 4 Holes (User Request: "4 holes")
     for sx in [-1, 1]:
-        for sy in [-1, 1]:
+        for hy in y_positions:
             hx = ps_cx + (sx * standoff_dx / 2)
-            hy = ps_cy + (sy * standoff_dy / 2)
             
             # Post
             post = trimesh.creation.cylinder(radius=2.5, height=standoff_h)
@@ -201,8 +205,8 @@ def create_unibody_frame():
     # User Request: "Position slightly higher" (Higher than Center)
     # Center = cy. Top = ps_cy.
     # Let's move it UP by 15mm from Center.
-    batt_cx = cx + 35.0
-    batt_cy = cy + 15.0 
+    batt_cx = (cx + 35.0) + 5.0 # Moved 5mm to the right
+    batt_cy = (cy + 15.0) - 20.0 # Moved 20mm downwards from previous position 
     
     bw_th = 1.5
     b_outer = trimesh.creation.box(extents=[batt_w + bw_th*2, batt_h + bw_th*2, comp_wall_h])
@@ -273,66 +277,28 @@ def create_unibody_frame():
     # PCB sits ON standoff (Z = floor_z + standoff_h).
     # USB Port sits ON PCB.
     # Center of Port (Height 6mm) is PCB_Surface + 3mm.
-    port_x = (ps_cx + sugar_w/2) - 11.5
-    port_z_center = floor_z + standoff_h + 3.0 
+    port_x = ((ps_cx + sugar_w/2) - 11.5) - 37.0 # Moved left by 37mm total (Right by 8mm from previous)
+    port_z_center = ((floor_z + standoff_h + 3.0) - 5.0) + 3.0 # Moved up (Z) by 3mm (Total offset is now -2mm instead of -5mm)
     
-    # Cutout
-    usb_cut = trimesh.creation.box(extents=[13.0, 10.0, 6.0]) # W=13, Depth=10, H=6
+    # Cutout (Doubled size: W=26, H=12. Depth=6 to avoid cutting internal pillars)
+    usb_cut = trimesh.creation.box(extents=[26.0, 6.0, 12.0]) 
     usb_cut.apply_transform(trimesh.transformations.translation_matrix([port_x, outer_length, port_z_center]))
     body = body.difference(usb_cut)
     
-    # 3. Reset Button (Back Face Flexure)
-    # Restore Flexure Mechanism (Ring Cut + Nub)
-    # User Request: "8mm horizontal, 12mm vertical from Left Standoff Center"
-    # Assuming Top-Left Standoff (near Reset).
+
+    # 3. New Reset Button Hole (User Request)
+    # Location: 17mm Left, 3mm Down from the 1 o'clock (Top-Right) pillar.
+    # Top-Right pillar coords:
+    tr_hx = ps_cx + (standoff_dx / 2)
+    tr_hy = top_standoff_y
     
-    # Calculate Top-Left Standoff Position
-    # ps_cx is center of mounting group? No, ps_cx is center of board area.
-    # Standoffs defined as: ps_cx + (sx * dx/2), ps_cy + (sy * dy/2)
-    # Top-Left: sx=-1, sy=1 (if Y-up is Top)
+    reset_hole_x = tr_hx - 17.0
+    reset_hole_y = tr_hy - 3.0
     
-    st_tl_x = ps_cx - (standoff_dx / 2)
-    st_tl_y = ps_cy + (standoff_dy / 2)
-    
-    # Apply User Offsets
-    # "8mm horizontal" -> Right (+8.0)
-    # "12mm vertical" -> Down (-12.0)
-    btn_x = st_tl_x + 8.0
-    btn_y = st_tl_y - 12.0
-    
-    # Specs
-    btn_rad = 4.0
-    slot = 1.0
-    nub_h = 10.0 # User Request: 10mm Height to reach PCB
-    
-    # A. Ring Cut (Cut through floor)
-    ring = trimesh.creation.cylinder(radius=btn_rad + slot, height=floor_thickness + 2)
-    ring.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y, floor_thickness/2]))
-    inner = trimesh.creation.cylinder(radius=btn_rad, height=floor_thickness + 2)
-    inner.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y, floor_thickness/2]))
-    cut = ring.difference(inner)
-    
-    # B. Hinge (Top side - keeps button attached to body)
-    hinge = trimesh.creation.box(extents=[6.0, 3.0, floor_thickness + 2])
-    hinge.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y + btn_rad, floor_thickness/2]))
-    
-    final_cut = cut.difference(hinge)
-    body = body.difference(final_cut)
-    
-    # C. Nub (Pushed button part - protrudes outwards? Or inwards?)
-    # Usually protrudes OUT for finger press, or IN to hit switch?
-    # Logic in back_cover: nub at z = base + nub_h/2. -> "Inside" the box (Z+).
-    # Ah, the button press is EXTERNAL, pushing the nub INTERNAL to hit the switch.
-    # So Nub should be on the INSIDE face (Z = floor_thickness).
-    nub = trimesh.creation.cylinder(radius=1.5, height=nub_h)
-    nub.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y, floor_thickness + nub_h/2]))
-    body = body.union(nub)
-    
-    # D. Groove (Tactile mark on outside?)
-    # logic: Z = 0.4. Outside face is Z=0.
-    groove = trimesh.creation.box(extents=[6.0, 2.0, 0.8])
-    groove.apply_transform(trimesh.transformations.translation_matrix([btn_x, btn_y + btn_rad, 0.4]))
-    body = body.difference(groove)
+    # 10mm diameter -> 5.0mm radius
+    reset_hole = trimesh.creation.cylinder(radius=5.0, height=floor_thickness + 5.0)
+    reset_hole.apply_transform(trimesh.transformations.translation_matrix([reset_hole_x, reset_hole_y, floor_thickness/2]))
+    body = body.difference(reset_hole)
     
     return body
 
