@@ -32,7 +32,17 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
     }, [opened]);
 
     const handleSave = async () => {
-        await saveConfig(config);
+        const payload = { ...config };
+        if (payload.power_settings) {
+            payload.power_settings = {
+                ...payload.power_settings,
+                active_start_hour: payload.power_settings.active_start_hour === '' ? 5 : parseInt(payload.power_settings.active_start_hour),
+                active_end_hour: payload.power_settings.active_end_hour === '' ? 22 : parseInt(payload.power_settings.active_end_hour),
+                interval_min: payload.power_settings.interval_min === '' ? 60 : parseInt(payload.power_settings.interval_min),
+                runtime_min: payload.power_settings.runtime_min === '' ? 3 : parseInt(payload.power_settings.runtime_min),
+            };
+        }
+        await saveConfig(payload);
         alert(t('saveChanges') + " OK!");
         onClose();
     };
@@ -243,12 +253,12 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                                 type="number"
                                 min={0}
                                 max={23}
-                                value={config.power_settings?.active_start_hour ?? 5}
+                                value={config.power_settings?.active_start_hour ?? ''}
                                 onChange={(e) => {
-                                    const val = parseInt(e.currentTarget.value) || 0;
+                                    const val = e.currentTarget.value;
                                     setConfig({
                                         ...config,
-                                        power_settings: { ...config.power_settings, active_start_hour: val }
+                                        power_settings: { ...config.power_settings, active_start_hour: val === '' ? '' : parseInt(val) }
                                     });
                                 }}
                             />
@@ -258,12 +268,12 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                                 type="number"
                                 min={0}
                                 max={23}
-                                value={config.power_settings?.active_end_hour ?? 22}
+                                value={config.power_settings?.active_end_hour ?? ''}
                                 onChange={(e) => {
-                                    const val = parseInt(e.currentTarget.value) || 0;
+                                    const val = e.currentTarget.value;
                                     setConfig({
                                         ...config,
-                                        power_settings: { ...config.power_settings, active_end_hour: val }
+                                        power_settings: { ...config.power_settings, active_end_hour: val === '' ? '' : parseInt(val) }
                                     });
                                 }}
                             />
@@ -273,12 +283,12 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                                 label={t('wakeupInterval')}
                                 description={t('wakeupIntervalDesc')}
                                 type="number"
-                                value={config.power_settings?.interval_min || 60}
+                                value={config.power_settings?.interval_min ?? ''}
                                 onChange={(e) => {
-                                    const val = parseInt(e.currentTarget.value) || 60;
+                                    const val = e.currentTarget.value;
                                     setConfig({
                                         ...config,
-                                        power_settings: { ...config.power_settings, interval_min: val }
+                                        power_settings: { ...config.power_settings, interval_min: val === '' ? '' : parseInt(val) }
                                     });
                                 }}
                             />
@@ -286,12 +296,12 @@ export function SettingsModal({ opened, onClose }: SettingsModalProps) {
                                 label={t('runtimeDuration')}
                                 description={t('runtimeDurationDesc')}
                                 type="number"
-                                value={config.power_settings?.runtime_min || 3}
+                                value={config.power_settings?.runtime_min ?? ''}
                                 onChange={(e) => {
-                                    const val = parseInt(e.currentTarget.value) || 3;
+                                    const val = e.currentTarget.value;
                                     setConfig({
                                         ...config,
-                                        power_settings: { ...config.power_settings, runtime_min: val }
+                                        power_settings: { ...config.power_settings, runtime_min: val === '' ? '' : parseInt(val) }
                                     });
                                 }}
                             />
