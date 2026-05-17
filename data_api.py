@@ -107,6 +107,25 @@ def get_kma_base_time(api_type='ultrasrt'):
         
     return base_date, base_time
 
+def get_vilage_base_time():
+    now = datetime.now()
+    # 단기예보 base_time: 0200, 0500, 0800, 1100, 1400, 1700, 2000, 2300
+    base_times = [2, 5, 8, 11, 14, 17, 20, 23]
+    h = now.hour
+    m = now.minute
+    
+    target_date = now
+    target_hour = 23
+    for bt in reversed(base_times):
+        if h > bt or (h == bt and m >= 15):
+            target_hour = bt
+            break
+    else:
+        target_date = now - timedelta(days=1)
+        target_hour = 23
+        
+    return target_date.strftime('%Y%m%d'), f"{target_hour:02d}00"
+
 def get_weather_data(api_key, nx, ny):
     if not api_key: return None
     # Decode API Key if it's URL encoded (Common mistake)
@@ -219,6 +238,40 @@ def get_weather_data(api_key, nx, ny):
                                     'end_time': (ft + timedelta(hours=1)).strftime('%H:%M'), 'type_code': pty}
         weather_info['rain_forecast'] = max_rain
         
+        # 3. 단기예보 (최고기온, 강수확률)
+        try:
+            v_bd, v_bt = get_vilage_base_time()
+            url_vilage = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst"
+            params_vilage = params.copy()
+            params_vilage['base_date'] = v_bd
+            params_vilage['base_time'] = v_bt
+            params_vilage['numOfRows'] = '300'
+            
+            res_v = fetch_with_retry(url_vilage, params_vilage, label="Weather(3)")
+            if res_v:
+                data_v = res_v.json()
+                items_v = data_v['response']['body']['items']['item']
+                today_str = now.strftime('%Y%m%d')
+                
+                tmx = None
+                pop_max = 0
+                
+                for item in items_v:
+                    if item['fcstDate'] == today_str:
+                        if item['category'] == 'TMX':
+                            try: tmx = float(item['fcstValue'])
+                            except: pass
+                        elif item['category'] == 'POP':
+                            try: 
+                                p_val = float(item['fcstValue'])
+                                if p_val > pop_max: pop_max = p_val
+                            except: pass
+                
+                if tmx is not None: weather_info['max_temp'] = tmx
+                weather_info['pop'] = pop_max
+        except Exception as e:
+            log_debug(f"Weather(3) Parse Error: {e}", level='warning')
+
         # Merge Temp if present in forecast but missed in live (fallback)
         if 'temp' not in weather_info and closest_time:
              if 'T1H' in forecasts[closest_time]:

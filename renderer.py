@@ -306,13 +306,13 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
 
     final_image = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
     
-    # [Rain Widget Composite]
+    # [Conversational Summary Widget Composite]
     if weather_data:
-        rain_widget = create_rain_widget(weather_data)
-        if rain_widget:
+        summary_widget = create_daily_summary_widget(weather_data)
+        if summary_widget:
             rx = 20 
-            ry = DISPLAY_HEIGHT - 100 - 20
-            final_image.paste(rain_widget, (rx, ry), rain_widget)
+            ry = DISPLAY_HEIGHT - 80 - 20
+            final_image.paste(summary_widget, (rx, ry), summary_widget)
 
     # [Battery Low Widget Composite]
     if batt_info:
@@ -324,62 +324,83 @@ def create_composed_image(image_path, weather_data, dust_data, layout_config=Non
             # For now, put it slightly higher if RAIN exists? Or just override.
             # Let's put it on the LEFT bottom, similar to rain.
             # If Rain exists, move Battery UP?
-            has_rain = (weather_data and create_rain_widget(weather_data) is not None)
+            has_summary = (weather_data and create_daily_summary_widget(weather_data) is not None)
             
             bx = 20
             by = DISPLAY_HEIGHT - 100 - 20
-            if has_rain:
-                by -= (100 + 10) # Move up by widget height + margin
+            if has_summary:
+                by -= (80 + 10) # Move up by widget height + margin
                 
             final_image.paste(batt_widget, (bx, by), batt_widget)
             
     return final_image, box_x, box_y, box_w, box_h
 
-def create_rain_widget(weather_data):
+def create_daily_summary_widget(weather_data):
     """
-    Creates a dedicated bottom widget for rain alerts.
+    Creates a dedicated bottom widget for daily summary and rain alerts.
     """
-    # FOR TESTING ONLY: FORCE RAIN ALERT
-    force_rain_test = False
-    
-    rain_info = weather_data.get('rain_forecast')
-    
-    if not rain_info and not force_rain_test:
+    if not weather_data:
         return None
         
-    # Mock Data if testing
-    if force_rain_test and not rain_info:
-        rain_info = {'start_time': '15:00', 'type_code': 1}
+    max_temp = weather_data.get('max_temp')
+    pop = weather_data.get('pop')
+    rain_info = weather_data.get('rain_forecast')
+    
+    if max_temp is None and pop is None and not rain_info:
+        return None
         
     # Message Construction
-    start_h = rain_info['start_time'].split(':')[0]
-    r_list = ["", "비", "비/눈", "눈", "소나기"]
-    rtype = r_list[rain_info.get('type_code', 1)] if rain_info.get('type_code', 1) < len(r_list) else "비"
+    parts = []
+    if max_temp is not None:
+        parts.append(f"최고 {int(max_temp)}°C")
+    if pop is not None:
+        parts.append(f"강수확률 {int(pop)}%")
+        
+    base_msg = "오늘은 " + ", ".join(parts) + "예요." if parts else ""
     
-    message = f"☔️ {start_h}시 {rtype} 예보, 우산 챙기세요!"
-    
+    if rain_info:
+        start_h = rain_info['start_time'].split(':')[0]
+        r_list = ["", "비", "비/눈", "눈", "소나기"]
+        rtype = r_list[rain_info.get('type_code', 1)] if rain_info.get('type_code', 1) < len(r_list) else "비"
+        rain_msg = f"{start_h}시부터 {rtype}가 오니 우산 챙기세요!"
+        if base_msg:
+            message = f"💡 {base_msg} {rain_msg}"
+        else:
+            message = f"☔️ {rain_msg}"
+    else:
+        message = f"🌤️ {base_msg}" if base_msg else ""
+        
+    if not message:
+        return None
+        
     # Widget Dimensions
-    w_h = 100
+    w_h = 80
     w_w = DISPLAY_WIDTH - 40 
     
     img = Image.new('RGBA', (w_w, w_h), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
     
     # Background (Glass/White)
-    draw.rounded_rectangle([0, 0, w_w, w_h], radius=30, fill=(255, 255, 255, 230))
+    draw.rounded_rectangle([0, 0, w_w, w_h], radius=25, fill=(255, 255, 255, 210))
     
     # Text
-    font_large = get_font(40)
+    font_large = get_font(30)
     
     # Centering
     text_w = font_large.getlength(message)
+    
+    # Fallback to smaller font if text is too long
+    if text_w > w_w - 40:
+        font_large = get_font(26)
+        text_w = font_large.getlength(message)
+        
     text_h = font_large.getbbox(message)[3]
     
     tx = (w_w - text_w) / 2
     ty = (w_h - text_h) / 2 - 5 
     
-    # Draw Text (Blue/Dark Blue for visibility)
-    draw.text((tx, ty), message, font=font_large, fill=(0, 50, 150))
+    # Draw Text (Dark Blue for visibility)
+    draw.text((tx, ty), message, font=font_large, fill=(20, 40, 80))
     
     return img
 
