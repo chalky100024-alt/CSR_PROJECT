@@ -187,11 +187,26 @@ class EInkPhotoFrame:
         try:
             logger.info(f"Processing: {os.path.basename(image_path)}")
 
-            # 데이터 로드
-            logger.info("Fetching Fine Dust Data...")
-            d_data = self.get_fine_dust_data()
-            logger.info("Fetching Weather Data...")
-            w_data = self.get_weather_data()
+            # 데이터 로드 (날씨/미세먼지 대기 및 반복 요청 적용)
+            d_data = None
+            w_data = None
+            
+            max_retries = 10  # 10회 * 2초 = 최대 20초 대기
+            for i in range(max_retries):
+                logger.info(f"Fetching weather/dust data (Attempt {i+1}/{max_retries})...")
+                if d_data is None:
+                    d_data = self.get_fine_dust_data()
+                if w_data is None:
+                    w_data = self.get_weather_data()
+                
+                if d_data and w_data:
+                    logger.info("Both weather and dust data successfully fetched.")
+                    break
+                
+                time.sleep(2)
+            
+            if not d_data: logger.warning("Fine dust data fetch failed after retries.")
+            if not w_data: logger.warning("Weather data fetch failed after retries.")
             
             # Fetch Battery Data
             batt_info = None
